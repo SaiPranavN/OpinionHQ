@@ -5,6 +5,7 @@ import { Hero } from "@/components/landing/Hero";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
 import { IntegritySection } from "@/components/landing/IntegritySection";
 import { MovementSection } from "@/components/landing/MovementSection";
+import { PrivateGuidanceSection } from "@/components/landing/PrivateGuidanceSection";
 import { StructureSection } from "@/components/landing/StructureSection";
 import { TwoModesSection } from "@/components/landing/TwoModesSection";
 import { VoicesSection } from "@/components/landing/VoicesSection";
@@ -19,8 +20,10 @@ export default function LandingPage() {
       <RevealOnScroll />
       <Hero />
 
-      {/* What the product is, before how it works. */}
+      {/* What the product is, before how it works. The two public modes first,
+          then the private one — the contrast is the explanation. */}
       <TwoModesSection />
+      <PrivateGuidanceSection />
       <HowItWorksSection />
 
       {/* The written half, before the sections that are all about charts. */}
@@ -36,7 +39,7 @@ export default function LandingPage() {
 
       <section
         id="catalog-preview"
-        className="relative overflow-hidden border-t border-white/5 px-5 pt-[clamp(90px,14vh,170px)] pb-[clamp(80px,10vh,130px)] text-center sm:px-10 lg:px-20"
+        className="relative overflow-hidden border-t border-veil/5 px-5 pt-[clamp(90px,14vh,170px)] pb-[clamp(80px,10vh,130px)] text-center sm:px-10 lg:px-20"
       >
         <div
           aria-hidden
@@ -67,11 +70,23 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/polls"
-              className="rounded-full border border-[#A78BFA]/45 bg-[#A78BFA]/10 px-[30px] py-[16px] text-[16px] font-semibold tracking-[-0.01em] text-[#C4B5FD] transition-[background,border-color] duration-500 ease-ohq hover:border-[#A78BFA]/70 hover:bg-[#A78BFA]/18"
+              className="rounded-full border border-poll/45 bg-poll/10 px-[30px] py-[16px] text-[16px] font-semibold tracking-[-0.01em] text-poll-soft transition-[background,border-color] duration-500 ease-ohq hover:border-poll/70 hover:bg-poll/18"
             >
               Vote in a poll
             </Link>
           </div>
+          {/* Ask Verified has no count to advertise, and that is the point: a
+              private-guidance service with a public question counter would be
+              counting private questions in an aggregate. */}
+          <Link
+            href="/ask"
+            className="inline-flex items-center gap-2 text-[14.5px] text-private-soft underline-offset-4 transition-colors duration-300 hover:text-cream hover:underline"
+          >
+            Need private guidance? Ask someone verified
+            <span aria-hidden className="font-mono">
+              →
+            </span>
+          </Link>
         </div>
       </section>
 

@@ -12,7 +12,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { changeLabel } from "@/lib/derive";
+import { AnimatedMetric } from "@/components/motion/AnimatedMetric";
+import { changeLabel, formatCompact } from "@/lib/derive";
 import type { DecoratedTopic } from "@/lib/types";
 
 const CYCLE_MS = 5200;
@@ -82,7 +83,7 @@ export function TrendingTicker({ topics }: { topics: DecoratedTopic[] }) {
       onBlurCapture={() => setHoverPaused(false)}
       onKeyDown={onKeyDown}
       style={{ top: "var(--ohq-nav-h)" }}
-      className="sticky z-40 border-b border-white/8 bg-[rgba(14,14,14,0.94)] backdrop-blur-[14px]"
+      className="sticky z-40 border-b border-veil/8 bg-surface-sunken/95 backdrop-blur-[14px]"
     >
       <div className="mx-auto flex max-w-[1440px] items-center gap-3 px-4 py-2.5 sm:gap-5 sm:px-8 lg:px-14">
         <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tracking-[0.14em] whitespace-nowrap uppercase text-positive-light">
@@ -95,20 +96,29 @@ export function TrendingTicker({ topics }: { topics: DecoratedTopic[] }) {
           <Link
             ref={itemRef}
             href={`/topics/${current.id}`}
-            className="flex min-w-0 flex-col gap-0.5 rounded-[6px] outline-none focus-visible:ring-2 focus-visible:ring-positive/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0e0e0e] sm:flex-row sm:items-baseline sm:gap-3"
+            className="flex min-w-0 flex-col gap-0.5 rounded-[6px] outline-none focus-visible:ring-2 focus-visible:ring-positive/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ink sm:flex-row sm:items-baseline sm:gap-3"
           >
             <span className="truncate text-[13.5px] font-semibold tracking-[-0.01em] text-cream">
               {current.name}
             </span>
             <span className="flex min-w-0 items-baseline gap-1.5 truncate text-[12px] text-dim">
-              <span className="font-semibold" style={{ color: current.dominantColor }}>
+              <span className="font-semibold" style={{ color: current.dominantVar }}>
                 {current.headlineMetric}
               </span>
-              <span aria-hidden className="text-white/20">
+              <span aria-hidden className="text-veil/20">
                 ·
               </span>
-              <span className="whitespace-nowrap">{current.participantsShort}</span>
-              <span aria-hidden className="hidden text-white/20 md:inline">
+              {/* The one figure that changes between items counts to its new
+                  value rather than swapping, so the eye reads the ticker as
+                  one instrument re-measuring rather than as a slideshow. Keyed
+                  by topic so each item restarts the count. */}
+              <AnimatedMetric
+                key={current.id}
+                value={current.participants}
+                format={formatCompact}
+                className="whitespace-nowrap"
+              />
+              <span aria-hidden className="hidden text-veil/20 md:inline">
                 ·
               </span>
               <span
@@ -173,7 +183,7 @@ function TickerButton({
       onClick={onClick}
       aria-label={label}
       aria-pressed={pressed}
-      className="grid h-7 min-w-7 cursor-pointer place-items-center rounded-[7px] border border-white/12 px-1.5 text-[11px] leading-none text-muted transition-[border-color,color] duration-300 outline-none hover:border-positive/45 hover:text-cream focus-visible:ring-2 focus-visible:ring-positive/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0e0e0e]"
+      className="grid h-7 min-w-7 cursor-pointer place-items-center rounded-[7px] border border-veil/12 px-1.5 text-[11px] leading-none text-muted transition-[border-color,color] duration-300 outline-none hover:border-positive/45 hover:text-cream focus-visible:ring-2 focus-visible:ring-positive/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
     >
       {children}
     </button>

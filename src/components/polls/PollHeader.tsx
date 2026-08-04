@@ -19,10 +19,10 @@ export function PollHeader({
 }) {
   const { pollVotes, toast } = usePrototype();
   const mine = pollVotes[poll.id];
-  const myside = mine ? poll.sides.find((s) => s.id === mine.side) : undefined;
+  const myside = mine ? poll.options.find((o) => o.id === mine.side) : undefined;
 
   const share = async () => {
-    const line = `${poll.question} — ${poll.sides[0].name} ${poll.sides[0].pct}% vs ${poll.sides[1].name} ${poll.sides[1].pct}%, of ${formatNumber(poll.total)} votes.`;
+    const line = `${poll.question} — ${poll.options.map((o) => `${o.name} ${o.pct}%`).join(", ")}, of ${formatNumber(poll.total)} votes.`;
     try {
       await navigator.clipboard.writeText(`${line} ${window.location.href}`);
       toast(`${line} Link copied.`);
@@ -49,6 +49,16 @@ export function PollHeader({
           <CategoryIcon category={poll.cat} size={14} />
           {poll.category.label}
         </span>
+        {/* On a detail page there is room for the full chain, so a reader who
+            does not know where this is gets told. */}
+        {poll.place === "worldwide" ? null : (
+          <span
+            className="font-mono text-[10.5px] tracking-[0.14em] uppercase text-dim"
+            title={poll.placeContext.replace(", Worldwide", "")}
+          >
+            {poll.placeLabel}
+          </span>
+        )}
         <StatusBadge status={poll.status} />
         <span className="font-mono text-[11px] text-dim">{poll.closes}</span>
       </div>
@@ -83,7 +93,7 @@ export function PollHeader({
               <span className="flex flex-col gap-1">
                 <span
                   className="text-[clamp(1.9rem,3.6vw,2.7rem)] leading-[1] font-semibold tracking-[-0.03em]"
-                  style={{ color: poll.leader.color }}
+                  style={{ color: poll.leader.textColor }}
                 >
                   {poll.leader.pct}% {poll.leader.name}
                 </span>
@@ -106,7 +116,7 @@ export function PollHeader({
         <PollSplitBar poll={poll} height={38} />
 
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-line pt-4">
-          {poll.sides.map((option) => (
+          {poll.options.map((option) => (
             <span key={option.id} className="flex min-w-0 items-center gap-2">
               <span
                 aria-hidden
@@ -137,7 +147,7 @@ export function PollHeader({
           {poll.tags.map((tag) => (
             <li
               key={tag}
-              className="rounded-full border border-white/8 px-2.5 py-[3px] text-[11px] text-dim"
+              className="rounded-full border border-veil/8 px-2.5 py-[3px] text-[11px] text-dim"
             >
               {tag}
             </li>
@@ -148,7 +158,7 @@ export function PollHeader({
           <button
             type="button"
             onClick={share}
-            className="cursor-pointer rounded-full border border-white/16 px-[18px] py-[9px] text-[13px] font-medium text-soft transition-[color,border-color] duration-300 outline-none hover:border-white/40 hover:text-white focus-visible:ring-2 focus-visible:ring-positive/60"
+            className="cursor-pointer rounded-full border border-veil/16 px-[18px] py-[9px] text-[13px] font-medium text-soft transition-[color,border-color] duration-300 outline-none hover:border-veil/40 hover:text-cream-bright focus-visible:ring-2 focus-visible:ring-positive/60"
           >
             Share result
           </button>

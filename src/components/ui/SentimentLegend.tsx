@@ -30,7 +30,7 @@ export function SentimentLegend({
       {rows.map((row, i) => (
         <span key={row.label} className="flex items-center gap-1.5 whitespace-nowrap">
           {i > 0 ? (
-            <span aria-hidden className="mr-0.5 text-white/18">
+            <span aria-hidden className="mr-0.5 text-veil/18">
               ·
             </span>
           ) : null}

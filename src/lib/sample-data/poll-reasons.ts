@@ -6,10 +6,10 @@
  * stands on its own next to the vote it explains.
  */
 
-import type { PollReason, PollSideId } from "@/lib/types";
+import type { PollOptionId, PollReason } from "@/lib/types";
 
 interface Raw {
-  side: PollSideId;
+  side: PollOptionId;
   name: string;
   initials: string;
   text: string;
@@ -43,10 +43,33 @@ const RAW: Record<string, Raw[]> = {
     { side: "b", name: "Anita Kurien", initials: "AK", text: "Hybrid asks nothing of you. No app, no queue, no planning where you stop. That convenience is worth the extra fuel.", time: "1 day ago", helpful: 1140 },
   ],
   "wfh-office": [
+    // Deliberately deeper than the other polls: twelve a side, so the report's
+    // ten-per-option cap is exercised by real fixture data rather than only by
+    // a test, and the losing column is substantial enough to be worth reading.
     { side: "a", name: "Tanvi Malhotra", initials: "TM", text: "Ninety minutes each way is three unpaid hours. Nobody issuing a mandate has ever put that number in the business case.", time: "50 minutes ago", helpful: 3480 },
     { side: "a", name: "Bhaskar Rao", initials: "BR", text: "Output has been measured at our firm for four years. It did not fall. The mandate arrived anyway, which tells you it was never about output.", time: "3 hours ago", helpful: 2740 },
+    { side: "a", name: "Lakshmi Venkatesh", initials: "LV", text: "I moved my parents in with us because I am home to help. A mandate does not just move my desk, it dismantles that arrangement.", time: "4 hours ago", helpful: 2590 },
+    { side: "a", name: "Imtiaz Qureshi", initials: "IQ", text: "The office is open-plan. I put on headphones to block out the room, then take calls with people on other floors. Explain the point of the journey.", time: "6 hours ago", helpful: 2410 },
+    { side: "a", name: "Ritu Chandran", initials: "RC", text: "Every senior person I know negotiated an exception quietly. The policy applies to whoever lacks the leverage to argue with it.", time: "8 hours ago", helpful: 2260 },
+    { side: "a", name: "Devansh Kapoor", initials: "DK", text: "We gave up the second floor and the lease savings went into the results. Now the same company wants the room back at a higher rate.", time: "9 hours ago", helpful: 1980 },
+    { side: "a", name: "Shalini Prabhakar", initials: "SP", text: "I have a chronic condition that is manageable at home and exhausting on a train. Remote was not a perk, it was the accommodation.", time: "11 hours ago", helpful: 1840 },
+    { side: "a", name: "Manoj Deshmukh", initials: "MD", text: "Hiring got better the moment we stopped filtering for one city. The mandate has quietly reversed that and nobody has said so out loud.", time: "13 hours ago", helpful: 1670 },
+    { side: "a", name: "Ayesha Siddiqui", initials: "AS", text: "Attendance is being measured because it is easy to measure. Output is hard to measure, so it lost.", time: "16 hours ago", helpful: 1520 },
+    { side: "a", name: "Prakash Menon", initials: "PM", text: "Four hours of my day belonged to me and now they do not. That is a pay cut described as a culture initiative.", time: "18 hours ago", helpful: 1390 },
+    { side: "a", name: "Neelam Joshi", initials: "NJ", text: "The childcare maths simply does not work. I am not choosing the sofa over the office, I am choosing to keep the job at all.", time: "21 hours ago", helpful: 1240 },
+    { side: "a", name: "Sudhir Bhattacharya", initials: "SB", text: "Two years of being told the distributed model was the future, then a lease renewal changed everyone's mind about human connection.", time: "1 day ago", helpful: 1080 },
     { side: "b", name: "Aniket Ranade", initials: "AR", text: "I learned more in six months sitting next to a senior engineer than in two years of calls. For anyone early, the room is the training.", time: "2 hours ago", helpful: 2180 },
     { side: "b", name: "Pooja Iyer", initials: "PI", text: "Remote works for people who already have a network. It quietly penalises everyone who is still building one.", time: "7 hours ago", helpful: 1920 },
+    { side: "b", name: "Harsh Vardhan", initials: "HV", text: "Every hard problem I have solved this year happened at a whiteboard with two other people. I have never once replicated that on a call.", time: "5 hours ago", helpful: 1760 },
+    { side: "b", name: "Kalpana Srinivasan", initials: "KS", text: "My flat has one room. Working from it meant never leaving it. The commute is the only thing that ends my day.", time: "10 hours ago", helpful: 1610 },
+    { side: "b", name: "Rehan Mirza", initials: "RM", text: "Promotion decisions are made by people who remember you. Two years remote taught me that is not cynicism, it is just true.", time: "12 hours ago", helpful: 1470 },
+    { side: "b", name: "Anjali Thakur", initials: "AT", text: "Onboarding remotely was six weeks of not knowing who to ask. I would not put a new joiner through it again.", time: "14 hours ago", helpful: 1350 },
+    { side: "b", name: "Vikram Salunkhe", initials: "VS", text: "The team drifted into four separate teams that shared a repository. Being in the room is what stopped that.", time: "15 hours ago", helpful: 1220 },
+    { side: "b", name: "Fatima Zaidi", initials: "FZ", text: "Half my job is catching a problem in a corridor before it becomes a meeting. That does not have a remote equivalent.", time: "17 hours ago", helpful: 1140 },
+    { side: "b", name: "Girish Kamath", initials: "GK", text: "I was more productive at home and considerably worse at my actual job, which is helping other people do theirs.", time: "19 hours ago", helpful: 1020 },
+    { side: "b", name: "Sneha Bhaskar", initials: "SB", text: "The people arguing loudest for remote are senior enough that nobody checks on them. Juniors are drowning quietly.", time: "22 hours ago", helpful: 940 },
+    { side: "b", name: "Arvind Raghavan", initials: "AR", text: "Three days would be a compromise. The all-or-nothing framing on both sides is what has made this unresolvable.", time: "1 day ago", helpful: 820 },
+    { side: "b", name: "Deepa Nagarajan", initials: "DN", text: "I miss the incidental part. Not the meetings — the lunch where somebody mentions the thing you needed to know.", time: "1 day ago", helpful: 710 },
   ],
   "mba-ms": [
     { side: "a", name: "Ira Bhandari", initials: "IB", text: "Switched function, doubled comp in eighteen months, no visa to worry about. The domestic network compounds for decades here.", time: "2 hours ago", helpful: 1680 },
@@ -101,6 +124,67 @@ const RAW: Record<string, Raw[]> = {
     { side: "a", name: "Sania Kapoor", initials: "SK", text: "Mirchi ka salan and dahi chutney are not side dishes, they are part of the design. Nothing on the Lucknowi side answers them.", time: "3 hours ago", helpful: 1840 },
     { side: "b", name: "Nusrat Ali", initials: "NA", text: "Restraint is harder than heat. Anyone can make you sweat; making you notice the kewra and the meat is the actual skill.", time: "2 hours ago", helpful: 2280 },
     { side: "b", name: "Zoya Hameed", initials: "ZH", text: "You can eat a full plate of Lucknowi and still want dinner tomorrow. Hyderabadi is magnificent and then you are done for the day.", time: "5 hours ago", helpful: 1720 },
+  ],
+  "first-language": [
+    { side: "a", name: "Anaya Kulkarni", initials: "AK", text: "The students who quit in week three quit because nothing worked yet. Python gets something working on day one, and that is most of the battle.", time: "2 hours ago", helpful: 1620 },
+    { side: "a", name: "Rohit Menon", initials: "RM", text: "You can teach memory later to somebody who already believes they can program. The reverse order loses half the room.", time: "5 hours ago", helpful: 1180 },
+    { side: "b", name: "Priyanka Das", initials: "PD", text: "Every student I have taught who started with C debugged faster three years later. They knew what the machine was actually doing.", time: "1 hour ago", helpful: 1490 },
+    { side: "b", name: "Sameer Qureshi", initials: "SQ", text: "Abstractions are much easier to appreciate once you have lived without them. Start where the abstractions are not.", time: "6 hours ago", helpful: 940 },
+    { side: "c", name: "Diya Raghavan", initials: "DR", text: "Nothing else lets a beginner send their parents a link on day two. That first bit of pride keeps people in the subject.", time: "3 hours ago", helpful: 1310 },
+    { side: "c", name: "Imran Bakshi", initials: "IB", text: "The browser is already installed on every machine in the lab. Zero setup is an underrated pedagogical property.", time: "8 hours ago", helpful: 760 },
+  ],
+  "work-setup": [
+    { side: "a", name: "Nandita Sen", initials: "NS", text: "Three hours of commuting a day bought me nothing. I have never been more productive than I have been at my own desk.", time: "1 hour ago", helpful: 2040 },
+    { side: "a", name: "Vivek Prabhu", initials: "VP", text: "The best team I have worked on was distributed across four cities and wrote everything down. That habit was the whole advantage.", time: "4 hours ago", helpful: 1370 },
+    { side: "b", name: "Meghna Iyer", initials: "MI", text: "The flexibility is the point. Some weeks I need the room and some weeks I need the quiet, and only I know which.", time: "40 minutes ago", helpful: 2610 },
+    { side: "b", name: "Aditya Raman", initials: "AR", text: "Fixed days are just a shorter commute schedule. If I am trusted to do the work, I am trusted to pick the days.", time: "3 hours ago", helpful: 1880 },
+    { side: "c", name: "Kavya Hegde", initials: "KH", text: "Going in and finding nobody there is the worst of both. Fixed days at least mean the office is worth the trip.", time: "2 hours ago", helpful: 1450 },
+    { side: "c", name: "Tarun Bhatia", initials: "TB", text: "New joiners learn by overhearing. You cannot overhear anything if the team is never in on the same day.", time: "7 hours ago", helpful: 1120 },
+    { side: "d", name: "Farida Noorani", initials: "FN", text: "My flat is not an office and never will be. Leaving the building is what lets the day actually end.", time: "5 hours ago", helpful: 980 },
+    { side: "d", name: "Gaurav Malhotra", initials: "GM", text: "Everything difficult I have solved happened at a whiteboard with two other people. I have never replicated that on a call.", time: "9 hours ago", helpful: 830 },
+  ],
+  /* ------------------------------------------------------ Approval ratings
+
+     Opinions about a named person's *performance in office* — which is
+     ordinary political speech and the whole point of an approval poll. What is
+     deliberately absent: any factual claim about a real individual, any
+     allegation, and anything a person could be defamed by. A reason here
+     argues about policy and delivery, or it does not belong. */
+  "approval-modi": [
+    { side: "a", name: "Sanjay Deshpande", initials: "SD", text: "Whatever else you think, the infrastructure programme is visible in places that were ignored for forty years. I judge the job on what actually got built.", time: "2 hours ago", helpful: 4120 },
+    { side: "a", name: "Latha Krishnan", initials: "LK", text: "Direct benefit transfer worked. My mother receives her pension without paying anybody to receive it, and that is not a small thing.", time: "5 hours ago", helpful: 3480 },
+    { side: "b", name: "Imran Vohra", initials: "IV", text: "Growth figures are not the same as jobs. Ask anybody who finished a degree in the last three years how the market feels from where they are standing.", time: "3 hours ago", helpful: 3910 },
+    { side: "b", name: "Nandini Rao", initials: "NR", text: "The centralisation is the problem for me. States are being handed responsibilities without the revenue to meet them, and that is a structural choice, not an accident.", time: "7 hours ago", helpful: 3240 },
+  ],
+  "approval-rahul-gandhi": [
+    { side: "a", name: "Ashish Bhalla", initials: "AB", text: "He has been consistent on the questions he raises in the House even when it cost him politically. Scrutiny is the job description and he does turn up to it.", time: "4 hours ago", helpful: 2610 },
+    { side: "a", name: "Priyanka Menon", initials: "PM", text: "The opposition finally has a coherent line on unemployment rather than a different grievance every week. That is an improvement worth acknowledging.", time: "9 hours ago", helpful: 2080 },
+    { side: "b", name: "Vikrant Sharma", initials: "VS", text: "Holding a government to account requires an alternative programme, and I still could not tell you what it is on the economy.", time: "6 hours ago", helpful: 2940 },
+    { side: "b", name: "Fatima Ansari", initials: "FA", text: "Too much of the messaging is reactive. Opposition should be setting some of the agenda, not responding to all of it.", time: "1 day ago", helpful: 2270 },
+  ],
+  "approval-yogi-adityanath": [
+    { side: "a", name: "Ramesh Tiwari", initials: "RT", text: "Law and order in the district I live in is measurably different from ten years ago. That is the thing most people here actually vote on.", time: "3 hours ago", helpful: 2840 },
+    { side: "a", name: "Sunita Yadav", initials: "SY", text: "Expressway connectivity has changed what is possible for a small business outside the big cities. Ours is one of them.", time: "8 hours ago", helpful: 2190 },
+    { side: "b", name: "Arif Khan", initials: "AK", text: "Administration measured only by enforcement is half a job. Health and school outcomes in the state are still near the bottom of the table.", time: "5 hours ago", helpful: 2530 },
+    { side: "b", name: "Deepika Saxena", initials: "DS", text: "Exam conduct has been a recurring failure and it affects hundreds of thousands of families every single year.", time: "11 hours ago", helpful: 2060 },
+  ],
+  "approval-mamata-banerjee": [
+    { side: "a", name: "Subhadeep Ghosh", initials: "SG", text: "The welfare schemes reach women directly in a state where that was not previously true. I weigh that heavily.", time: "4 hours ago", helpful: 1960 },
+    { side: "a", name: "Anjali Dutta", initials: "AD", text: "She has held the state against enormous central pressure for three terms. Whatever your politics, that is a political achievement.", time: "10 hours ago", helpful: 1620 },
+    { side: "b", name: "Rituparno Bose", initials: "RB", text: "Industrial investment has gone elsewhere for a decade and a half. Young people leave the state to work, and that is the whole argument.", time: "6 hours ago", helpful: 2140 },
+    { side: "b", name: "Kaushik Mitra", initials: "KM", text: "Local administration quality varies enormously by district, which suggests the delivery mechanism is not actually under control.", time: "1 day ago", helpful: 1780 },
+  ],
+  "approval-stalin": [
+    { side: "a", name: "Meena Sundaram", initials: "MS", text: "The state runs. Schools, transport, power, the things that are boring when they work — they work, and I do not take that for granted.", time: "2 hours ago", helpful: 2380 },
+    { side: "a", name: "Karthik Raman", initials: "KR", text: "Industrial policy has actually pulled investment in rather than announcing it. The difference shows up in the employment numbers.", time: "7 hours ago", helpful: 1940 },
+    { side: "b", name: "Bhavani Selvam", initials: "BS", text: "The freebie-versus-welfare argument is real and the fiscal position is worse than the state admits. That bill arrives later.", time: "9 hours ago", helpful: 1710 },
+    { side: "b", name: "Joseph Xavier", initials: "JX", text: "Urban governance in Chennai has not kept pace with the state's rhetoric. One monsoon a year still exposes that.", time: "1 day ago", helpful: 1450 },
+  ],
+  "approval-kejriwal": [
+    { side: "a", name: "Neeraj Chopra", initials: "NC", text: "The schools model was genuinely tried and genuinely measured. Very few people in Indian politics have attempted anything that specific.", time: "5 hours ago", helpful: 1880 },
+    { side: "a", name: "Shweta Bindra", initials: "SB", text: "Clinics within walking distance changed how ordinary illness gets treated in my neighbourhood. That is a real policy outcome.", time: "12 hours ago", helpful: 1520 },
+    { side: "b", name: "Harpreet Sethi", initials: "HS", text: "An anti-establishment platform that has now been the establishment for a decade needs a different account of itself than it gives.", time: "8 hours ago", helpful: 2010 },
+    { side: "b", name: "Malini Iyer", initials: "MI", text: "The governance record and the national ambition point in different directions, and the second keeps interrupting the first.", time: "1 day ago", helpful: 1660 },
   ],
 };
 

@@ -7,19 +7,38 @@
  * a vote is submitted while signed out — in which case the held vote and draft
  * are shown back so it is obvious nothing was lost.
  *
- * This prototype has no identity provider and asks for no password. The
- * demographic fields feed the aggregate breakdowns on topic dashboards and
+ * THE PASSWORD IS NEVER STORED. There is no identity provider behind this
+ * sheet and nothing to check a password against, so the field is held in
+ * component state, validated for length, and dropped when the sheet closes. It
+ * is not written to `localStorage`, not put on the profile, and not passed to
+ * `onComplete` — `AccountDetails` has no field it could travel in, which is the
+ * enforcement rather than a promise. Anybody wiring a real backend to this has
+ * to add that field deliberately, and will see this comment when they do.
+ *
+ * The demographic fields feed the aggregate breakdowns on topic dashboards and
  * are optional; nothing entered here leaves the browser.
  */
 
 import { useEffect, useRef, useState } from "react";
 
+import {
+  IdentifierField,
+  MIN_PASSWORD,
+  OrRule,
+  PasswordField,
+  checkPassword,
+  nameFrom,
+  readIdentifier,
+} from "@/components/auth/CredentialForm";
+import { GoogleButton, type GoogleAccount } from "@/components/auth/GoogleSignIn";
 import { Brand } from "@/components/ui/Brand";
 import type { Sentiment } from "@/lib/types";
 
 export interface AccountDetails {
   name: string;
   email: string;
+  /** Set when they signed in with a username rather than an address. */
+  username?: string;
   dob?: string;
   mobile?: string;
   occupation?: string;
@@ -58,8 +77,6 @@ interface AuthModalProps {
   onComplete: (details: AccountDetails, created: boolean) => void;
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 export function AuthModal({
   mode,
   heldVote,
@@ -73,6 +90,15 @@ export function AuthModal({
     email: "",
     country: "India",
   });
+  /** An address or a username — `readIdentifier` decides which. */
+  const [identifier, setIdentifier] = useState("");
+  /**
+   * Held here and nowhere else.
+   *
+   * Deliberately outside `form`, so it cannot be spread into the object handed
+   * to `onComplete` by a future edit that adds a field and forgets this one.
+   */
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
 
@@ -102,22 +128,43 @@ export function AuthModal({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) {
+    if (signup && !form.name.trim()) {
       setError("Add a display name — it is what signs your opinions.");
       return;
     }
-    if (!EMAIL_RE.test(form.email.trim())) {
-      setError("Enter a valid email address.");
+    const read = readIdentifier(identifier);
+    if ("error" in read) {
+      setError(read.error);
       return;
     }
+    if (signup && !read.email) {
+      setError("Creating an account needs an email address.");
+      return;
+    }
+    const bad = checkPassword(password);
+    if (bad) {
+      setError(bad);
+      return;
+    }
+    // The password stops here. It is checked for shape and then goes nowhere:
+    // `AccountDetails` has no field for it, so it cannot be persisted by
+    // accident. On sign-in the display name is derived from what they typed,
+    // since there is no account record to look one up in.
+    setPassword("");
     onComplete(
       {
         ...form,
-        name: form.name.trim(),
-        email: form.email.trim(),
+        name: form.name.trim() || nameFrom(read),
+        email: read.email,
+        username: read.username || undefined,
       },
       signup,
     );
+  };
+
+  const withGoogle = (account: GoogleAccount) => {
+    setPassword("");
+    onComplete({ ...form, name: account.name, email: account.email }, false);
   };
 
   return (
@@ -132,7 +179,7 @@ export function AuthModal({
     >
       <form
         onSubmit={submit}
-        className="my-auto flex w-full max-w-[520px] flex-col gap-5 rounded-[22px] border border-white/10 bg-surface p-6 shadow-[0_50px_120px_-40px_rgba(0,0,0,0.9)] sm:p-8"
+        className="my-auto flex w-full max-w-[520px] flex-col gap-5 rounded-[22px] border border-veil/10 bg-surface p-6 shadow-[0_50px_120px_-40px_rgba(0,0,0,0.9)] sm:p-8"
       >
         <div>
           <h2
@@ -158,6 +205,14 @@ export function AuthModal({
               ? "One vote counts per account. The demographic fields are optional and only ever shown as aggregate percentages."
               : "Browsing needs no account — signing in lets you vote, reply and follow topics."}
           </p>
+          <p className="m-0 mt-2.5 rounded-[10px] border border-veil/8 bg-veil/2 px-3 py-2 text-[11.5px] leading-[1.5] text-dim">
+            <strong className="font-medium text-muted">Simulated sign-in.</strong> Any
+            username or address and any password of {MIN_PASSWORD}+ characters is accepted
+            — there is no identity provider behind this, and the Google button opens a
+            made-up chooser rather than contacting Google. The password is checked for
+            length and then discarded; it is never stored, and nothing entered here leaves
+            this browser.
+          </p>
         </div>
 
         {heldVote ? (
@@ -176,28 +231,44 @@ export function AuthModal({
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Name" required className="sm:col-span-2">
-            <input
-              ref={firstFieldRef}
-              value={form.name}
-              onChange={(e) => set("name", e.target.value)}
-              placeholder="How your opinions are signed"
-              autoComplete="name"
-              className={inputClass}
-            />
-          </Field>
+        <GoogleButton
+          label={signup ? "Sign up with Google" : "Continue with Google"}
+          onPick={withGoogle}
+        />
 
-          <Field label="Email" required className={signup ? "" : "sm:col-span-2"}>
-            <input
-              type="email"
-              value={form.email}
-              onChange={(e) => set("email", e.target.value)}
-              placeholder="you@example.com"
-              autoComplete="email"
-              className={inputClass}
-            />
-          </Field>
+        <OrRule />
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {/* Signing in asks for a credential and nothing else. A name field on
+              this side would be asking somebody who already has an account to
+              tell us who they are. */}
+          {signup ? (
+            <Field label="Name" required className="sm:col-span-2">
+              <input
+                ref={firstFieldRef}
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder="How your opinions are signed"
+                autoComplete="name"
+                className={inputClass}
+              />
+            </Field>
+          ) : null}
+
+          <IdentifierField
+            value={identifier}
+            onChange={setIdentifier}
+            signup={signup}
+            inputRef={signup ? undefined : firstFieldRef}
+            className="sm:col-span-2"
+          />
+
+          <PasswordField
+            value={password}
+            onChange={setPassword}
+            signup={signup}
+            className="sm:col-span-2"
+          />
 
           {signup ? (
             <>
@@ -281,7 +352,7 @@ export function AuthModal({
           </p>
         ) : null}
 
-        <p className="m-0 rounded-[12px] border border-white/8 bg-white/3 p-3.5 text-[12px] leading-[1.6] text-dim">
+        <p className="m-0 rounded-[12px] border border-veil/8 bg-veil/3 p-3.5 text-[12px] leading-[1.6] text-dim">
           <strong className="font-semibold text-soft">Your privacy is protected.</strong>{" "}
           Your name is the only thing shown next to an opinion. Age, occupation and
           location are never displayed individually — they appear only inside aggregate
@@ -304,7 +375,7 @@ export function AuthModal({
           <button
             type="button"
             onClick={() => onModeChange(signup ? "signin" : "signup")}
-            className="cursor-pointer rounded-full border border-white/16 px-6 py-3.5 text-[13.5px] font-medium text-cream transition-colors duration-300 outline-none hover:border-white/40 focus-visible:ring-2 focus-visible:ring-positive/60"
+            className="cursor-pointer rounded-full border border-veil/16 px-6 py-3.5 text-[13.5px] font-medium text-cream transition-colors duration-300 outline-none hover:border-veil/40 focus-visible:ring-2 focus-visible:ring-positive/60"
           >
             {signup ? "I already have an account" : "Create an account"}
           </button>
@@ -328,7 +399,7 @@ export function AuthModal({
 }
 
 const inputClass =
-  "w-full rounded-[10px] border border-white/10 bg-surface-sunken px-3 py-2.5 text-[13.5px] text-cream outline-none transition-colors duration-300 focus:border-positive/50";
+  "w-full rounded-[10px] border border-veil/10 bg-surface-sunken px-3 py-2.5 text-[13.5px] text-cream outline-none transition-colors duration-300 focus:border-positive/50";
 
 function Field({
   label,

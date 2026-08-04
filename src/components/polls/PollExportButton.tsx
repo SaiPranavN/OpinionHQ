@@ -40,7 +40,7 @@ export function PollExportButton({
       onClick={run}
       disabled={working}
       aria-label={`Download the result of "${poll.question}" as a PDF`}
-      className="flex cursor-pointer items-center gap-2 rounded-full border border-white/16 px-[18px] py-[9px] text-[13px] font-medium text-soft transition-[color,border-color] duration-300 outline-none hover:border-white/40 hover:text-white focus-visible:ring-2 focus-visible:ring-[#A78BFA]/60 disabled:cursor-progress disabled:opacity-60"
+      className="flex cursor-pointer items-center gap-2 rounded-full border border-veil/16 px-[18px] py-[9px] text-[13px] font-medium text-soft transition-[color,border-color] duration-300 outline-none hover:border-veil/40 hover:text-cream-bright focus-visible:ring-2 focus-visible:ring-poll/60 disabled:cursor-progress disabled:opacity-60"
     >
       <svg
         aria-hidden

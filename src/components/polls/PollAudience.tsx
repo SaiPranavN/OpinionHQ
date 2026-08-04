@@ -1,4 +1,9 @@
+"use client";
+
+import { useState } from "react";
+
 import { Brand } from "@/components/ui/Brand";
+import { ChartTooltip } from "@/components/ui/ChartTooltip";
 import { formatNumber } from "@/lib/derive-poll";
 import type { DecoratedPoll, PollSplitRow } from "@/lib/types";
 
@@ -8,6 +13,11 @@ import type { DecoratedPoll, PollSplitRow } from "@/lib/types";
  * A single headline bar hides the interesting part. Showing the same split per
  * region, age band and occupation is what turns a poll result into something
  * worth reading — and it is where the disagreements actually live.
+ *
+ * With three or four options a row cannot legibly print every percentage, so
+ * the bar carries the shape and hovering a segment reads out the exact figure.
+ * The row's own `aria-label` still states every share, so nothing is available
+ * only on hover.
  */
 export function PollAudience({ poll }: { poll: DecoratedPoll }) {
   // Below the reporting threshold there is no audience to describe. Splitting a
@@ -32,6 +42,9 @@ export function PollAudience({ poll }: { poll: DecoratedPoll }) {
     ["By occupation", "Self-reported occupation", poll.occupations],
   ];
 
+  const leansName = (row: PollSplitRow) =>
+    poll.options.find((o) => o.id === row.leans)?.name ?? "";
+
   return (
     <section aria-label="Who voted" className="flex flex-col gap-[clamp(14px,1.6vw,20px)]">
       {poll.contrarian ? (
@@ -49,12 +62,16 @@ export function PollAudience({ poll }: { poll: DecoratedPoll }) {
             <strong className="font-semibold text-cream-bright">
               {poll.contrarian.label}
             </strong>{" "}
-            is the one group that went the other way —{" "}
-            <strong className="font-semibold" style={{ color: poll.trailer.color }}>
-              {poll.contrarian.leans === "a"
-                ? poll.contrarian.aPct
-                : poll.contrarian.bPct}
-              % for {poll.trailer.name}
+            is the one group that went another way —{" "}
+            <strong
+              className="font-semibold"
+              style={{
+                color:
+                  poll.options.find((o) => o.id === poll.contrarian!.leans)?.color ??
+                  poll.runnerUp.color,
+              }}
+            >
+              {Math.max(...poll.contrarian.pcts)}% for {leansName(poll.contrarian)}
             </strong>{" "}
             against {poll.leader.pct}% for {poll.leader.name} overall.
           </p>
@@ -86,20 +103,15 @@ export function PollAudience({ poll }: { poll: DecoratedPoll }) {
 
                   <SplitRowBar poll={poll} row={row} />
 
-                  <span className="flex flex-wrap items-baseline gap-x-2.5 text-[11px] text-dim">
-                    <span style={{ color: poll.sides[0].color }}>{row.aPct}%</span>
-                    <span aria-hidden className="text-white/18">
-                      ·
-                    </span>
-                    <span style={{ color: poll.sides[1].color }}>{row.bPct}%</span>
-                    {row.leans !== "even" ? (
-                      <span className="ml-auto">
-                        leans{" "}
-                        {row.leans === "a" ? poll.sides[0].name : poll.sides[1].name}
+                  <span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-[11px] text-dim">
+                    {poll.options.map((option, i) => (
+                      <span key={option.id} style={{ color: option.textColor }}>
+                        {row.pcts[i]}%
                       </span>
-                    ) : (
-                      <span className="ml-auto">dead even</span>
-                    )}
+                    ))}
+                    <span className="ml-auto">
+                      {row.leans === "even" ? "dead even" : `leans ${leansName(row)}`}
+                    </span>
                   </span>
                 </li>
               ))}
@@ -120,21 +132,57 @@ export function PollAudience({ poll }: { poll: DecoratedPoll }) {
 }
 
 function SplitRowBar({ poll, row }: { poll: DecoratedPoll; row: PollSplitRow }) {
-  const [a, b] = poll.sides;
+  const [active, setActive] = useState<number | null>(null);
+  const label = poll.options
+    .map((option, i) => `${option.name} ${row.pcts[i]} percent`)
+    .join(", ");
+
+  const anchor =
+    active === null
+      ? 50
+      : row.pcts.slice(0, active).reduce((sum, p) => sum + p, 0) +
+        (row.pcts[active] ?? 0) / 2;
+
   return (
-    <div
-      role="img"
-      aria-label={`${row.label}: ${a.name} ${row.aPct} percent, ${b.name} ${row.bPct} percent`}
-      className="flex h-2 w-full gap-[2px]"
-    >
-      <span
-        className="rounded-[2px]"
-        style={{ width: `${row.aPct}%`, background: a.color }}
-      />
-      <span
-        className="rounded-[2px]"
-        style={{ width: `${row.bPct}%`, background: b.color }}
-      />
+    <div className="relative">
+      {active !== null ? (
+        <ChartTooltip
+          x={anchor}
+          y={0}
+          title={row.label}
+          rows={[
+            {
+              label: poll.options[active]!.name,
+              value: `${row.pcts[active]}%`,
+              color: poll.options[active]!.color,
+            },
+            {
+              label: `${formatNumber(Math.round((row.voters * (row.pcts[active] ?? 0)) / 100))} of ${formatNumber(row.voters)} in this group`,
+              value: "",
+              note: true,
+            },
+          ]}
+        />
+      ) : null}
+      <div
+        role="img"
+        aria-label={`${row.label}: ${label}`}
+        className="flex h-2.5 w-full gap-[2px]"
+        onMouseLeave={() => setActive(null)}
+      >
+        {poll.options.map((option, i) => (
+          <span
+            key={option.id}
+            onMouseEnter={() => setActive(i)}
+            className="rounded-[2px] transition-opacity duration-300"
+            style={{
+              width: `${row.pcts[i]}%`,
+              background: option.color,
+              opacity: active !== null && active !== i ? 0.4 : 1,
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }

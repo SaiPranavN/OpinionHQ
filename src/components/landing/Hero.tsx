@@ -1,7 +1,6 @@
 import Link from "next/link";
 
-import { Brand } from "@/components/ui/Brand";
-import { ParticleField } from "@/components/motion/ParticleField";
+import { ShieldIcon } from "@/components/ask/primitives";
 import { formatNumber } from "@/lib/derive";
 import { TOTAL_TOPICS, TOTAL_VOTES } from "@/lib/topics";
 import { TOTAL_POLLS } from "@/lib/polls";
@@ -12,27 +11,36 @@ export function Hero() {
       id="top"
       className="relative isolate flex min-h-svh flex-col items-center justify-center px-5 pt-35 pb-22 text-center sm:px-10 lg:px-20"
     >
+      {/* A single green bloom centred behind the headline — the "slight glow
+          around the central hero region", and the only background element the
+          hero owns.
+
+          Everything else (mesh, contours, nodes, cursor light) comes from
+          AmbientBackground. The hero used to run its own particle field too,
+          which meant two independent systems drawing dots on the same screen
+          with different densities and no shared reduced-motion or mobile
+          budget. One system, one set of rules. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-[-10%] top-[-20%] bottom-auto z-0 h-[120%] animate-drift"
         style={{
           background:
-            "radial-gradient(58% 46% at 50% 34%, rgba(29,185,84,0.16), transparent 70%), radial-gradient(40% 36% at 78% 62%, rgba(29,185,84,0.07), transparent 72%), radial-gradient(50% 40% at 14% 70%, rgba(120,130,255,0.05), transparent 74%)",
+            "radial-gradient(52% 42% at 50% 32%, color-mix(in oklab, var(--color-positive) 15%, transparent), transparent 70%)",
         }}
       />
-      <ParticleField />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-auto bottom-0 z-1 h-[280px]"
         style={{
-          background: "linear-gradient(180deg, rgba(10,10,10,0), #0A0A0A 78%)",
+          background:
+            "linear-gradient(180deg, transparent, color-mix(in oklab, var(--color-ink) 88%, transparent) 78%)",
         }}
       />
 
       <div className="relative z-2 flex max-w-[1120px] flex-col items-center gap-[clamp(22px,3vw,34px)]">
         <div
           data-reveal
-          className="ohq-reveal flex items-center gap-[10px] rounded-full border border-white/10 bg-white/2 py-[7px] pr-[14px] pl-3 font-mono text-[11px] tracking-[0.14em] uppercase text-muted"
+          className="ohq-reveal flex items-center gap-[10px] rounded-full border border-veil/10 bg-veil/2 py-[7px] pr-[14px] pl-3 font-mono text-[11px] tracking-[0.14em] uppercase text-muted"
         >
           <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-positive" />
           Opinion intelligence
@@ -47,33 +55,68 @@ export function Hero() {
 
         <p
           data-reveal
-          className="ohq-reveal m-0 max-w-[660px] text-[clamp(15px,1.35vw,19px)] leading-[1.55] font-light tracking-[-0.01em] text-pretty text-muted delay-[160ms] duration-[1100ms]"
+          className="ohq-reveal m-0 max-w-[640px] text-[clamp(14px,1.05vw,16px)] leading-[1.5] font-light tracking-[-0.01em] text-pretty text-muted delay-[160ms] duration-[1100ms]"
         >
-          Public opinion already exists — scattered across replies and group chats
-          where nobody can read it. <Brand /> turns it into one measurement you can
-          actually look at — and keeps the writing underneath it, so you get the
-          reasons as well as the result.
+          See what people think, compare competing choices, and get private
+          opinions from verified professionals with relevant experience.
         </p>
 
-        {/* The two calls to action sit centred on their own row; the jump link
-            goes underneath so it never pulls the pair off centre. */}
+        {/* Three calls to action, centred on their own row and wrapping to a
+            vertical stack on narrow screens; the jump link goes underneath so it
+            never pulls the group off centre.
+
+            ONE SHAPE, THREE FILLS. Every button here shares `CTA` below — the
+            same fixed width, the same height, the same padding, the same icon
+            slot, the same centring — so the row is a set of three modes rather
+            than three buttons that happen to sit together. Only the colour
+            changes, and it changes for a reason: green is public measurement,
+            and the other two carry the poll and private-guidance chrome used on
+            their own sections, so the row reads as "two public, one private" at
+            a glance.
+
+            The width is fixed rather than intrinsic. Sized to content, the
+            labels ("Explore topics" vs "Ask someone verified") produce three
+            different pills, and no amount of matching padding fixes that —
+            equal padding around unequal text is still unequal buttons. */}
+        {/* A grid rather than a wrapping flex row. Wrapping put two buttons on
+            one line and orphaned the third underneath them the moment the
+            viewport dropped below ~810px, which is the same misalignment in a
+            different form. Three columns or one — never two and a stray. */}
         <div
           data-reveal
-          className="ohq-reveal mt-1.5 flex flex-wrap items-center justify-center gap-[18px] delay-[240ms] duration-[1100ms]"
+          className="ohq-reveal mt-1.5 grid w-full max-w-[824px] grid-cols-1 justify-items-center gap-[14px] delay-[240ms] duration-[1100ms] lg:grid-cols-3"
         >
-          <Link
+          <CTA
             href="/topics"
-            className="rounded-full bg-positive px-[34px] py-[16px] text-[16px] font-semibold tracking-[-0.01em] text-positive-ink transition-[background,box-shadow] duration-500 ease-ohq hover:bg-[#25CC61] hover:shadow-[0_12px_44px_-8px_rgba(29,185,84,0.55)]"
+            icon={<TopicsIcon />}
+            className="bg-positive text-positive-ink transition-[background,box-shadow] hover:bg-[#25CC61] hover:shadow-[0_12px_44px_-8px_rgba(29,185,84,0.55)]"
           >
             Explore topics
-          </Link>
-          <Link
+          </CTA>
+          <CTA
             href="/polls"
-            className="rounded-full border border-[#A78BFA]/45 bg-[#A78BFA]/10 px-[30px] py-[16px] text-[16px] font-semibold tracking-[-0.01em] text-[#C4B5FD] transition-[background,border-color] duration-500 ease-ohq hover:border-[#A78BFA]/70 hover:bg-[#A78BFA]/18"
+            icon={<PollsIcon />}
+            className="border border-poll/45 bg-poll/10 text-poll-soft transition-[background,border-color] hover:border-poll/70 hover:bg-poll/18"
           >
             Pick a side in a poll
-          </Link>
+          </CTA>
+          <CTA
+            href="/ask"
+            icon={<ShieldIcon size={17} />}
+            className="border border-private/45 bg-private/10 text-private-soft transition-[background,border-color] hover:border-private/70 hover:bg-private/18"
+          >
+            Ask someone verified
+          </CTA>
         </div>
+
+        <p
+          data-reveal
+          className="ohq-reveal m-0 max-w-[540px] text-[13.5px] leading-[1.6] text-pretty text-dim delay-[270ms] duration-[1100ms]"
+        >
+          Measure what a crowd thinks, force a choice, or ask someone who has{" "}
+          <strong className="font-medium text-soft">proved they know</strong> — on
+          careers, colleges and exams.
+        </p>
 
         <a
           data-reveal
@@ -98,5 +141,91 @@ export function Hero() {
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * One hero call to action. Three of these make the row.
+ *
+ * Everything that decides the shape lives here rather than on each instance,
+ * because "give them identical padding" is a promise that only survives if
+ * there is one place to change it. Callers pass a destination, a glyph and a
+ * fill — never a size, a radius or a padding.
+ *
+ * The height is explicit and the border is always present (transparent on the
+ * filled one), so a variant that adds a visible border cannot make its button
+ * 2px taller than its neighbours.
+ */
+function CTA({
+  href,
+  icon,
+  className,
+  children,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  className: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`ohq-press inline-flex h-[54px] w-full max-w-[252px] items-center justify-center gap-2.5 rounded-full border border-transparent px-6 text-[15.5px] font-semibold tracking-[-0.01em] duration-500 ease-ohq ${className}`}
+    >
+      <span aria-hidden className="grid shrink-0 place-items-center">
+        {icon}
+      </span>
+      {children}
+    </Link>
+  );
+}
+
+/**
+ * Glyphs for the two modes that had none.
+ *
+ * A row where one button carries an icon and two do not reads as one promoted
+ * button and two afterthoughts, whatever the sizes say. Each of these is the
+ * thing its section actually shows: measured bars for topics, and the split bar
+ * for polls — the product's own signature element rather than a generic tick.
+ *
+ * House style, matched to ShieldIcon beside them: 24-unit box, 1.7 stroke,
+ * round caps, no fill.
+ */
+function TopicsIcon({ size = 17 }: { size?: number }) {
+  return (
+    <svg
+      aria-hidden
+      focusable="false"
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6 20v-5.5M12 20V4.5M18 20v-9" />
+    </svg>
+  );
+}
+
+function PollsIcon({ size = 17 }: { size?: number }) {
+  return (
+    <svg
+      aria-hidden
+      focusable="false"
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="2.8" y="9.2" width="18.4" height="5.6" rx="2.8" />
+      <path d="M13.4 9.2v5.6" />
+    </svg>
   );
 }

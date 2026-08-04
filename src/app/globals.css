@@ -1,5 +1,20 @@
 @import "tailwindcss";
 
+/*
+ * Two themes, one set of names.
+ *
+ * Every value below is the DARK theme — the default, and what the product was
+ * designed in. The light theme re-declares the same custom properties further
+ * down under `:root[data-theme="light"]`, which outranks the `:root` block
+ * Tailwind emits from `@theme`, so every utility built on these names flips
+ * without a single `dark:` variant in the markup.
+ *
+ * The rule for adding a colour: if it describes a *surface or a piece of text*
+ * it belongs here and must have a light counterpart. If it identifies a
+ * *series in a chart* it does not — see POLL_COLORS in lib/derive-poll.ts.
+ * Data colours stay put across themes so the same chart means the same thing
+ * in a screenshot regardless of who took it.
+ */
 @theme {
   /* Surfaces */
   --color-ink: #0a0a0a;
@@ -17,6 +32,14 @@
   --color-muted: #a1a1a1;
   --color-dim: #8f8c86;
 
+  /*
+   * The tint that hairlines, hover washes and faint dividers are cut from.
+   * White on a dark page, near-black on a light one — so `border-veil/10`
+   * stays a 10% hairline in both themes instead of vanishing in one of them.
+   * Nothing should use `white/x` or `black/x` directly.
+   */
+  --color-veil: #ffffff;
+
   /* Sentiment */
   --color-positive: #1db954;
   --color-positive-light: #4ed27c;
@@ -24,6 +47,24 @@
   --color-negative: #e5484d;
   --color-negative-light: #f08c8f;
   --color-neutral: #a1a1a1;
+
+  /*
+   * Poll option identities, for use as *text*. The fills they pair with are
+   * literals in lib/derive-poll.ts and stay constant across themes; only the
+   * type darkens, because the same hue that reads on a fill does not read on
+   * a white page. Keep the hues recognisably the same colour.
+   */
+  --color-opt-a: #1db954;
+  --color-opt-b: #a78bfa;
+  --color-opt-c: #5aa9f0;
+  --color-opt-d: #f0a83c;
+
+  /* Polling accent (purple) and private-guidance accent (steel). */
+  --color-poll: #a78bfa;
+  --color-poll-soft: #c4b5fd;
+  --color-poll-ink: #1b1233;
+  --color-private: #8fa8c4;
+  --color-private-soft: #b9c6d6;
 
   /* Hairlines */
   --color-line: rgb(255 255 255 / 0.07);
@@ -45,6 +86,116 @@
      grow in once. Both are suppressed by the reduced-motion rule below. */
   --animate-flow: ohq-flow 2.4s linear infinite;
   --animate-grow-x: ohq-grow-x 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/*
+ * Ambient background keyframes.
+ *
+ * Every one of these animates transform and opacity only, so the whole system
+ * stays on the compositor and never triggers layout or a content repaint. The
+ * periods are set per-variant in lib/motion/config.ts; the shapes are here.
+ */
+@keyframes ohq-aurora-d {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.04);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate3d(7%, -9%, 0) scale(0.9);
+    opacity: 0.85;
+  }
+}
+
+/* Contour drift. Barely more than a nudge — the bands are the ground, and
+   ground that visibly slides reads as a parallax gimmick. */
+@keyframes ohq-contour-0 {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scaleY(1);
+  }
+  50% {
+    transform: translate3d(-1.4%, 1.1%, 0) scaleY(1.045);
+  }
+}
+
+@keyframes ohq-contour-1 {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scaleY(1.02);
+  }
+  50% {
+    transform: translate3d(1.8%, -1.3%, 0) scaleY(0.97);
+  }
+}
+
+@keyframes ohq-contour-2 {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scaleY(0.98);
+  }
+  50% {
+    transform: translate3d(-1.1%, -0.8%, 0) scaleY(1.03);
+  }
+}
+
+/* A single dash travelling the length of a band: signal moving through the
+   field. One property, no repaint of anything else. */
+@keyframes ohq-contour-crawl {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -1930;
+  }
+}
+
+/* Card spotlight and metric reveals — see §9 and §11. */
+@keyframes ohq-metric-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ohq-aurora-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translate3d(12%, 8%, 0) scale(1.18);
+    opacity: 1;
+  }
+}
+
+@keyframes ohq-aurora-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.08);
+    opacity: 0.65;
+  }
+  50% {
+    transform: translate3d(-14%, -10%, 0) scale(0.92);
+    opacity: 0.95;
+  }
+}
+
+@keyframes ohq-aurora-c {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(0.95);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translate3d(-9%, 12%, 0) scale(1.14);
+    opacity: 0.8;
+  }
 }
 
 @keyframes ohq-flow {
@@ -116,11 +267,80 @@
   }
 }
 
+/*
+ * The light theme. Warm off-white rather than pure #fff — the product's type
+ * is a cream/serif editorial palette, and a clinical white page fights it.
+ *
+ * The greens and reds go DARKER here rather than staying put: #1DB954 is a
+ * 2.2:1 contrast against white, which is unreadable as text. Their `-ink`
+ * partners invert to compensate, so a filled green button stays a filled
+ * green button and keeps its contrast.
+ */
+:root[data-theme="light"] {
+  --color-ink: #fbfaf8;
+  --color-ink-soft: #f6f4f1;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #f3f1ed;
+  --color-avatar: #e7e3dc;
+  --color-avatar-deep: #dcd7ce;
+
+  --color-cream: #1c1b19;
+  --color-cream-bright: #0b0b0a;
+  --color-soft: #3b3935;
+  --color-muted: #57544e;
+  --color-dim: #78746c;
+
+  --color-veil: #14120e;
+
+  --color-opt-a: #0b7a35;
+  --color-opt-b: #6134cc;
+  --color-opt-c: #1a6aa8;
+  --color-opt-d: #8a5300;
+
+  --color-positive: #0b7a35;
+  --color-positive-light: #096a2d;
+  --color-positive-ink: #ffffff;
+  --color-negative: #c02026;
+  --color-negative-light: #98181d;
+  --color-neutral: #6b6862;
+
+  --color-poll: #6d3fe0;
+  --color-poll-soft: #5628c4;
+  --color-poll-ink: #ffffff;
+  --color-private: #3f6087;
+  --color-private-soft: #2f4a6b;
+
+  --color-line: rgb(20 18 14 / 0.12);
+  --color-line-strong: rgb(20 18 14 / 0.2);
+
+  color-scheme: light;
+}
+
+:root {
+  color-scheme: dark;
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
+}
+
+/*
+ * The page colour lives on <html> alone, where it propagates to the canvas.
+ *
+ * It must NOT also be set on <body>: in the CSS painting order a body
+ * background is a block-level descendant, painted *after* the negative
+ * z-index children of the root stacking context — so an opaque body would
+ * bury the whole AmbientBackground layer under a flat fill.
+ */
+html {
   background: var(--color-ink);
+}
+
+body {
+  background: transparent;
 }
 
 :root {
@@ -159,15 +379,82 @@ select option {
   /* Panel treatment shared by every analytics card. */
   .ohq-panel {
     background: var(--color-surface);
-    border: 1px solid rgb(255 255 255 / 0.07);
+    border: 1px solid var(--color-line);
     border-radius: 18px;
   }
 
-  /* Slightly lifted panel used for hero figures and the vote composer. */
+  /* Slightly lifted panel used for hero figures and the vote composer.
+     On dark it lifts with a lighter gradient; on light a panel cannot get
+     brighter than the page, so it lifts with a shadow instead. */
   .ohq-panel-raised {
-    background: linear-gradient(180deg, #141414, #101010);
-    border: 1px solid rgb(255 255 255 / 0.08);
+    background: linear-gradient(
+      180deg,
+      var(--color-surface-raised),
+      var(--color-surface)
+    );
+    border: 1px solid var(--color-line-strong);
     border-radius: 20px;
+  }
+
+  :root[data-theme="light"] .ohq-panel-raised {
+    box-shadow:
+      0 1px 2px rgb(20 18 14 / 0.04),
+      0 12px 32px -18px rgb(20 18 14 / 0.18);
+  }
+
+  /*
+   * Threaded comment connectors.
+   *
+   * A hairline that drops from the parent and curves into each reply's
+   * monogram, rather than a bar running alongside them. The difference is not
+   * decorative: a curve that *ends* at a monogram points at one specific
+   * comment, so a reply five levels down still has a visible parent. A bar only
+   * says "these are indented".
+   *
+   * Drawn with two borders and one corner radius rather than an SVG, so it
+   * costs nothing, scales with the text and inherits the theme.
+   *
+   * The geometry is tied to the gutter and must move with it: 28px monogram +
+   * 10px gap = 38px of indent per level, so the parent's line sits 24px left of
+   * a reply's own box (38 - 28/2), and the elbow drops 34px (20px of spacing
+   * above the reply + half its monogram) before it turns.
+   *
+   * ::before is the elbow. ::after carries the line on past this reply's whole
+   * sub-thread — and is absent on the last child, which is precisely what makes
+   * the line stop at the final reply instead of running into empty space.
+   */
+  .ohq-thread {
+    --ohq-thread-line: color-mix(in oklab, var(--color-veil) 17%, transparent);
+    padding-left: 38px;
+  }
+
+  .ohq-thread > li {
+    position: relative;
+    padding-top: 20px;
+  }
+
+  .ohq-thread > li::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -24px;
+    width: 24px;
+    height: 34px;
+    border-left: 1px solid var(--ohq-thread-line);
+    border-bottom: 1px solid var(--ohq-thread-line);
+    border-bottom-left-radius: 12px;
+    pointer-events: none;
+  }
+
+  .ohq-thread > li:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -24px;
+    width: 1px;
+    background: var(--ohq-thread-line);
+    pointer-events: none;
   }
 
   /*
@@ -176,10 +463,10 @@ select option {
    * (brief §5.4).
    */
   .ohq-verified {
-    border: 1px solid rgb(29 185 84 / 0.26);
+    border: 1px solid color-mix(in oklab, var(--color-positive) 26%, transparent);
     border-left: 3px solid var(--color-positive);
     border-radius: 4px;
-    background: rgb(29 185 84 / 0.035);
+    background: color-mix(in oklab, var(--color-positive) 5%, transparent);
   }
 
   .ohq-eyebrow {
@@ -195,7 +482,7 @@ select option {
     align-items: center;
     gap: 7px;
     border-radius: 999px;
-    border: 1px solid rgb(255 255 255 / 0.12);
+    border: 1px solid var(--color-line-strong);
     padding: 5px 10px;
     font-size: 11px;
     font-weight: 500;
@@ -207,7 +494,8 @@ select option {
      never hide it entirely, so the row is discoverable on trackpad and touch. */
   .ohq-scroll-x {
     scrollbar-width: thin;
-    scrollbar-color: rgb(255 255 255 / 0.14) transparent;
+    scrollbar-color: color-mix(in oklab, var(--color-veil) 20%, transparent)
+      transparent;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -216,25 +504,102 @@ select option {
   }
 
   .ohq-scroll-x::-webkit-scrollbar-thumb {
-    background: rgb(255 255 255 / 0.14);
+    background: color-mix(in oklab, var(--color-veil) 20%, transparent);
     border-radius: 999px;
   }
 
-  /* Scroll-reveal: elements start displaced and are released by an observer. */
+  /*
+   * Card spotlight (§9). A soft radial light inside the card, following the
+   * pointer via the two properties CardSpotlight writes.
+   *
+   * `::before` rather than an extra element so no card markup changes, and
+   * `opacity` rather than `background` on hover so the transition composites.
+   * Defaults put the light at the card's centre, which is where it sits for a
+   * keyboard user who never generates a pointer position at all.
+   */
+  [data-spotlight] {
+    position: relative;
+    isolation: isolate;
+  }
+
+  [data-spotlight]::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 320ms var(--ease-ohq);
+    background: radial-gradient(
+      260px circle at var(--ohq-mx, 50%) var(--ohq-my, 50%),
+      color-mix(in oklab, var(--color-veil) 7%, transparent),
+      transparent 72%
+    );
+  }
+
+  [data-spotlight]:hover::before,
+  [data-spotlight]:focus-visible::before {
+    opacity: 1;
+  }
+
+  /*
+   * Scroll-reveal: elements start displaced and are released by an observer.
+   *
+   * 14px, not the 26px this used to travel. A longer slide reads as the page
+   * assembling itself, which is a thing to watch rather than a thing to read;
+   * at this distance the movement registers as arrival and then gets out of
+   * the way. Nothing scales and nothing rotates.
+   */
   .ohq-reveal {
     opacity: 0;
-    transform: translateY(26px);
+    transform: translateY(14px);
     transition:
-      opacity 1s var(--ease-ohq),
-      transform 1s var(--ease-ohq);
+      opacity 720ms var(--ease-ohq),
+      transform 720ms var(--ease-ohq);
   }
 
   .ohq-reveal[data-shown="true"] {
     opacity: 1;
     transform: none;
   }
+
+  /*
+   * Press feedback (§10). Half a pixel of settle and a 1.5% squash — under the
+   * threshold where it reads as an animation, over the threshold where the
+   * button feels dead. Applied to every real `button` because that is exactly
+   * the set of elements for which it is always correct; anchors styled as
+   * buttons opt in with `.ohq-press`.
+   *
+   * `:not(:disabled)` matters: a disabled control that visibly responds to a
+   * click is telling the user something happened when nothing did.
+   */
+  button:not(:disabled):active,
+  .ohq-press:active {
+    transform: translateY(0.5px) scale(0.985);
+  }
+
+  button,
+  .ohq-press {
+    transition-property: transform, background-color, border-color, color,
+      box-shadow, opacity;
+    transition-duration: 180ms;
+    transition-timing-function: var(--ease-ohq);
+  }
 }
 
+/*
+ * Reduced motion.
+ *
+ * The ambient system already collapses to its `static` variant in JavaScript —
+ * the node canvas is never mounted, the pointer and scroll loops never start.
+ * This is the belt to that braces: it also stops anything CSS-driven that a
+ * component might have attached on its own, so a new effect cannot quietly
+ * opt out of the preference by not asking the hook.
+ *
+ * What survives: the mesh gradient and the contour lines, both fully painted
+ * and completely still. The page keeps its depth and its colour; it just
+ * stops moving.
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -242,10 +607,87 @@ select option {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+    /* Kills the pointer and scroll transforms on the ambient layers, which are
+       inline styles and would otherwise survive the rules above. */
+    scroll-behavior: auto !important;
   }
 
   .ohq-reveal {
     opacity: 1;
     transform: none;
   }
+
+  /* A spotlight that cannot follow a pointer should not appear at all. */
+  [data-spotlight]::before {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ search */
+
+/**
+ * The suggestion list, and the hint that rotates behind an empty field.
+ *
+ * The stagger is per-row and comes from an inline `animation-delay` the
+ * component sets, so the CSS only has to describe one row arriving. Under
+ * reduced motion the block above collapses every duration to nothing, which
+ * leaves the end state — visible, in place — rather than hiding anything.
+ */
+@keyframes ohq-suggest-in {
+  from {
+    opacity: 0;
+    transform: translateY(-7px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ohq-suggest-panel {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The hint swaps by remount, so this runs once per phrase rather than looping:
+   up and in, hold, and the next `key` replaces it. */
+@keyframes ohq-hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  12%,
+  88% {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-9px);
+  }
+}
+
+.ohq-suggestions {
+  animation: ohq-suggest-panel 0.22s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.ohq-suggestion {
+  animation: ohq-suggest-in 0.26s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.ohq-hint {
+  animation: ohq-hint-in 3.2s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* WebKit draws its own clear button inside `type="search"`, which would sit
+   next to the one this component renders and do the same job twice. */
+.ohq-search-input::-webkit-search-cancel-button,
+.ohq-search-input::-webkit-search-decoration {
+  appearance: none;
 }

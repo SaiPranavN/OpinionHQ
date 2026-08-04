@@ -17,7 +17,7 @@ export function SortControl({
         value={value}
         onChange={(e) => onChange(e.target.value as SortId)}
         aria-label="Sort topics"
-        className="cursor-pointer rounded-[10px] border border-white/10 bg-surface px-3 py-[10px] font-sans text-[13.5px] tracking-[-0.01em] normal-case text-cream outline-none transition-colors duration-300 focus:border-positive/50 focus-visible:ring-2 focus-visible:ring-positive/40"
+        className="cursor-pointer rounded-[10px] border border-veil/10 bg-surface px-3 py-[10px] font-sans text-[13.5px] tracking-[-0.01em] normal-case text-cream outline-none transition-colors duration-300 focus:border-positive/50 focus-visible:ring-2 focus-visible:ring-positive/40"
       >
         {SORTS.map((sort) => (
           <option key={sort.id} value={sort.id}>

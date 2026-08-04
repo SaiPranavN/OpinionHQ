@@ -9,6 +9,7 @@
  * options have to be genuinely different things.
  */
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -17,9 +18,13 @@ import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Brand } from "@/components/ui/Brand";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
-import { decoratePoll, POLL_A_COLOR, POLL_B_COLOR } from "@/lib/derive-poll";
+import { PlacePicker } from "@/components/ui/PlacePicker";
+import { decoratePoll, pollColor } from "@/lib/derive-poll";
+import { placeLabel, type PlaceId } from "@/lib/places";
+import { similarityLabel } from "@/lib/signature";
 import { CATEGORIES } from "@/lib/taxonomy";
-import type { CategoryId, Poll } from "@/lib/types";
+import type { CategoryId, Poll, PollOption, PollOptionId } from "@/lib/types";
+import { MAX_POLL_OPTIONS, MIN_POLL_OPTIONS } from "@/lib/types";
 
 const MAX_QUESTION = 90;
 const MAX_SUMMARY = 160;
@@ -37,19 +42,33 @@ function slugify(name: string): string {
 
 export function PollComposer() {
   const router = useRouter();
-  const { signedIn, ready, openAuth, createPoll, isPollIdAvailable } = usePrototype();
+  const { signedIn, ready, openAuth, createPoll, isPollIdAvailable, pollDuplicate } =
+    usePrototype();
 
   const [question, setQuestion] = useState("");
   const [cat, setCat] = useState<CategoryId>("entertainment");
+  const [place, setPlace] = useState<PlaceId>("india");
   const [summary, setSummary] = useState("");
   const [about, setAbout] = useState("");
   const [tagText, setTagText] = useState("");
   const [closes, setCloses] = useState("Open-ended");
-  const [aName, setAName] = useState("");
-  const [aBlurb, setABlurb] = useState("");
-  const [bName, setBName] = useState("");
-  const [bBlurb, setBBlurb] = useState("");
+  const [drafts, setDrafts] = useState<{ name: string; blurb: string }[]>([
+    { name: "", blurb: "" },
+    { name: "", blurb: "" },
+  ]);
   const [error, setError] = useState<string | null>(null);
+
+  const setDraft = (i: number, patch: Partial<{ name: string; blurb: string }>) =>
+    setDrafts((prev) => prev.map((d, k) => (k === i ? { ...d, ...patch } : d)));
+
+  /** Positional ids, assigned in the order the author wrote them. */
+  const optionsFrom = (list: { name: string; blurb: string }[]): PollOption[] =>
+    list.map((d, i) => ({
+      id: (["a", "b", "c", "d"] as PollOptionId[])[i]!,
+      name: d.name.trim() || `Option ${i + 1}`,
+      blurb: d.blurb.trim(),
+      votes: 0,
+    }));
 
   const tags = useMemo(
     () =>
@@ -70,18 +89,31 @@ export function PollComposer() {
         id: id || "preview",
         question: question || "Your question?",
         cat,
+        place,
         status: "Live",
         summary,
         about,
         tags,
-        a: { id: "a", name: aName || "Option A", blurb: aBlurb, votes: 0 },
-        b: { id: "b", name: bName || "Option B", blurb: bBlurb, votes: 0 },
+        options: optionsFrom(drafts),
         closes,
         trend: 0,
         recency: 0,
         updated: "just now",
       }),
-    [id, question, cat, summary, about, tags, aName, aBlurb, bName, bBlurb, closes],
+    [id, question, cat, place, summary, about, tags, drafts, closes],
+  );
+
+  /**
+   * The duplicate check, run as the draft is written rather than at publish.
+   *
+   * Somebody who has filled in a question, two options and a summary before
+   * being told the poll already exists has been made to do the work twice for
+   * nothing. Told early, they go and vote on the one that exists — which is
+   * the outcome the whole feature is for.
+   */
+  const verdict = useMemo(
+    () => pollDuplicate({ question, options: optionsFrom(drafts), place }),
+    [pollDuplicate, question, drafts, place],
   );
 
   const validate = (): string | null => {
@@ -89,12 +121,17 @@ export function PollComposer() {
     if (!question.trim().endsWith("?")) return "A poll has to be a question — end it with a question mark.";
     if (!id) return "That question does not produce a usable address. Add some letters or numbers.";
     if (!isPollIdAvailable(id)) return "A poll with that question already exists.";
-    if (aName.trim().length < 2 || bName.trim().length < 2) return "Both options need a name.";
-    if (aName.trim().toLowerCase() === bName.trim().toLowerCase())
-      return "The two options are the same. A poll needs a real choice.";
-    if (!aBlurb.trim() || !bBlurb.trim())
-      return "Give each option a one-line case — it is what makes the choice fair.";
+    if (drafts.some((d) => d.name.trim().length < 2))
+      return "Every option needs a name of at least two characters.";
+    const names = drafts.map((d) => d.name.trim().toLowerCase());
+    if (new Set(names).size !== names.length)
+      return "Two of the options are the same. A poll needs a real choice between them.";
+    if (drafts.some((d) => !d.blurb.trim()))
+      return "Give each option a one-line case — it is what keeps the choice fair.";
     if (summary.trim().length < 20) return "Write a one-line summary of at least twenty characters.";
+    if (verdict.kind === "duplicate") {
+      return "This poll already exists. Vote on the original instead — that is where the answers are.";
+    }
     return null;
   };
 
@@ -108,19 +145,20 @@ export function PollComposer() {
       id,
       question: question.trim(),
       cat,
+      place,
       status: "Live",
       summary: summary.trim(),
       about: about.trim() || summary.trim(),
       tags: tags.length > 0 ? tags : [cat],
-      a: { id: "a", name: aName.trim(), blurb: aBlurb.trim(), votes: 0 },
-      b: { id: "b", name: bName.trim(), blurb: bBlurb.trim(), votes: 0 },
+      options: optionsFrom(drafts),
       closes: closes.trim() || "Open-ended",
       trend: 0,
       recency: 0,
       updated: "just now",
     };
-    createPoll(draft);
-    router.push(`/polls/${id}`);
+    // Refused at the mutation as well as here, so the two can never disagree.
+    const result = createPoll(draft);
+    router.push(`/polls/${result.ok ? result.id : result.existingId}`);
   };
 
   if (ready && !signedIn) {
@@ -153,7 +191,7 @@ export function PollComposer() {
           Create a <em className="italic">poll</em>
         </h1>
         <p className="m-0 max-w-[620px] text-[14px] leading-[1.55] font-light text-muted">
-          Two options, one question, no middle ground. The best polls on{" "}
+          One question, two to four options, no middle ground. The best polls on{" "}
           <Brand /> force a choice people genuinely find hard — if one option is
           obviously right, there is nothing to measure.
         </p>
@@ -202,7 +240,10 @@ export function PollComposer() {
                   </optgroup>
                 </select>
               </Field>
-              <Field label="Closes" hint="Or leave it open-ended">
+              <Field label="Where it applies" hint="Required">
+                <PlacePicker value={place} onChange={setPlace} className={inputClass} />
+              </Field>
+              <Field label="Closes" hint="Or leave it open-ended" className="sm:col-span-2">
                 <input
                   value={closes}
                   onChange={(e) => setCloses(e.target.value.slice(0, 40))}
@@ -213,46 +254,77 @@ export function PollComposer() {
             </div>
           </section>
 
-          {/* The two options, each in its own side's colour. */}
-          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {(
-              [
-                ["A", POLL_A_COLOR, aName, setAName, aBlurb, setABlurb, "e.g. Night train"],
-                ["B", POLL_B_COLOR, bName, setBName, bBlurb, setBBlurb, "e.g. Morning flight"],
-              ] as const
-            ).map(([letter, color, name, setName, blurb, setBlurb, placeholder]) => (
-              <div
-                key={letter}
-                className="flex flex-col gap-4 rounded-[18px] border p-5"
-                style={{ borderColor: `${color}44`, background: `${color}0A` }}
+          <DuplicateNotice verdict={verdict} place={place} />
+
+          {/* One card per option, each in its own colour. Between two and four:
+              two is the sharpest question, and past four a split bar stops
+              being readable and a "winner" stops meaning much. */}
+          <section className="flex flex-col gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {drafts.map((draft, i) => {
+                const color = pollColor(i);
+                return (
+                  <div
+                    key={i}
+                    className="flex flex-col gap-4 rounded-[18px] border p-5"
+                    style={{ borderColor: `${color}44`, background: `${color}0A` }}
+                  >
+                    <span className="flex items-center gap-2 font-mono text-[10px] tracking-[0.14em] uppercase">
+                      <span
+                        aria-hidden
+                        className="h-2 w-2 rounded-full"
+                        style={{ background: color }}
+                      />
+                      <span style={{ color }}>Option {String.fromCharCode(65 + i)}</span>
+                      {drafts.length > MIN_POLL_OPTIONS ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDrafts((prev) => prev.filter((_, k) => k !== i))
+                          }
+                          className="ml-auto cursor-pointer text-[10px] tracking-[0.1em] text-dim normal-case transition-colors hover:text-negative-light"
+                        >
+                          Remove
+                        </button>
+                      ) : null}
+                    </span>
+                    <Field label="Name">
+                      <input
+                        value={draft.name}
+                        onChange={(e) =>
+                          setDraft(i, { name: e.target.value.slice(0, MAX_OPTION) })
+                        }
+                        placeholder={
+                          i === 0 ? "e.g. Night train" : i === 1 ? "e.g. Morning flight" : "e.g. Overnight bus"
+                        }
+                        className={inputClass}
+                      />
+                    </Field>
+                    <Field label="The case for it" hint={`${draft.blurb.length}/${MAX_BLURB}`}>
+                      <textarea
+                        value={draft.blurb}
+                        onChange={(e) =>
+                          setDraft(i, { blurb: e.target.value.slice(0, MAX_BLURB) })
+                        }
+                        rows={2}
+                        placeholder="One line. Make it the strongest honest version."
+                        className={inputClass}
+                      />
+                    </Field>
+                  </div>
+                );
+              })}
+            </div>
+
+            {drafts.length < MAX_POLL_OPTIONS ? (
+              <button
+                type="button"
+                onClick={() => setDrafts((prev) => [...prev, { name: "", blurb: "" }])}
+                className="cursor-pointer rounded-[16px] border border-dashed border-veil/14 px-5 py-3.5 text-[13px] text-muted transition-colors duration-300 outline-none hover:border-veil/30 hover:text-cream focus-visible:ring-2 focus-visible:ring-positive/60"
               >
-                <span className="flex items-center gap-2 font-mono text-[10px] tracking-[0.14em] uppercase">
-                  <span
-                    aria-hidden
-                    className="h-2 w-2 rounded-full"
-                    style={{ background: color }}
-                  />
-                  <span style={{ color }}>Option {letter}</span>
-                </span>
-                <Field label="Name">
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value.slice(0, MAX_OPTION))}
-                    placeholder={placeholder}
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label="The case for it" hint={`${blurb.length}/${MAX_BLURB}`}>
-                  <textarea
-                    value={blurb}
-                    onChange={(e) => setBlurb(e.target.value.slice(0, MAX_BLURB))}
-                    rows={2}
-                    placeholder="One line. Make it the strongest honest version."
-                    className={inputClass}
-                  />
-                </Field>
-              </div>
-            ))}
+                + Add another option ({drafts.length}/{MAX_POLL_OPTIONS})
+              </button>
+            ) : null}
           </section>
 
           <section className="ohq-panel flex flex-col gap-5 p-5 sm:p-7">
@@ -292,7 +364,7 @@ export function PollComposer() {
                   {tags.map((tag) => (
                     <span
                       key={tag}
-                      className="rounded-full border border-white/8 px-2.5 py-[3px] text-[11px] text-dim"
+                      className="rounded-full border border-veil/8 px-2.5 py-[3px] text-[11px] text-dim"
                     >
                       {tag}
                     </span>
@@ -311,7 +383,7 @@ export function PollComposer() {
               <span className="flex items-center gap-2">
                 <span
                   aria-hidden
-                  className="grid h-7 w-7 place-items-center rounded-[8px] border border-white/8 bg-white/4 text-muted"
+                  className="grid h-7 w-7 place-items-center rounded-[8px] border border-veil/8 bg-veil/4 text-muted"
                 >
                   <CategoryIcon category={cat} size={15} />
                 </span>
@@ -319,7 +391,7 @@ export function PollComposer() {
                   {CATEGORIES.find((c) => c.id === cat)?.short}
                 </span>
               </span>
-              <span className="rounded-full border border-white/12 px-2.5 py-[3px] text-[10.5px] text-dim">
+              <span className="rounded-full border border-veil/12 px-2.5 py-[3px] text-[10.5px] text-dim">
                 {preview.verdict}
               </span>
             </div>
@@ -330,12 +402,12 @@ export function PollComposer() {
               {summary || "Your one-line summary appears here."}
             </p>
             <PollSplitBar poll={preview} height={28} />
-            <span className="border-t border-white/6 pt-3 text-[12.5px] text-soft">
+            <span className="border-t border-veil/6 pt-3 text-[12.5px] text-soft">
               Be the first to vote
             </span>
           </div>
 
-          <p className="m-0 rounded-[12px] border border-white/8 bg-white/3 p-4 text-[12.5px] leading-[1.6] text-dim">
+          <p className="m-0 rounded-[12px] border border-veil/8 bg-veil/3 p-4 text-[12.5px] leading-[1.6] text-dim">
             In production a new poll enters a moderation queue, and both options
             must be checked for a loaded framing before it goes live (brief §18).
             Here it publishes immediately and is stored in this browser only.
@@ -347,16 +419,99 @@ export function PollComposer() {
             </p>
           ) : null}
 
-          <button
-            type="button"
-            onClick={publish}
-            className="cursor-pointer rounded-full bg-[#A78BFA] px-6 py-3 text-[14.5px] font-semibold text-[#1B1233] transition-colors duration-300 outline-none hover:bg-[#B9A2FC] focus-visible:ring-2 focus-visible:ring-[#C4B5FD]"
-          >
-            Publish poll
-          </button>
+          {/* A refused draft gets a button that does the useful thing instead of
+              a disabled one. Nothing here is lost — the poll they wanted exists,
+              and their vote is what it was missing. */}
+          {verdict.kind === "duplicate" ? (
+            <Link
+              href={`/polls/${verdict.existing.id}`}
+              className="rounded-full bg-poll px-6 py-3 text-center text-[14.5px] font-semibold text-poll-ink transition-colors duration-300 outline-none hover:bg-[#B9A2FC] focus-visible:ring-2 focus-visible:ring-poll-soft"
+            >
+              Open the poll that exists
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={publish}
+              className="cursor-pointer rounded-full bg-poll px-6 py-3 text-[14.5px] font-semibold text-poll-ink transition-colors duration-300 outline-none hover:bg-[#B9A2FC] focus-visible:ring-2 focus-visible:ring-poll-soft"
+            >
+              {verdict.kind === "near" ? "Publish anyway" : "Publish poll"}
+            </button>
+          )}
         </aside>
       </div>
     </Shell>
+  );
+}
+
+/**
+ * What the duplicate check found.
+ *
+ * Two states with deliberately different tones. A refusal explains itself and
+ * hands over a link, because the author is not being told off — they are being
+ * told their question is already being answered somewhere with more votes on
+ * it. A warning shows its working, including the percentage, so somebody who
+ * knows their poll is genuinely different can say so and carry on.
+ */
+function DuplicateNotice({
+  verdict,
+  place,
+}: {
+  verdict: ReturnType<ReturnType<typeof usePrototype>["pollDuplicate"]>;
+  place: PlaceId;
+}) {
+  if (verdict.kind === "unique") return null;
+
+  if (verdict.kind === "duplicate") {
+    return (
+      <section className="flex flex-col gap-3 rounded-[18px] border border-negative/35 bg-negative/6 p-5">
+        <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-negative-light">
+          Already asked
+        </span>
+        <p className="m-0 text-[14px] leading-[1.55] text-cream-bright">
+          This is the same question, in {placeLabel(place)}, as a poll that
+          already exists.
+        </p>
+        <Link
+          href={`/polls/${verdict.existing.id}`}
+          className="text-[14px] leading-[1.45] font-medium text-cream underline decoration-veil/30 underline-offset-4 transition-colors hover:decoration-veil/70"
+        >
+          {verdict.existing.question}
+        </Link>
+        <p className="m-0 text-[12.5px] leading-[1.6] text-muted">
+          A second copy would split the answers between two cards and make both
+          of them weaker. Vote on that one instead — a poll is only worth reading
+          because everybody answered the same one.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="flex flex-col gap-3 rounded-[18px] border border-veil/14 bg-veil/3 p-5">
+      <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-dim">
+        {verdict.matches.length === 1 ? "One similar poll" : "Similar polls"}
+      </span>
+      <p className="m-0 text-[13.5px] leading-[1.55] text-soft">
+        Close to something already here. Worth a look before you publish — if
+        yours asks something different, publish it.
+      </p>
+      <ul className="m-0 flex list-none flex-col gap-2 p-0">
+        {verdict.matches.map((match) => (
+          <li key={match.poll.id} className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+            <Link
+              href={`/polls/${match.poll.id}`}
+              className="text-[13.5px] leading-[1.45] text-cream underline decoration-veil/25 underline-offset-4 transition-colors hover:decoration-veil/60"
+            >
+              {match.poll.question}
+            </Link>
+            <span className="font-mono text-[10.5px] text-dim">
+              {similarityLabel(match.score)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -378,19 +533,21 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 const inputClass =
-  "w-full rounded-[10px] border border-white/10 bg-surface-sunken px-3 py-2.5 text-[13.5px] leading-[1.5] text-cream outline-none transition-colors duration-300 focus:border-[#A78BFA]/50";
+  "w-full rounded-[10px] border border-veil/10 bg-surface-sunken px-3 py-2.5 text-[13.5px] leading-[1.5] text-cream outline-none transition-colors duration-300 focus:border-poll/50";
 
 function Field({
   label,
   hint,
+  className = "",
   children,
 }: {
   label: string;
   hint?: string;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="flex flex-col gap-1.5">
+    <label className={`flex flex-col gap-1.5 ${className}`}>
       <span className="flex flex-wrap items-baseline gap-2 text-[12px] text-muted">
         {label}
         {hint ? <span className="text-[10.5px] text-dim">{hint}</span> : null}

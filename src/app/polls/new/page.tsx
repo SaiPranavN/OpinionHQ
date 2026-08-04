@@ -5,7 +5,8 @@ import { Footer } from "@/components/site/Footer";
 
 export const metadata: Metadata = {
   title: "Create a poll",
-  description: "Publish a head-to-head poll: one question, two options, no middle ground.",
+  description:
+    "Publish a forced-choice poll: one question, two to four options, no middle ground.",
 };
 
 export default function CreatePollPage() {

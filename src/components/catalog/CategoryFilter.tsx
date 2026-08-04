@@ -76,7 +76,7 @@ function Chip({
       className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-[7px] text-[12.5px] font-medium whitespace-nowrap transition-[color,background,border-color] duration-300 outline-none focus-visible:ring-2 focus-visible:ring-positive/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ink ${
         active
           ? "border-positive/50 bg-positive/14 text-positive-light"
-          : "border-white/12 text-muted hover:border-white/25 hover:text-cream"
+          : "border-veil/12 text-muted hover:border-veil/25 hover:text-cream"
       }`}
     >
       {icon}

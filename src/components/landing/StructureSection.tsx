@@ -14,7 +14,7 @@ export function StructureSection() {
   return (
     <section
       id="structured"
-      className="relative border-t border-white/5 px-5 py-[clamp(90px,13vh,170px)] sm:px-10 lg:px-20"
+      className="relative border-t border-veil/5 px-5 py-[clamp(90px,13vh,170px)] sm:px-10 lg:px-20"
     >
       <div className="mx-auto grid max-w-[1180px] grid-cols-[repeat(auto-fit,minmax(340px,1fr))] items-center gap-[clamp(40px,6vw,90px)]">
         <div data-reveal className="ohq-reveal">
@@ -46,7 +46,7 @@ export function StructureSection() {
             <div className="mb-[18px] flex items-end gap-3">
               <span
                 className="font-serif text-[clamp(3rem,5.4vw,4.4rem)] leading-[0.85]"
-                style={{ color: topic.dominantColor }}
+                style={{ color: topic.dominantVar }}
               >
                 {topic.neg}
                 <span className="text-[0.42em] tracking-[-0.01em]">%</span>

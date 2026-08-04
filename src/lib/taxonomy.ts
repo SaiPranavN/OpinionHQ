@@ -8,16 +8,40 @@ import type { Category, CategoryId, Sentiment, SortId, StatusId } from "@/lib/ty
 
 /* ---------------------------------------------------------------- sentiment */
 
+/**
+ * Literal hex, and it must stay literal: the PDF exports parse these with
+ * jsPDF, which has no CSS engine and cannot resolve a `var()`. This is the
+ * data-layer palette — what a colour *means*, independent of where it renders.
+ */
 export const SENTIMENT_COLOR: Record<Sentiment, string> = {
   Positive: "#1DB954",
   Neutral: "#9BA1A6",
   Negative: "#E5484D",
 };
 
+/**
+ * The same three meanings, as theme variables, for anything rendered in the
+ * DOM. Green at #1DB954 is a 2.2:1 contrast on a white page — fine as a fill
+ * behind dark ink, unreadable as text — so the light theme swaps in darker
+ * values and everything using this accessor follows.
+ *
+ * Rule of thumb: a bar, a ring or a dot can use either; a *word* must use this.
+ */
+export const SENTIMENT_VAR: Record<Sentiment, string> = {
+  Positive: "var(--color-positive)",
+  Neutral: "var(--color-neutral)",
+  Negative: "var(--color-negative)",
+};
+
 export const SPLIT_COLOR = "#D6D3CD";
 
 export function sentimentColor(sentiment: Sentiment): string {
   return SENTIMENT_COLOR[sentiment];
+}
+
+/** Theme-aware counterpart of `sentimentColor`, for DOM rendering. */
+export function sentimentVar(sentiment: Sentiment): string {
+  return SENTIMENT_VAR[sentiment];
 }
 
 /* ------------------------------------------------------------------ status */
@@ -197,6 +221,12 @@ export const CATEGORIES: readonly Category[] = [
     blurb: "Restaurants, delivery, street food and what it costs to eat out.",
   },
   {
+    id: "places",
+    label: "Places & Travel",
+    short: "Places",
+    blurb: "Hotels, monuments and destinations, rated by people who went.",
+  },
+  {
     id: "controversies",
     label: "Controversies",
     short: "Controversies",
@@ -217,6 +247,38 @@ export const CATEGORY_BY_ID: ReadonlyMap<CategoryId, Category> = new Map(
 
 export function categoryOf(id: CategoryId): Category {
   return CATEGORY_BY_ID.get(id) ?? CATEGORIES[0]!;
+}
+
+/**
+ * A restrained accent per category, used to tint richer contributions.
+ *
+ * Deliberately desaturated and deliberately never applied to data. Sentiment
+ * colours mean something exact here — green is support, red is opposition —
+ * and a category hue that competed with them would put two colour languages on
+ * one card. These are used for a card's rule, label and section marks only, so
+ * a Technology contribution reads as *a contribution about technology* without
+ * ever suggesting a verdict.
+ */
+const CATEGORY_ACCENT: Record<CategoryId, string> = {
+  entertainment: "#C88CE0",
+  brands: "#E0A972",
+  sports: "#6FC8B4",
+  technology: "#7FA8E8",
+  events: "#D9A0B8",
+  "national-politics": "#9C9AE0",
+  policies: "#8E9BD8",
+  politicians: "#A79AD8",
+  colleges: "#8FC8E0",
+  exams: "#7FBBD0",
+  careers: "#C9BE7E",
+  food: "#E0B482",
+  places: "#8AC9A4",
+  controversies: "#E09A8C",
+  other: "#A8A49C",
+};
+
+export function categoryAccent(id: CategoryId): string {
+  return CATEGORY_ACCENT[id] ?? CATEGORY_ACCENT.other;
 }
 
 /* ------------------------------------------------------------------- sorts */

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
-import type { DecoratedPoll, PollSideId } from "@/lib/types";
+import type { DecoratedPoll, PollOptionId } from "@/lib/types";
 
 const MAX_REASON = 400;
 
@@ -18,7 +18,7 @@ export function PollVotePanel({ poll }: { poll: DecoratedPoll }) {
   const { pollVotes, clearPollVote, submitPollVote, signedIn, ready } = usePrototype();
   const cast = pollVotes[poll.id];
 
-  const [side, setSide] = useState<PollSideId | null>(null);
+  const [side, setSide] = useState<PollOptionId | null>(null);
   const [reason, setReason] = useState("");
 
   // Once storage has hydrated, show the vote already on record.
@@ -27,8 +27,6 @@ export function PollVotePanel({ poll }: { poll: DecoratedPoll }) {
     setSide(cast?.side ?? null);
     setReason(cast?.reason ?? "");
   }, [ready, cast?.side, cast?.reason]);
-
-  const [a, b] = poll.sides;
 
   return (
     <section aria-label="Cast your vote" className="ohq-panel-raised p-5 sm:p-[34px]">
@@ -46,11 +44,19 @@ export function PollVotePanel({ poll }: { poll: DecoratedPoll }) {
       <p className="m-0 mb-6 max-w-[560px] text-[13.5px] leading-[1.6] text-dim">
         {cast
           ? "You can change or withdraw it at any time. One vote counts per account."
-          : "Pick a side. There is no middle option in a poll — if you genuinely have no preference, the honest thing is not to vote."}
+          : `Pick one of the ${poll.options.length}. There is no middle option in a poll — if you genuinely have no preference, the honest thing is not to vote.`}
       </p>
 
-      <div role="group" aria-label="Your pick" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {[a, b].map((option) => {
+      {/* Two options sit side by side; three or four wrap into a grid rather
+          than shrinking to unreadable columns. */}
+      <div
+        role="group"
+        aria-label="Your pick"
+        className={`grid grid-cols-1 gap-3 ${
+          poll.options.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"
+        }`}
+      >
+        {poll.options.map((option) => {
           const active = side === option.id;
           return (
             <button
@@ -58,9 +64,9 @@ export function PollVotePanel({ poll }: { poll: DecoratedPoll }) {
               type="button"
               onClick={() => setSide(option.id)}
               aria-pressed={active}
-              className="flex cursor-pointer flex-col gap-2 rounded-[16px] border p-4 text-left transition-[border-color,background] duration-300 outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA]/60"
+              className="flex cursor-pointer flex-col gap-2 rounded-[16px] border p-4 text-left transition-[border-color,background] duration-300 outline-none focus-visible:ring-2 focus-visible:ring-poll/60"
               style={{
-                borderColor: active ? option.color : "rgba(255,255,255,0.12)",
+                borderColor: active ? option.color : "color-mix(in oklab, var(--color-veil) 12%, transparent)",
                 background: active ? `${option.color}1A` : "transparent",
               }}
             >
@@ -68,7 +74,7 @@ export function PollVotePanel({ poll }: { poll: DecoratedPoll }) {
                 <span
                   aria-hidden
                   className="grid h-4 w-4 shrink-0 place-items-center rounded-full border"
-                  style={{ borderColor: active ? option.color : "rgba(255,255,255,0.28)" }}
+                  style={{ borderColor: active ? option.color : "color-mix(in oklab, var(--color-veil) 28%, transparent)" }}
                 >
                   {active ? (
                     <span
@@ -104,7 +110,7 @@ export function PollVotePanel({ poll }: { poll: DecoratedPoll }) {
           onChange={(e) => setReason(e.target.value.slice(0, MAX_REASON))}
           rows={3}
           placeholder="One specific reason beats three general ones."
-          className="resize-y rounded-[12px] border border-white/10 bg-surface-sunken p-3.5 text-[14px] leading-[1.6] text-cream outline-none transition-colors duration-300 focus:border-[#A78BFA]/50"
+          className="resize-y rounded-[12px] border border-veil/10 bg-surface-sunken p-3.5 text-[14px] leading-[1.6] text-cream outline-none transition-colors duration-300 focus:border-poll/50"
         />
       </label>
 

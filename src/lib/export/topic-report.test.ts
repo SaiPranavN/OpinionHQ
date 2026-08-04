@@ -48,6 +48,7 @@ describe("PDF export", () => {
       id: "fresh-topic",
       name: "A brand new topic",
       cat: "controversies",
+    place: "india",
       status: "Proposed",
       summary: "Just created, no votes yet.",
       about: "Published from the composer a moment ago.",

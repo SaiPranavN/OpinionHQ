@@ -6,13 +6,15 @@ import { useMemo, useState } from "react";
 import { Brand } from "@/components/ui/Brand";
 import { CategoryFilter } from "@/components/catalog/CategoryFilter";
 import { TopicCard } from "@/components/catalog/TopicCard";
-import { TopicSearch } from "@/components/catalog/TopicSearch";
 import { SortControl } from "@/components/catalog/SortControl";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { PlaceFilter } from "@/components/ui/PlaceFilter";
 import { PrototypeDataBadge } from "@/components/ui/PrototypeDataBadge";
+import { SearchField } from "@/components/ui/SearchField";
 import { decorate } from "@/lib/derive";
-import { filterAndSort } from "@/lib/topics";
+import { placeLabel, type PlaceFilterId } from "@/lib/places";
+import { filterAndSort, topicIndex } from "@/lib/topics";
 import { categoryOf, sortLabel } from "@/lib/taxonomy";
 import type { CategoryFilterId, DecoratedTopic, SortId } from "@/lib/types";
 
@@ -27,6 +29,7 @@ export function CatalogView({
   const [category, setCategory] = useState<CategoryFilterId>("All");
   const [sort, setSort] = useState<SortId>("trending");
   const [query, setQuery] = useState("");
+  const [place, setPlace] = useState<PlaceFilterId>("any");
 
   // Topics published from the composer live alongside the editor-published
   // ones, newest first so a just-created topic is immediately visible.
@@ -44,11 +47,16 @@ export function CatalogView({
   }, [counts, created]);
 
   const results = useMemo(
-    () => filterAndSort(all, { category, sort, query }),
-    [all, category, sort, query],
+    () => filterAndSort(all, { category, sort, query, place }),
+    [all, category, sort, query, place],
   );
 
-  const scope = category === "All" ? "" : ` in ${categoryOf(category).label}`;
+  const index = useMemo(() => topicIndex(all), [all]);
+
+  const scope = [
+    category === "All" ? "" : ` in ${categoryOf(category).label}`,
+    place === "any" ? "" : ` for ${placeLabel(place)}`,
+  ].join("");
   const summary =
     results.length === all.length
       ? `${results.length} topics sorted by ${sortLabel(sort)}`
@@ -80,7 +88,18 @@ export function CatalogView({
       </header>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <TopicSearch value={query} onChange={setQuery} />
+        <SearchField
+          value={query}
+          onChange={setQuery}
+          index={index}
+          label="Search topics by name, category, place, tag or description"
+          placeholder="Search topics"
+        />
+        <PlaceFilter
+          value={place}
+          places={all.map((topic) => topic.place)}
+          onChange={setPlace}
+        />
         <SortControl value={sort} onChange={setSort} />
       </div>
 
@@ -88,18 +107,19 @@ export function CatalogView({
         <CategoryFilter value={category} counts={liveCounts} onChange={setCategory} />
       </div>
 
-      <div className="mt-4 mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-white/8 pb-3">
+      <div className="mt-4 mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-veil/8 pb-3">
         <p aria-live="polite" className="m-0 text-[12.5px] text-dim">
           {summary}
         </p>
-        {(query || category !== "All") && (
+        {(query || category !== "All" || place !== "any") && (
           <button
             type="button"
             onClick={() => {
               setQuery("");
               setCategory("All");
+              setPlace("any");
             }}
-            className="cursor-pointer rounded-full border border-white/12 px-3 py-1 text-[11.5px] text-muted transition-colors duration-300 outline-none hover:border-white/28 hover:text-cream focus-visible:ring-2 focus-visible:ring-positive/60"
+            className="cursor-pointer rounded-full border border-veil/12 px-3 py-1 text-[11.5px] text-muted transition-colors duration-300 outline-none hover:border-veil/28 hover:text-cream focus-visible:ring-2 focus-visible:ring-positive/60"
           >
             Clear filters
           </button>
@@ -113,7 +133,7 @@ export function CatalogView({
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-4 rounded-[18px] border border-dashed border-white/10 px-5 py-[clamp(48px,8vw,96px)] text-center">
+        <div className="flex flex-col items-center gap-4 rounded-[18px] border border-dashed border-veil/10 px-5 py-[clamp(48px,8vw,96px)] text-center">
           <p className="m-0 font-serif text-[clamp(1.5rem,3vw,2.2rem)] text-cream-bright">
             No topics here <em className="italic">yet.</em>
           </p>
@@ -126,6 +146,7 @@ export function CatalogView({
             onClick={() => {
               setQuery("");
               setCategory("All");
+              setPlace("any");
             }}
             className="cursor-pointer rounded-full border border-positive/40 bg-positive/12 px-5 py-2.5 text-[13.5px] font-medium text-positive-light outline-none focus-visible:ring-2 focus-visible:ring-positive/60"
           >

@@ -8,8 +8,14 @@
  */
 
 import { DEFAULT_FACET_SET, FACET_SETS } from "@/lib/facets";
+import { placeContext, placeLabel } from "@/lib/places";
 import { opinionsFor } from "@/lib/sample-data/opinions";
-import { categoryOf, SENTIMENT_COLOR, SPLIT_COLOR } from "@/lib/taxonomy";
+import {
+  categoryOf,
+  SENTIMENT_COLOR,
+  sentimentVar,
+  SPLIT_COLOR,
+} from "@/lib/taxonomy";
 import type {
   ArcDash,
   ChangeMetric,
@@ -122,11 +128,26 @@ export function trendPoints(from: number, to: number): { x: number; y: number }[
   const points: { x: number; y: number }[] = [];
   for (let i = 0; i <= 14; i++) {
     const t = i / 14;
-    const wobble = Math.sin(i * 1.7) * 1.8;
-    const value = from + (to - from) * (t * t * 0.55 + t * 0.45) + wobble;
+    // The wobble tapers to nothing at both ends, so the line starts and ends on
+    // the values it claims to. It used to carry the full wobble at t=1, which
+    // left the last point a couple of points off the headline share — invisible
+    // until the chart became hoverable and started reading the figure out.
+    const wobble = Math.sin(i * 1.7) * 1.8 * Math.sin(Math.PI * t);
+    // Clamped to a real share. On a topic with a large weekly swing the eased
+    // start could land outside 0–100, drawing a line below the baseline and
+    // reading out "-3% negative". A share is never negative and never over 100.
+    const value = Math.min(
+      Math.max(from + (to - from) * (t * t * 0.55 + t * 0.45) + wobble, 0),
+      100,
+    );
     points.push({ x: i * 57.14, y: 240 - (value / 100) * 200 });
   }
   return points;
+}
+
+/** The series as whole-percentage values, for read-outs and axis labels. */
+export function trendValues(from: number, to: number): number[] {
+  return trendPoints(from, to).map((p) => Math.round(((240 - p.y) / 200) * 100));
 }
 
 export function trendPath(from: number, to: number): string {
@@ -355,6 +376,11 @@ export function decorate(topic: Topic): DecoratedTopic {
         : topic.neu;
   const dominantColor =
     unrated || isSplit ? SPLIT_COLOR : sentimentColor(dominantSentiment);
+  // The same colour as a theme variable. The PDF exports need the literal
+  // above (jsPDF cannot resolve a var()); anything rendering it as text in the
+  // browser needs this one, or the headline is unreadable on a light page.
+  const dominantVar =
+    unrated || isSplit ? "var(--color-soft)" : sentimentVar(dominantSentiment);
 
   // 2 × min(pos, neg): peaks at 100 when the two poles are equal and large.
   const polarization = topic.pos + topic.neg - Math.abs(topic.pos - topic.neg);
@@ -364,9 +390,12 @@ export function decorate(topic: Topic): DecoratedTopic {
   return {
     ...topic,
     category: categoryOf(topic.cat),
+    placeLabel: placeLabel(topic.place),
+    placeContext: placeContext(topic.place),
     dominant,
     dominantPct,
     dominantColor,
+    dominantVar,
     unrated,
     headlineMetric: unrated
       ? "No votes yet"

@@ -1,3 +1,5 @@
+import { SectionPurpose } from "@/components/landing/SectionPurpose";
+
 /**
  * The pipeline, as a diagram.
  *
@@ -32,7 +34,7 @@ export function HowItWorksSection() {
   return (
     <section
       id="how"
-      className="relative border-t border-white/5 px-5 py-[clamp(72px,11vw,140px)] sm:px-10 lg:px-20"
+      className="relative border-t border-veil/5 px-5 py-[clamp(72px,11vw,140px)] sm:px-10 lg:px-20"
     >
       <div className="mx-auto max-w-[1200px]">
         <div data-reveal className="ohq-reveal mx-auto max-w-[720px] text-center">
@@ -45,6 +47,12 @@ export function HowItWorksSection() {
             quote-tweets and group chats where nobody can read it. Four steps turn that
             into something with a shape.
           </p>
+          <div className="mt-5">
+            <SectionPurpose
+              problem="Most polls tell you a number and nothing about who was asked"
+              solution="Every result breaks down by region, age and occupation"
+            />
+          </div>
         </div>
 
         <FlowDiagram />
@@ -104,7 +112,7 @@ function FlowDiagram() {
   return (
     <figure
       data-reveal
-      className="ohq-reveal m-0 mt-[clamp(34px,5vw,58px)] overflow-hidden rounded-[20px] border border-white/8 bg-surface-sunken p-5 sm:p-8"
+      className="ohq-reveal m-0 mt-[clamp(34px,5vw,58px)] overflow-hidden rounded-[20px] border border-veil/8 bg-surface-sunken p-5 sm:p-8"
     >
       <svg
         viewBox="0 0 640 180"
@@ -204,7 +212,7 @@ function FlowDiagram() {
             }}
           />
         ))}
-        <line x1="460" y1="140" x2="592" y2="140" stroke="rgba(255,255,255,0.12)" />
+        <line x1="460" y1="140" x2="592" y2="140" stroke="color-mix(in oklab, var(--color-veil) 12%, transparent)" />
         <text x="632" y="172" fill="#8F8C86" fontSize="10" fontFamily="monospace" textAnchor="end">
           ONE READABLE RESULT
         </text>

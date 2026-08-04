@@ -1,3 +1,4 @@
+import { SectionPurpose } from "@/components/landing/SectionPurpose";
 import { Brand } from "@/components/ui/Brand";
 import { sentimentColor } from "@/lib/derive";
 import { reasonsFor } from "@/lib/sample-data/poll-reasons";
@@ -43,7 +44,7 @@ export function VoicesSection() {
   return (
     <section
       id="voices"
-      className="relative border-t border-white/5 px-5 py-[clamp(72px,11vw,140px)] sm:px-10 lg:px-20"
+      className="relative border-t border-veil/5 px-5 py-[clamp(72px,11vw,140px)] sm:px-10 lg:px-20"
     >
       <div className="mx-auto max-w-[1200px]">
         <div data-reveal className="ohq-reveal mx-auto max-w-[760px] text-center">
@@ -57,6 +58,12 @@ export function VoicesSection() {
             Under every result on <Brand /> sits the writing that explains it — and the
             structure that keeps it worth reading.
           </p>
+          <div className="mt-5">
+            <SectionPurpose
+              problem="A percentage tells you what people think, never why"
+              solution="The written reasons stay attached to the number"
+            />
+          </div>
         </div>
 
         <div className="mt-[clamp(38px,6vw,66px)] grid grid-cols-1 gap-[clamp(16px,2vw,24px)] lg:grid-cols-2">
@@ -69,12 +76,12 @@ export function VoicesSection() {
               <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-dim">
                 On a topic · opinion + discussion
               </span>
-              <span className="rounded-full border border-white/10 px-2.5 py-[3px] text-[10.5px] text-dim">
+              <span className="rounded-full border border-veil/10 px-2.5 py-[3px] text-[10.5px] text-dim">
                 UPI charges
               </span>
             </header>
 
-            <div className="flex flex-col gap-3 rounded-[16px] border border-white/8 bg-surface-sunken p-5">
+            <div className="flex flex-col gap-3 rounded-[16px] border border-veil/8 bg-surface-sunken p-5">
               <span className="flex flex-wrap items-center gap-2.5">
                 <span
                   aria-hidden
@@ -99,7 +106,7 @@ export function VoicesSection() {
                 {opinion.text}
               </p>
 
-              <div className="mt-1 ml-3 flex flex-col gap-2 border-l border-white/10 pl-4">
+              <div className="mt-1 ml-3 flex flex-col gap-2 border-l border-veil/10 pl-4">
                 <span className="flex flex-wrap items-center gap-2">
                   <span
                     aria-hidden
@@ -131,7 +138,7 @@ export function VoicesSection() {
               <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-dim">
                 On a poll · reasons, no thread
               </span>
-              <span className="rounded-full border border-white/10 px-2.5 py-[3px] text-[10.5px] text-dim">
+              <span className="rounded-full border border-veil/10 px-2.5 py-[3px] text-[10.5px] text-dim">
                 WFH or office
               </span>
             </header>

@@ -21,9 +21,11 @@ import { useMemo, useState } from "react";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
+import { PlacePicker } from "@/components/ui/PlacePicker";
 import { SentimentBar } from "@/components/ui/SentimentBar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DEFAULT_FACET_SET, FACET_SETS } from "@/lib/facets";
+import type { PlaceId } from "@/lib/places";
 import { CATEGORIES, SENTIMENT_COLOR, STATUS_STYLES } from "@/lib/taxonomy";
 import type { CategoryId, Topic, Facet, StatusId } from "@/lib/types";
 
@@ -86,6 +88,7 @@ export function TopicComposer() {
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [cat, setCat] = useState<CategoryId>("entertainment");
+  const [place, setPlace] = useState<PlaceId>("india");
   const [status, setStatus] = useState<StatusId>("Ongoing");
   const [summary, setSummary] = useState("");
   const [about, setAbout] = useState("");
@@ -160,6 +163,7 @@ export function TopicComposer() {
       id,
       name: name.trim(),
       cat,
+      place,
       status,
       summary: summary.trim(),
       about: about.trim(),
@@ -230,8 +234,8 @@ export function TopicComposer() {
                   state === "current"
                     ? "border-positive/50 bg-positive/14 text-positive-light"
                     : state === "done"
-                      ? "cursor-pointer border-white/16 text-soft hover:border-white/32"
-                      : "border-white/8 text-dim"
+                      ? "cursor-pointer border-veil/16 text-soft hover:border-veil/32"
+                      : "border-veil/8 text-dim"
                 }`}
               >
                 <span className="font-mono text-[10px]">{i + 1}</span>
@@ -260,6 +264,10 @@ export function TopicComposer() {
                   ) : null}
                 </span>
               ) : null}
+            </Field>
+
+            <Field label="Where it applies" hint="Required">
+              <PlacePicker value={place} onChange={setPlace} className={inputClass} />
             </Field>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -345,7 +353,7 @@ export function TopicComposer() {
                   {tags.map((tag) => (
                     <span
                       key={tag}
-                      className="rounded-full border border-white/8 px-2.5 py-[3px] text-[11px] text-dim"
+                      className="rounded-full border border-veil/8 px-2.5 py-[3px] text-[11px] text-dim"
                     >
                       {tag}
                     </span>
@@ -483,7 +491,7 @@ export function TopicComposer() {
               <button
                 type="button"
                 onClick={() => setAspects((prev) => [...prev, BLANK_ASPECT()])}
-                className="cursor-pointer rounded-[16px] border border-dashed border-white/14 px-5 py-4 text-[13px] text-muted transition-colors duration-300 outline-none hover:border-white/30 hover:text-cream focus-visible:ring-2 focus-visible:ring-positive/60"
+                className="cursor-pointer rounded-[16px] border border-dashed border-veil/14 px-5 py-4 text-[13px] text-muted transition-colors duration-300 outline-none hover:border-veil/30 hover:text-cream focus-visible:ring-2 focus-visible:ring-positive/60"
               >
                 + Add another aspect ({aspects.length}/{MAX_ASPECTS})
               </button>
@@ -500,7 +508,7 @@ export function TopicComposer() {
                   <span className="flex items-center gap-2">
                     <span
                       aria-hidden
-                      className="grid h-7 w-7 place-items-center rounded-[8px] border border-white/8 bg-white/4 text-muted"
+                      className="grid h-7 w-7 place-items-center rounded-[8px] border border-veil/8 bg-veil/4 text-muted"
                     >
                       <CategoryIcon category={cat} size={15} />
                     </span>
@@ -531,7 +539,7 @@ export function TopicComposer() {
               {complete.map((aspect) => (
                 <div
                   key={aspect.key}
-                  className="flex flex-col gap-2 border-b border-white/6 pb-4 last:border-0 last:pb-0"
+                  className="flex flex-col gap-2 border-b border-veil/6 pb-4 last:border-0 last:pb-0"
                 >
                   <span className="text-[14px] font-semibold text-cream">
                     {aspect.label}
@@ -556,7 +564,7 @@ export function TopicComposer() {
               ))}
             </div>
 
-            <p className="m-0 rounded-[12px] border border-white/8 bg-white/3 p-4 text-[12.5px] leading-[1.6] text-dim">
+            <p className="m-0 rounded-[12px] border border-veil/8 bg-veil/3 p-4 text-[12.5px] leading-[1.6] text-dim">
               In production this draft would enter a moderation queue before
               going live, and the description would need at least one source
               (brief §18). In the prototype it publishes immediately and is
@@ -580,7 +588,7 @@ export function TopicComposer() {
               setError(null);
               setStep((s) => s - 1);
             }}
-            className="cursor-pointer rounded-full border border-white/16 px-5 py-2.5 text-[13.5px] text-soft transition-colors duration-300 outline-none hover:border-white/36 focus-visible:ring-2 focus-visible:ring-positive/60"
+            className="cursor-pointer rounded-full border border-veil/16 px-5 py-2.5 text-[13.5px] text-soft transition-colors duration-300 outline-none hover:border-veil/36 focus-visible:ring-2 focus-visible:ring-positive/60"
           >
             Back
           </button>
@@ -628,7 +636,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 const inputClass =
-  "w-full rounded-[10px] border border-white/10 bg-surface-sunken px-3 py-2.5 text-[13.5px] leading-[1.5] text-cream outline-none transition-colors duration-300 focus:border-positive/50";
+  "w-full rounded-[10px] border border-veil/10 bg-surface-sunken px-3 py-2.5 text-[13.5px] leading-[1.5] text-cream outline-none transition-colors duration-300 focus:border-positive/50";
 
 function Field({
   label,

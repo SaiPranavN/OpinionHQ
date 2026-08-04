@@ -43,7 +43,7 @@ export function LocalPollRoute({ slug }: { slug: string }) {
         </p>
         <Link
           href="/polls"
-          className="rounded-full border border-white/16 px-5 py-2.5 text-[13.5px] text-soft transition-colors duration-300 hover:border-white/36"
+          className="rounded-full border border-veil/16 px-5 py-2.5 text-[13.5px] text-soft transition-colors duration-300 hover:border-veil/36"
         >
           Back to polls
         </Link>

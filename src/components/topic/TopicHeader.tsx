@@ -48,6 +48,16 @@ export function TopicHeader({ topic, context, timeline }: TopicHeaderProps) {
           <CategoryIcon category={topic.cat} size={14} />
           {topic.category.label}
         </span>
+        {/* On a detail page there is room for the full chain, so a reader who
+            does not know where this is gets told. */}
+        {topic.place === "worldwide" ? null : (
+          <span
+            className="font-mono text-[10.5px] tracking-[0.14em] uppercase text-dim"
+            title={topic.placeContext.replace(", Worldwide", "")}
+          >
+            {topic.placeLabel}
+          </span>
+        )}
         <StatusBadge status={topic.status} />
         <span className="font-mono text-[11px] text-dim">{context.updated}</span>
       </div>
@@ -68,7 +78,7 @@ export function TopicHeader({ topic, context, timeline }: TopicHeaderProps) {
           {topic.tags.map((tag) => (
             <li
               key={tag}
-              className="rounded-full border border-white/8 px-2.5 py-[3px] text-[11px] text-dim"
+              className="rounded-full border border-veil/8 px-2.5 py-[3px] text-[11px] text-dim"
             >
               {tag}
             </li>
@@ -123,7 +133,7 @@ export function TopicHeader({ topic, context, timeline }: TopicHeaderProps) {
             className="cursor-pointer rounded-full border px-[18px] py-[9px] text-[13px] font-medium transition-[color,border-color] duration-300 outline-none focus-visible:ring-2 focus-visible:ring-positive/60"
             style={{
               color: following ? "#4ED27C" : "#D6D3CD",
-              borderColor: following ? "rgba(29,185,84,0.45)" : "rgba(255,255,255,0.16)",
+              borderColor: following ? "rgba(29,185,84,0.45)" : "color-mix(in oklab, var(--color-veil) 16%, transparent)",
             }}
           >
             {following ? "Following" : "Follow"}
@@ -131,7 +141,7 @@ export function TopicHeader({ topic, context, timeline }: TopicHeaderProps) {
           <button
             type="button"
             onClick={share}
-            className="cursor-pointer rounded-full border border-white/16 px-[18px] py-[9px] text-[13px] font-medium text-soft transition-[color,border-color] duration-300 outline-none hover:border-white/40 hover:text-white focus-visible:ring-2 focus-visible:ring-positive/60"
+            className="cursor-pointer rounded-full border border-veil/16 px-[18px] py-[9px] text-[13px] font-medium text-soft transition-[color,border-color] duration-300 outline-none hover:border-veil/40 hover:text-cream-bright focus-visible:ring-2 focus-visible:ring-positive/60"
           >
             Share
           </button>

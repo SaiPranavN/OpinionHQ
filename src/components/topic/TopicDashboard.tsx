@@ -7,6 +7,7 @@ import { ParticipationChart } from "@/components/topic/ParticipationChart";
 import { SentimentDonut } from "@/components/topic/SentimentDonut";
 import { SentimentTrend } from "@/components/topic/SentimentTrend";
 import { VotePanel } from "@/components/topic/VotePanel";
+import { categoryAccent } from "@/lib/taxonomy";
 import type {
   DecoratedTopic,
   TopicContext,
@@ -30,6 +31,11 @@ export function TopicDashboard({
   opinions: Opinion[];
   timeline: TimelineEvent[];
 }) {
+  // One accent for the whole topic, resolved once and handed down. Richer
+  // contributions tint with it so a card reads as belonging to *this* subject
+  // rather than to a generic "premium" palette used site-wide.
+  const accent = categoryAccent(topic.cat);
+
   return (
     <div
       className="mx-auto flex max-w-[1320px] flex-col gap-[clamp(26px,3.4vw,44px)] px-4 pb-[clamp(70px,9vw,120px)] sm:px-8 lg:px-14"
@@ -52,12 +58,17 @@ export function TopicDashboard({
 
       {/* 2 — Where you add yours: the headline vote, then the aspects under it. */}
       <div className="flex flex-col gap-[clamp(14px,1.6vw,20px)]">
-        <VotePanel topicId={topic.id} />
+        <VotePanel topicId={topic.id} accent={accent} />
         <FacetPanel topic={topic} />
       </div>
 
       {/* 3 — What everyone else said. */}
-      <TopicTabs topicId={topic.id} opinions={opinions} timeline={timeline} />
+      <TopicTabs
+        topicId={topic.id}
+        opinions={opinions}
+        timeline={timeline}
+        accent={accent}
+      />
     </div>
   );
 }

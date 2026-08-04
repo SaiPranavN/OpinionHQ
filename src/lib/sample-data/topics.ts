@@ -24,6 +24,7 @@ const RAW: Topic[] = [
     id: "kalki2",
     name: "Kalki 2898 AD Part 2",
     cat: "entertainment",
+    place: "india",
     facetSet: "film",
     status: "Live",
     summary:
@@ -44,6 +45,7 @@ const RAW: Topic[] = [
     id: "panchayat5",
     name: "Panchayat Season 5",
     cat: "entertainment",
+    place: "india",
     facetSet: "series",
     status: "Live",
     summary:
@@ -64,6 +66,7 @@ const RAW: Topic[] = [
     id: "mirzapur4",
     name: "Mirzapur Season 4",
     cat: "entertainment",
+    place: "india",
     facetSet: "series",
     status: "Live",
     summary:
@@ -84,6 +87,7 @@ const RAW: Topic[] = [
     id: "arijittour",
     name: "Arijit Singh Stadium Tour 2026",
     cat: "entertainment",
+    place: "india",
     facetSet: "brand",
     status: "Ongoing",
     summary:
@@ -106,6 +110,7 @@ const RAW: Topic[] = [
     id: "netflixin",
     name: "Netflix India Price Revision",
     cat: "brands",
+    place: "india",
     facetSet: "platform",
     status: "Announced",
     summary:
@@ -126,6 +131,7 @@ const RAW: Topic[] = [
     id: "zeptoten",
     name: "10-Minute Delivery Expansion",
     cat: "brands",
+    place: "india",
     facetSet: "brand",
     status: "Ongoing",
     summary:
@@ -146,6 +152,7 @@ const RAW: Topic[] = [
     id: "airindia",
     name: "Air India Cabin Refit Programme",
     cat: "brands",
+    place: "india",
     facetSet: "brand",
     status: "Ongoing",
     summary:
@@ -166,6 +173,7 @@ const RAW: Topic[] = [
     id: "starbucksin",
     name: "Starbucks India Price Reset",
     cat: "brands",
+    place: "india",
     facetSet: "brand",
     status: "Announced",
     summary:
@@ -188,6 +196,7 @@ const RAW: Topic[] = [
     id: "t20squad",
     name: "India T20 World Cup 2026 Squad",
     cat: "sports",
+    place: "india",
     status: "Announced",
     summary:
       "The 15-member squad landed with two omissions nobody expected and a spin combination everybody is arguing about.",
@@ -207,6 +216,7 @@ const RAW: Topic[] = [
     id: "impactplayer",
     name: "IPL Impact Player Rule Review",
     cat: "sports",
+    place: "india",
     status: "Completed",
     summary:
       "Five seasons in, the league is reviewing the substitute rule that captains and all-rounders keep complaining about.",
@@ -226,6 +236,7 @@ const RAW: Topic[] = [
     id: "isleague",
     name: "ISL Promotion & Relegation Plan",
     cat: "sports",
+    place: "india",
     status: "Proposed",
     summary:
       "A proposal to open the top flight to promotion from 2028. Fans of legacy clubs are unusually united in favour.",
@@ -245,6 +256,7 @@ const RAW: Topic[] = [
     id: "olympicbid",
     name: "India's 2036 Olympics Bid",
     cat: "sports",
+    place: "india",
     status: "Ongoing",
     summary:
       "Ahmedabad's bid is progressing. Support is broad, but the cost question keeps resurfacing.",
@@ -266,6 +278,7 @@ const RAW: Topic[] = [
     id: "iphone18",
     name: "iPhone 18 Pro India Pricing",
     cat: "technology",
+    place: "india",
     facetSet: "gadget",
     status: "Announced",
     summary:
@@ -286,6 +299,7 @@ const RAW: Topic[] = [
     id: "jioai",
     name: "Jio AI Assistant Rollout",
     cat: "technology",
+    place: "india",
     facetSet: "platform",
     status: "Ongoing",
     summary:
@@ -306,6 +320,7 @@ const RAW: Topic[] = [
     id: "iplstream",
     name: "IPL 2026 Streaming Quality",
     cat: "technology",
+    place: "india",
     facetSet: "platform",
     status: "Resolved",
     summary:
@@ -326,6 +341,7 @@ const RAW: Topic[] = [
     id: "evprice",
     name: "Electric Car Price War 2026",
     cat: "technology",
+    place: "india",
     facetSet: "gadget",
     status: "Ongoing",
     summary:
@@ -348,6 +364,7 @@ const RAW: Topic[] = [
     id: "wc2026",
     name: "FIFA World Cup 2026 Build-Up",
     cat: "events",
+    place: "worldwide",
     status: "Upcoming",
     summary:
       "Three host nations, 48 teams, and a ticketing system that has already annoyed everyone who tried it.",
@@ -367,6 +384,7 @@ const RAW: Topic[] = [
     id: "chandrayaan4",
     name: "Chandrayaan-4 Sample Return",
     cat: "events",
+    place: "india",
     status: "Upcoming",
     summary:
       "The first Indian attempt to bring lunar material home. Near-total agreement, which is rare here.",
@@ -386,6 +404,7 @@ const RAW: Topic[] = [
     id: "mumbaiflood",
     name: "Mumbai Monsoon Flooding Response",
     cat: "events",
+    place: "mumbai",
     status: "Ongoing",
     summary:
       "The third serious waterlogging event this season. The drainage upgrade was supposed to have fixed this.",
@@ -405,6 +424,7 @@ const RAW: Topic[] = [
     id: "cop31",
     name: "COP31 Climate Finance Deal",
     cat: "events",
+    place: "worldwide",
     status: "Completed",
     summary:
       "A headline number was agreed. Whether any of it is new money is the entire argument.",
@@ -426,6 +446,7 @@ const RAW: Topic[] = [
     id: "bihar26",
     name: "Bihar Assembly Election 2026",
     cat: "national-politics",
+    place: "bihar",
     status: "Upcoming",
     summary:
       "Seat-sharing is unresolved on both sides with weeks to go. Voters are being asked to wait again.",
@@ -445,6 +466,7 @@ const RAW: Topic[] = [
     id: "oneelection",
     name: "One Nation One Election Bill",
     cat: "national-politics",
+    place: "india",
     status: "Proposed",
     summary:
       "Simultaneous polls for the Lok Sabha and state assemblies. The cost case is strong; the federalism case is contested.",
@@ -464,6 +486,7 @@ const RAW: Topic[] = [
     id: "delimitation",
     name: "Lok Sabha Delimitation Debate",
     cat: "national-politics",
+    place: "india",
     status: "Disputed",
     summary:
       "Redrawing seats on 2026 population figures would shift power between north and south. Nobody is neutral.",
@@ -483,6 +506,7 @@ const RAW: Topic[] = [
     id: "oppalliance",
     name: "Opposition Alliance Seat Talks",
     cat: "national-politics",
+    place: "india",
     status: "Ongoing",
     summary:
       "Another round of talks, another postponed announcement. Even sympathetic participants are losing patience.",
@@ -504,6 +528,7 @@ const RAW: Topic[] = [
     id: "upicharge",
     name: "UPI Transaction Charges Proposal",
     cat: "policies",
+    place: "india",
     status: "Proposed",
     summary:
       "A consultation paper floats merchant-side charges on high-value payments. Small traders read it as the thin end of a wedge.",
@@ -523,6 +548,7 @@ const RAW: Topic[] = [
     id: "fourday",
     name: "Four-Day Work Week Pilot",
     cat: "policies",
+    place: "india",
     status: "Proposed",
     summary:
       "A voluntary compressed-hours pilot for private employers. The enthusiasm is real; so is the pay-protection question.",
@@ -542,6 +568,7 @@ const RAW: Topic[] = [
     id: "gigrules",
     name: "Gig Worker Social Security Rules",
     cat: "policies",
+    place: "india",
     status: "Announced",
     summary:
       "Aggregators must now contribute to a welfare fund. Riders welcome it and doubt it will reach them.",
@@ -561,6 +588,7 @@ const RAW: Topic[] = [
     id: "nep",
     name: "New Education Policy Implementation",
     cat: "policies",
+    place: "india",
     status: "Ongoing",
     summary:
       "Six years in, adoption still varies by state, and a student who moves can lose a year.",
@@ -582,6 +610,7 @@ const RAW: Topic[] = [
     id: "office-finance",
     name: "Union Finance Ministry: Budget 2026 Record",
     cat: "politicians",
+    place: "india",
     status: "Ongoing",
     summary:
       "Capex delivery is ahead of target; the personal income tax relief that was promised has not appeared.",
@@ -601,6 +630,7 @@ const RAW: Topic[] = [
     id: "office-railways",
     name: "Railways Ministry: Safety & Punctuality",
     cat: "politicians",
+    place: "india",
     status: "Ongoing",
     summary:
       "New trains keep launching. Punctuality on the older network keeps slipping.",
@@ -620,6 +650,7 @@ const RAW: Topic[] = [
     id: "office-cm-karnataka",
     name: "Karnataka CM's Office: Bengaluru Delivery",
     cat: "politicians",
+    place: "karnataka",
     status: "Ongoing",
     summary:
       "Judged almost entirely on one city's roads, water and metro timelines — and it is not going well.",
@@ -639,6 +670,7 @@ const RAW: Topic[] = [
     id: "office-opposition",
     name: "Leader of the Opposition: Parliament Record",
     cat: "politicians",
+    place: "india",
     status: "Ongoing",
     summary:
       "Attendance and interventions are up. Whether the disruptions help the argument is the open question.",
@@ -660,6 +692,7 @@ const RAW: Topic[] = [
     id: "iitb",
     name: "IIT Bombay Placement Season 2025-26",
     cat: "colleges",
+    place: "mumbai",
     status: "Ongoing",
     summary:
       "Day one moved fast. The gap between departments after day six is what people are actually talking about.",
@@ -679,6 +712,7 @@ const RAW: Topic[] = [
     id: "iima",
     name: "IIM Ahmedabad Fee Hike",
     cat: "colleges",
+    place: "ahmedabad",
     status: "Announced",
     summary:
       "An 11% rise for the incoming batch, announced alongside a larger waiver pool that reaches far fewer people.",
@@ -698,6 +732,7 @@ const RAW: Topic[] = [
     id: "du-fyup",
     name: "Delhi University Four-Year Rollout",
     cat: "colleges",
+    place: "delhi",
     status: "Ongoing",
     summary:
       "The first four-year cohort graduates this year. Postgraduate departments are still catching up on eligibility.",
@@ -717,6 +752,7 @@ const RAW: Topic[] = [
     id: "nitt",
     name: "NIT Trichy Campus Infrastructure",
     cat: "colleges",
+    place: "trichy",
     status: "Completed",
     summary:
       "The new lab block is genuinely good. First-year hostels are still three to a two-person room.",
@@ -738,6 +774,7 @@ const RAW: Topic[] = [
     id: "neet",
     name: "NEET UG 2026 Paper Leak Allegations",
     cat: "exams",
+    place: "india",
     status: "Under Investigation",
     summary:
       "Claims that question papers circulated before the national medical entrance exam. A four-member panel is examining documented complaints.",
@@ -757,6 +794,7 @@ const RAW: Topic[] = [
     id: "upsc-key",
     name: "UPSC Prelims 2026 Answer Key Disputes",
     cat: "exams",
+    place: "india",
     status: "Disputed",
     summary:
       "Objections filed against nine questions across two papers. Aspirants want the reasoning published, not just the correction.",
@@ -776,6 +814,7 @@ const RAW: Topic[] = [
     id: "cuet",
     name: "CUET UG 2026 Result Delay",
     cat: "exams",
+    place: "india",
     status: "Resolved",
     summary:
       "Results arrived nineteen days late, after two universities had already closed their first admission list.",
@@ -795,6 +834,7 @@ const RAW: Topic[] = [
     id: "gate",
     name: "GATE 2026 CS Paper Difficulty",
     cat: "exams",
+    place: "india",
     status: "Completed",
     summary:
       "Lighter aptitude, heavier core, and four algorithms questions with no clean answer at the given precision.",
@@ -816,6 +856,7 @@ const RAW: Topic[] = [
     id: "ms-abroad",
     name: "Master's Abroad in 2026",
     cat: "careers",
+    place: "india",
     status: "Ongoing",
     summary:
       "Visa rules tightened in three major destinations while fees rose. The arithmetic no longer works for everyone.",
@@ -835,6 +876,7 @@ const RAW: Topic[] = [
     id: "mba-roi",
     name: "Is an MBA Still Worth It?",
     cat: "careers",
+    place: "india",
     status: "Ongoing",
     summary:
       "Fees up, median packages flat, and consulting hiring down two years running. Tier-one still clears; the rest is arguable.",
@@ -854,6 +896,7 @@ const RAW: Topic[] = [
     id: "cse-glut",
     name: "B.Tech CSE Seat Glut",
     cat: "careers",
+    place: "india",
     status: "Ongoing",
     summary:
       "Seats expanded faster than entry-level hiring. First-year students are asking whether they picked the wrong year.",
@@ -873,6 +916,7 @@ const RAW: Topic[] = [
     id: "govt-vs-private",
     name: "Government Job vs Private Sector",
     cat: "careers",
+    place: "india",
     status: "Ongoing",
     summary:
       "Security against ceiling. The people who chose each path disagree with each other more than you would expect.",
@@ -894,6 +938,7 @@ const RAW: Topic[] = [
     id: "delivery-fees",
     name: "Food Delivery Platform Fees",
     cat: "food",
+    place: "india",
     facetSet: "platform",
     status: "Ongoing",
     summary:
@@ -914,6 +959,7 @@ const RAW: Topic[] = [
     id: "cloud-kitchens",
     name: "Cloud Kitchen Hygiene Ratings",
     cat: "food",
+    place: "india",
     status: "Under Investigation",
     summary:
       "Four brands, one kitchen, no shopfront to inspect. Inspectors have started turning up unannounced.",
@@ -933,6 +979,7 @@ const RAW: Topic[] = [
     id: "street-food-licensing",
     name: "Street Food Vendor Licensing Drive",
     cat: "food",
+    place: "india",
     status: "Ongoing",
     summary:
       "A push to bring carts into the licensing net. Everyone agrees on hygiene and disagrees on whether this achieves it.",
@@ -952,6 +999,7 @@ const RAW: Topic[] = [
     id: "millet-menus",
     name: "Millet Menus in Restaurants",
     cat: "food",
+    place: "india",
     status: "Ongoing",
     summary:
       "On menus everywhere, ordered by almost nobody, and priced like a wellness product.",
@@ -968,11 +1016,140 @@ const RAW: Topic[] = [
     change: { metric: "positive-sentiment", value: 5.2, direction: "up" },
   },
 
+  /* -------------------------------------------------- Places & Travel */
+  {
+    id: "tajmahal",
+    name: "Taj Mahal Visitor Experience",
+    cat: "places",
+    place: "agra",
+    facetSet: "place",
+    status: "Ongoing",
+    summary:
+      "Nobody disputes the monument. The argument is about everything between the ticket counter and the platform.",
+    about:
+      "Roughly seven million visitors a year, timed-entry tickets, and a separate charge to enter the mausoleum itself. Discussion centres on queue management at the eastern and western gates, touts outside the complex, and whether the two-tier pricing for the main platform is defensible.",
+    tags: ["agra", "monument", "unesco", "ticketing", "overtourism"],
+    pos: 61,
+    neu: 21,
+    neg: 18,
+    participants: 19420,
+    trend: 78,
+    recency: 2,
+    updated: "3h ago",
+    change: { metric: "participation", value: 12.4, direction: "up" },
+  },
+  {
+    id: "goa-season",
+    name: "Goa in Peak Season",
+    cat: "places",
+    place: "goa",
+    facetSet: "place",
+    status: "Live",
+    summary:
+      "December pricing, shack bills and taxi fares have turned the default beach holiday into a contested one.",
+    about:
+      "The peak-season debate has moved from crowding to cost: shack rates that double between November and December, the long-running absence of metered app taxis, and a steady drift of travellers to Sri Lanka and Thailand for comparable money. Tourism department figures and operator estimates disagree on whether footfall is actually down.",
+    tags: ["goa", "beaches", "pricing", "taxis", "peak season"],
+    pos: 34,
+    neu: 25,
+    neg: 41,
+    participants: 26780,
+    trend: 91,
+    recency: 1,
+    updated: "1h ago",
+    change: { metric: "negative-sentiment", value: 16.2, direction: "up" },
+  },
+  {
+    id: "manali-traffic",
+    name: "Manali & the Himachal Hill Stations",
+    cat: "places",
+    place: "himachal-pradesh",
+    facetSet: "place",
+    status: "Ongoing",
+    summary:
+      "Weekend gridlock on a single mountain road, and a growing argument about carrying capacity.",
+    about:
+      "Long holiday weekends now produce multi-hour jams on the approach to Manali, Shimla and Kasol, with vehicles held below the town on peak days. The state has floated entry caps and parking limits; hoteliers and taxi unions oppose them. Discussion covers whether the hills are being visited or simply driven through.",
+    tags: ["himachal", "hill station", "overtourism", "traffic", "carrying capacity"],
+    pos: 29,
+    neu: 24,
+    neg: 47,
+    participants: 21340,
+    trend: 84,
+    recency: 2,
+    updated: "5h ago",
+    change: { metric: "negative-sentiment", value: 11.8, direction: "up" },
+  },
+  {
+    id: "alleppey-houseboats",
+    name: "Alleppey Houseboat Stays",
+    cat: "places",
+    place: "alappuzha",
+    facetSet: "place",
+    status: "Ongoing",
+    summary:
+      "A signature Kerala experience, and an unresolved question about what several hundred boats do to the water they float on.",
+    about:
+      "Overnight houseboat stays on the Vembanad backwaters, booked largely through agents rather than operators directly. Two threads run in parallel: wide variation in what an advertised 'premium' boat actually is, and effluent discharge from unregulated boats. Certified operators are a minority of the fleet.",
+    tags: ["kerala", "backwaters", "houseboat", "sustainability", "booking agents"],
+    pos: 55,
+    neu: 22,
+    neg: 23,
+    participants: 12960,
+    trend: 62,
+    recency: 3,
+    updated: "9h ago",
+    change: { metric: "discussion", value: 7.9, direction: "up" },
+  },
+  {
+    id: "hotel-hidden-charges",
+    name: "Hotel Pricing & Hidden Charges",
+    cat: "places",
+    place: "india",
+    facetSet: "place",
+    status: "Disputed",
+    summary:
+      "The rate you search is rarely the rate you pay. The gap between the two is now the complaint.",
+    about:
+      "Destination fees, mandatory 'resort charges', early check-in fees and taxes applied after the headline rate. Aggregators and hotels each attribute the practice to the other. Consumer forums have taken up disclosure timing — specifically whether a charge shown only at the payment step counts as disclosed.",
+    tags: ["hotels", "pricing", "resort fee", "aggregators", "disclosure"],
+    pos: 18,
+    neu: 24,
+    neg: 58,
+    participants: 31200,
+    trend: 88,
+    recency: 1,
+    updated: "2h ago",
+    change: { metric: "negative-sentiment", value: 19.4, direction: "up" },
+  },
+  {
+    id: "corbett-safari",
+    name: "Jim Corbett Safari Bookings",
+    cat: "places",
+    place: "uttarakhand",
+    facetSet: "place",
+    status: "Under Investigation",
+    summary:
+      "Zone permits sell out in minutes. Where they end up afterwards is the part under scrutiny.",
+    about:
+      "Online permits for the Dhikala and Bijrani zones clear almost immediately at release, after which the same slots appear through operators at a substantial markup. The forest department has acknowledged automated booking and opened a review. Separately, visitors question how many vehicles a zone should carry per slot.",
+    tags: ["uttarakhand", "wildlife", "safari", "permits", "booking"],
+    pos: 31,
+    neu: 27,
+    neg: 42,
+    participants: 9840,
+    trend: 71,
+    recency: 3,
+    updated: "7h ago",
+    change: { metric: "discussion", value: 14.1, direction: "up" },
+  },
+
   /* --------------------------------------------------- Controversies */
   {
     id: "blrmetro",
     name: "Bengaluru Metro Yellow Line Delay",
     cat: "controversies",
+    place: "bengaluru",
     status: "Delayed",
     summary:
       "Trains are sitting in the depot. Three revised opening dates later, nobody will say plainly what the blocker is.",
@@ -992,6 +1169,7 @@ const RAW: Topic[] = [
     id: "deepfake-ads",
     name: "Deepfake Ads Using Public Figures",
     cat: "controversies",
+    place: "india",
     status: "Under Investigation",
     summary:
       "Synthetic endorsements for investment schemes are running at scale. Takedowns are slower than uploads.",
@@ -1011,6 +1189,7 @@ const RAW: Topic[] = [
     id: "coaching-safety",
     name: "Coaching Centre Safety Violations",
     cat: "controversies",
+    place: "india",
     status: "Under Investigation",
     summary:
       "Basement classrooms, single exits, and enrolment far past sanctioned capacity. Inspections started after the fact.",
@@ -1030,6 +1209,7 @@ const RAW: Topic[] = [
     id: "ainews",
     name: "AI Bylines in Newsrooms",
     cat: "controversies",
+    place: "india",
     status: "Disputed",
     summary:
       "Machine-drafted copy is going out under human bylines. Draft guidance exists; nothing is binding yet.",

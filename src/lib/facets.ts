@@ -127,6 +127,19 @@ export const FACET_SETS: Record<FacetSetId, Facet[]> = {
     facet("hygiene", "Hygiene", "How did the place look and feel?", opts("Clean", "Passable", "Concerning")),
     facet("return", "Would you go back", "Are you returning?", opts("Yes", "Maybe", "No")),
   ],
+  /**
+   * Somewhere you travelled to. The dimensions are the ones a review site
+   * usually buries: whether the crowd ruins it, what it actually costs once
+   * you are inside, and whether the place is being looked after.
+   */
+  place: [
+    facet("experience", "The visit itself", "Was it worth going?", opts("Worth the trip", "Fine, not special", "Not worth it")),
+    facet("value", "Value for money", "Was it worth what it cost you?", opts("Fair", "Steep", "A rip-off")),
+    facet("crowding", "Crowds & queues", "How busy was it when you went?", opts("Comfortable", "Busy but bearable", "Ruined by crowds")),
+    facet("upkeep", "Upkeep & cleanliness", "How well is the place looked after?", opts("Well kept", "Tired in places", "Neglected")),
+    facet("access", "Getting there & around", "How easy was it to reach and navigate?", opts("Easy", "Some hassle", "A struggle")),
+    facet("return", "Would you go back", "Would you return, or send a friend?", opts("Yes", "Once was enough", "No")),
+  ],
   controversy: [
     facet("credibility", "Credibility of the claims", "How believable is the allegation so far?", opts("Credible", "Unproven", "Overblown")),
     facet("response", "Institutional response", "How have those responsible reacted?", opts("Adequate", "Slow", "Evasive")),
@@ -165,6 +178,7 @@ export const DEFAULT_FACET_SET: Record<CategoryId, FacetSetId> = {
   exams: "exam",
   careers: "career",
   food: "food",
+  places: "place",
   other: "general",
   controversies: "controversy",
 };

@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { SectionPurpose } from "@/components/landing/SectionPurpose";
+
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { topicCountByCategory } from "@/lib/topics";
 import { pollCountByCategory } from "@/lib/polls";
@@ -17,7 +19,7 @@ export function CategoriesSection() {
   return (
     <section
       id="categories"
-      className="relative border-t border-white/5 px-5 py-[clamp(72px,11vw,140px)] sm:px-10 lg:px-20"
+      className="relative border-t border-veil/5 px-5 py-[clamp(72px,11vw,140px)] sm:px-10 lg:px-20"
     >
       <div className="mx-auto max-w-[1200px]">
         <div data-reveal className="ohq-reveal mx-auto max-w-[720px] text-center">
@@ -30,6 +32,12 @@ export function CategoriesSection() {
             hostels; an exam on whether it was run cleanly; a politician on delivery
             rather than party. Nothing gets a generic five-star rating.
           </p>
+          <div className="mt-5">
+            <SectionPurpose
+              problem="Opinion on most subjects is scattered across a dozen places"
+              solution="One measured page per subject, open to read without an account"
+            />
+          </div>
         </div>
 
         <ul className="m-0 mt-[clamp(34px,5vw,58px)] grid list-none grid-cols-2 gap-[clamp(10px,1.4vw,16px)] p-0 sm:grid-cols-3 lg:grid-cols-4">
@@ -50,11 +58,11 @@ export function CategoriesSection() {
               >
                 <Link
                   href="/topics"
-                  className="ohq-panel group flex h-full flex-col gap-2.5 p-4 transition-[border-color,transform] duration-300 ease-ohq outline-none hover:-translate-y-0.5 hover:border-white/18 focus-visible:ring-2 focus-visible:ring-positive/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ink sm:p-5"
+                  className="ohq-panel group flex h-full flex-col gap-2.5 p-4 transition-[border-color,transform] duration-300 ease-ohq outline-none hover:-translate-y-0.5 hover:border-veil/18 focus-visible:ring-2 focus-visible:ring-positive/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ink sm:p-5"
                 >
                   <span
                     aria-hidden
-                    className="grid h-8 w-8 place-items-center rounded-[9px] border border-white/8 bg-white/4 text-muted transition-colors duration-300 group-hover:border-positive/30 group-hover:text-positive-light"
+                    className="grid h-8 w-8 place-items-center rounded-[9px] border border-veil/8 bg-veil/4 text-muted transition-colors duration-300 group-hover:border-positive/30 group-hover:text-positive-light"
                   >
                     <CategoryIcon category={category.id} size={16} />
                   </span>

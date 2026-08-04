@@ -14,7 +14,7 @@ export function IntegritySection() {
   return (
     <section
       id="facts"
-      className="relative scroll-mt-24 border-t border-white/5 bg-linear-to-b from-ink via-ink-soft to-ink px-5 py-[clamp(90px,13vh,170px)] sm:px-10 lg:px-20"
+      className="relative scroll-mt-24 border-t border-veil/5 bg-linear-to-b from-ink via-ink-soft to-ink px-5 py-[clamp(90px,13vh,170px)] sm:px-10 lg:px-20"
     >
       <div className="mx-auto max-w-[1180px]">
         <div

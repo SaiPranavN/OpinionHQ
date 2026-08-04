@@ -30,14 +30,18 @@ import {
   text,
 } from "@/lib/export/pdf-kit";
 import { statusStyle } from "@/lib/taxonomy";
-import type { DecoratedPoll, PollReason, PollSplitRow } from "@/lib/types";
+import type {
+  DecoratedPoll,
+  DecoratedPollOption,
+  PollReason,
+  PollSplitRow,
+} from "@/lib/types";
+import { pollInk } from "@/lib/derive-poll";
 
 /* ------------------------------------------------------------------ pieces */
 
-/** The head-to-head bar: two fills meeting, each labelled inside its own. */
+/** The split bar: one fill per option, each labelled inside its own. */
 function splitBar(doc: Doc, poll: DecoratedPoll, x: number, y: number, w: number, h: number) {
-  const [a, b] = poll.sides;
-
   if (poll.unvoted) {
     doc.setFillColor(...rgb(LINE));
     doc.roundedRect(x, y, w, h, 3, 3, "F");
@@ -50,27 +54,24 @@ function splitBar(doc: Doc, poll: DecoratedPoll, x: number, y: number, w: number
   }
 
   const gap = 2;
-  const aw = Math.max((a.pct / 100) * w - gap, 0);
-  const bw = Math.max((b.pct / 100) * w - gap, 0);
-
-  doc.setFillColor(...rgb(a.color));
-  doc.roundedRect(x, y, aw, h, 3, 3, "F");
-  doc.setFillColor(...rgb(b.color));
-  doc.roundedRect(x + aw + gap * 2, y, bw, h, 3, 3, "F");
-
-  // Percentages sit inside their own fill, so the split is readable without a
-  // legend and without depending on the colours alone.
-  if (a.pct >= 12) {
-    text(doc, `${a.pct}%`, x + 8, y + h / 2 + 3.5, { size: 10, bold: true, color: "#07240F" });
-  }
-  if (b.pct >= 12) {
-    text(doc, `${b.pct}%`, x + w - 8, y + h / 2 + 3.5, {
-      size: 10,
-      bold: true,
-      color: "#1B1233",
-      align: "right",
-    });
-  }
+  let cursor = x;
+  poll.options.forEach((option, i) => {
+    const width = Math.max((option.pct / 100) * w - gap, 0);
+    doc.setFillColor(...rgb(option.color));
+    doc.roundedRect(cursor, y, width, h, 3, 3, "F");
+    // The percentage sits inside its own fill, so the split is readable without
+    // a legend and without depending on the colours alone. Narrow segments drop
+    // it rather than overflowing into the next one.
+    if (option.pct >= 12) {
+      text(doc, `${option.pct}%`, cursor + width / 2, y + h / 2 + 3.5, {
+        size: 10,
+        bold: true,
+        color: pollInk(i),
+        align: "center",
+      });
+    }
+    cursor += width + gap * 2;
+  });
 }
 
 /**
@@ -87,13 +88,13 @@ function crossTabRow(
   y: number,
   w: number,
 ) {
-  const [a, b] = poll.sides;
+  const leansName = poll.options.find((o) => o.id === row.leans)?.name ?? "";
 
   text(doc, row.label, x, y, { size: 8, color: SOFT });
   text(
     doc,
-    `${row.aPct}% / ${row.bPct}%   ·   ${
-      row.leans === "even" ? "dead even" : `leans ${row.leans === "a" ? a.name : b.name}`
+    `${row.pcts.join("% / ")}%   ·   ${
+      row.leans === "even" ? "dead even" : `leans ${leansName}`
     }   ·   ${formatNumber(row.voters)}`,
     x + w,
     y,
@@ -101,11 +102,13 @@ function crossTabRow(
   );
 
   const barY = y + 4;
-  const aw = (row.aPct / 100) * w;
-  doc.setFillColor(...rgb(a.color));
-  doc.rect(x, barY, Math.max(aw - 1, 0), 4.5, "F");
-  doc.setFillColor(...rgb(b.color));
-  doc.rect(x + aw + 1, barY, Math.max(w - aw - 1, 0), 4.5, "F");
+  let cursor = x;
+  poll.options.forEach((option, i) => {
+    const width = (row.pcts[i]! / 100) * w;
+    doc.setFillColor(...rgb(option.color));
+    doc.rect(cursor, barY, Math.max(width - 1, 0), 4.5, "F");
+    cursor += width;
+  });
 }
 
 /* --------------------------------------------------------------- sections */
@@ -150,7 +153,7 @@ function header(ctx: Ctx, poll: DecoratedPoll) {
 
 function result(ctx: Ctx, poll: DecoratedPoll) {
   const { doc } = ctx;
-  const [a, b] = poll.sides;
+  const [a, b] = [poll.ranked[0]!, poll.ranked[1]!];
   ensure(ctx, 150);
 
   panel(doc, MARGIN, ctx.y, CONTENT_W, 132);
@@ -242,9 +245,11 @@ function crossTabs(ctx: Ctx, poll: DecoratedPoll) {
     });
     paragraph(
       doc,
-      `${poll.contrarian.label} is the one group that went the other way — ${
-        poll.contrarian.leans === "a" ? poll.contrarian.aPct : poll.contrarian.bPct
-      }% for ${poll.trailer.name}, against ${poll.leader.pct}% for ${poll.leader.name} overall.`,
+      `${poll.contrarian.label} is the one group that went another way — ${Math.max(
+        ...poll.contrarian.pcts,
+      )}% for ${
+        poll.options.find((o) => o.id === poll.contrarian!.leans)?.name ?? ""
+      }, against ${poll.leader.pct}% for ${poll.leader.name} overall.`,
       MARGIN + 12,
       ctx.y + 18,
       CONTENT_W - 24,
@@ -284,14 +289,58 @@ function crossTabs(ctx: Ctx, poll: DecoratedPoll) {
   ctx.y += 18;
 }
 
+/** How many written reasons each option contributes to the report. */
+export const REASONS_PER_OPTION = 10;
+
+export interface ReasonColumn {
+  option: DecoratedPollOption;
+  /** The most-endorsed reasons for this option, best first, capped. */
+  reasons: PollReason[];
+  /** How many this option had in total, before the cap. */
+  total: number;
+}
+
+/**
+ * The top reasons for every option, ranked by how many people endorsed them.
+ *
+ * Every option gets a column, including the ones that lost. A report that
+ * quoted only the winning side would be a longer way of restating the headline
+ * number; the case *against* the winner, in the words of the people who made
+ * it, is the part a reader cannot reconstruct from the percentages.
+ *
+ * Ranking is by endorsement rather than recency, and ties fall back to the
+ * original order so the output is deterministic — two runs of the same export
+ * must produce the same document.
+ */
+export function topReasonsBySide(
+  poll: DecoratedPoll,
+  list: PollReason[],
+  limit = REASONS_PER_OPTION,
+): ReasonColumn[] {
+  return poll.options.map((option) => {
+    const all = list.filter((r) => r.side === option.id);
+    const ranked = all
+      .map((reason, index) => ({ reason, index }))
+      .sort((x, y) => y.reason.helpful - x.reason.helpful || x.index - y.index)
+      .map(({ reason }) => reason);
+    return { option, reasons: ranked.slice(0, limit), total: all.length };
+  });
+}
+
 function reasons(ctx: Ctx, poll: DecoratedPoll, list: PollReason[]) {
   if (list.length === 0) return;
   const { doc } = ctx;
+  const columns = topReasonsBySide(poll, list);
+  const capped = columns.some((c) => c.total > c.reasons.length);
 
   sectionHeading(ctx, "Why people chose what they chose");
   ctx.y = paragraph(
     doc,
-    "Written reasons attached to votes. Polls carry no threads — nobody replies to anybody here.",
+    `Written reasons attached to votes, for every option rather than the winning one${
+      capped
+        ? `. The ${REASONS_PER_OPTION} most-endorsed are shown per option`
+        : ", most endorsed first"
+    }. Polls carry no threads — nobody replies to anybody here.`,
     MARGIN,
     ctx.y,
     CONTENT_W,
@@ -299,8 +348,7 @@ function reasons(ctx: Ctx, poll: DecoratedPoll, list: PollReason[]) {
   );
   ctx.y += 24;
 
-  for (const side of poll.sides) {
-    const column = list.filter((r) => r.side === side.id);
+  for (const { option: side, reasons: column, total } of columns) {
     if (column.length === 0) continue;
 
     ensure(ctx, 40);
@@ -316,6 +364,19 @@ function reasons(ctx: Ctx, poll: DecoratedPoll, list: PollReason[]) {
     );
     ctx.y += 14;
 
+    // Say so when a column is a selection rather than the whole of it, so the
+    // reader knows the quiet side had more to say than what is printed.
+    if (total > column.length) {
+      text(
+        doc,
+        `Top ${column.length} of ${formatNumber(total)} written reasons`,
+        MARGIN + 14,
+        ctx.y - 2,
+        { size: 7, color: DIM },
+      );
+      ctx.y += 10;
+    }
+
     for (const reason of column) {
       // Measure before committing so a long reason is never split across pages.
       doc.setFontSize(8.5);
@@ -325,11 +386,15 @@ function reasons(ctx: Ctx, poll: DecoratedPoll, list: PollReason[]) {
 
       panel(doc, MARGIN, ctx.y, CONTENT_W, height);
       text(doc, reason.name, MARGIN + 14, ctx.y + 16, { size: 8.5, bold: true, color: SOFT });
-      text(doc, reason.time, MARGIN + CONTENT_W - 14, ctx.y + 16, {
-        size: 7,
-        color: DIM,
-        align: "right",
-      });
+      text(
+        doc,
+        reason.helpful > 0
+          ? `${formatNumber(reason.helpful)} found this helpful  ·  ${reason.time}`
+          : reason.time,
+        MARGIN + CONTENT_W - 14,
+        ctx.y + 16,
+        { size: 7, color: DIM, align: "right" },
+      );
       paragraph(doc, reason.text, MARGIN + 14, ctx.y + 29, CONTENT_W - 28, {
         size: 8.5,
         color: MUTED,

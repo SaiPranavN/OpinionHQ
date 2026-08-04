@@ -7,6 +7,8 @@
  * build will read the same shapes from Postgres.
  */
 
+import type { PlaceId } from "@/lib/places";
+
 export type Sentiment = "Positive" | "Neutral" | "Negative";
 
 /** The finalized OpinionHQ topic taxonomy. */
@@ -23,6 +25,7 @@ export type CategoryId =
   | "exams"
   | "careers"
   | "food"
+  | "places"
   | "controversies"
   // Catch-all for subjects that genuinely fit nothing above. Reserved for
   // participant-created topics and polls; editors do not publish into it.
@@ -107,6 +110,13 @@ export type FacetSetId =
   | "career"
   | "controversy"
   | "food"
+  /**
+   * Somewhere you go: a hotel, a monument, a hill station, a beach. Distinct
+   * from `food`, which rates a meal — a place is judged on the whole visit,
+   * and its worst dimension (crowding, upkeep, what it costs once you are
+   * inside) is usually the one nobody warns you about.
+   */
+  | "place"
   | "general";
 
 /**
@@ -117,6 +127,12 @@ export interface Topic {
   id: string;
   name: string;
   cat: CategoryId;
+  /**
+   * Where this applies. Required, and `"worldwide"` is how you say "nowhere in
+   * particular" — see `lib/places.ts` for why that is a statement rather than a
+   * blank.
+   */
+  place: PlaceId;
   status: StatusId;
   /**
    * Aspects written for this specific topic — the questions worth asking about
@@ -148,18 +164,119 @@ export interface Topic {
   change: MetricChange;
 }
 
-/** A participant's written explanation attached to their vote (brief §8.2). */
+/* --------------------------------------------------------- contributions */
+
+/**
+ * How a contribution was written.
+ *
+ * Absent means `standard`. That is deliberate rather than lazy: every opinion
+ * written before Pro existed is a standard opinion, and a model where the old
+ * records are already valid needs no migration and cannot half-migrate.
+ */
+export type ContributionFormat = "standard" | "pro";
+
+/** The six section kinds a Pro contribution can be built from. */
+export type ProSectionType =
+  | "headline"
+  | "quick_take"
+  | "breakdown"
+  | "key_points"
+  | "interactive"
+  | "final_verdict";
+
+/** One choice inside an interactive block, with the responses already on it. */
+export interface InteractiveOption {
+  id: string;
+  label: string;
+  /** Responses recorded before this visitor. Simulated on seeded fixtures. */
+  count: number;
+}
+
+export type InteractiveKind =
+  | "poll"
+  | "rating"
+  | "rank"
+  | "scenario"
+  | "agree_challenge"
+  | "verdict";
+
+/**
+ * The interaction embedded in one Pro contribution.
+ *
+ * ITS RESULTS ARE NOT THE TOPIC'S RESULTS. A block belongs to the contribution
+ * that carries it and to nothing else — it never touches the topic's sentiment
+ * split, its participation count, or any poll in the Polls section. One
+ * contributor's embedded question is that contributor's question; folding it
+ * into the topic aggregate would let anybody move the headline number by
+ * wording a block to get the answer they wanted.
+ */
+export interface InteractiveBlock {
+  id: string;
+  kind: InteractiveKind;
+  prompt: string;
+  options: InteractiveOption[];
+}
+
+interface ProSectionBase {
+  id: string;
+  /** Order within the contribution. The composer rewrites these on reorder. */
+  position: number;
+}
+
+/**
+ * One block of a Pro contribution.
+ *
+ * A union rather than one shape with every field optional, so a renderer that
+ * forgets a kind fails to compile instead of rendering an empty box.
+ */
+export type ProSection =
+  | (ProSectionBase & {
+      type: "headline" | "quick_take" | "breakdown" | "final_verdict";
+      text: string;
+    })
+  | (ProSectionBase & { type: "key_points"; points: string[] })
+  | (ProSectionBase & { type: "interactive"; block: InteractiveBlock });
+
+/** Reactions available on Pro contributions only (brief §13). */
+export type ProReaction = "insightful" | "useful" | "well_explained";
+
+/**
+ * A contribution to a topic — the one shared model.
+ *
+ * Named `Opinion` because that is what it has always been and what every
+ * fixture, reply and helpful-mark already references; `format` is the only
+ * thing that distinguishes a Pro contribution from a standard one. There is no
+ * second table, no second feed and no second reply system, which is the whole
+ * point: Opinions and Discussion are two views over this array, and a Pro post
+ * is a row in it.
+ */
 export interface Opinion {
   id: string;
   topicId: string;
   name: string;
   initials: string;
   vote: Sentiment;
+  /** The standard body. On a Pro contribution this is the summary line. */
   text: string;
   time: string;
   helpful: number;
   replies: number;
   thread?: Reply[];
+
+  /* ---- Pro. All absent on a standard opinion. ---- */
+  format?: ContributionFormat;
+  /** Ordered blocks. Only a `headline` section is required to publish. */
+  sections?: ProSection[];
+  /** Author's role line, shown under the name on a Pro card. */
+  authorLine?: string;
+  /**
+   * Independently verified expertise, shown *separately* from the Pro label.
+   * Paying for better tools is not evidence of knowing anything, so the two
+   * claims are never merged into one badge (brief §14).
+   */
+  verifiedLabel?: string;
+  saves?: number;
+  reactions?: Partial<Record<ProReaction, number>>;
 }
 
 /** A single-level reply under a written opinion (brief §9). */
@@ -245,27 +362,56 @@ export interface FacetResult {
  * scale. A poll asks "which of these two?" and forces a choice. The two never
  * share an aggregate: a head-to-head split is not a sentiment distribution.
  */
-export type PollSideId = "a" | "b";
+/** Positional ids, in the order the author wrote the options. */
+export type PollOptionId = "a" | "b" | "c" | "d";
 
-export interface PollSide {
-  id: PollSideId;
+/** A poll asks between two and four options — never one, never five. */
+export const MIN_POLL_OPTIONS = 2;
+export const MAX_POLL_OPTIONS = 4;
+
+export interface PollOption {
+  id: PollOptionId;
   name: string;
   /** One line on what this option actually is, or the case for it. */
   blurb: string;
   votes: number;
 }
 
+/**
+ * One reading of a poll's split, on one date.
+ *
+ * `pcts` is aligned with `poll.options` by index and sums to 100 — the same
+ * contract the cross-tab rows use, so a reader comparing the two is comparing
+ * like with like.
+ */
+export interface PollHistoryPoint {
+  /** ISO date, `YYYY-MM-DD`. */
+  date: string;
+  pcts: number[];
+  /**
+   * What happened around this reading, when something did. Rendered as a
+   * marker on the chart. A movement with a reason attached is worth something;
+   * a wiggle with no explanation is noise dressed as a finding.
+   */
+  event?: string;
+}
+
 export interface Poll {
   id: string;
-  /** The head-to-head itself, phrased as a question. */
+  /** The choice itself, phrased as a question. */
   question: string;
   cat: CategoryId;
+  /**
+   * Where this applies. Part of the duplicate signature (`lib/signature.ts`):
+   * the same choice put to two different electorates is two different polls.
+   */
+  place: PlaceId;
   status: StatusId;
   summary: string;
   about: string;
   tags: string[];
-  a: PollSide;
-  b: PollSide;
+  /** Two to four, in the order they are shown. */
+  options: PollOption[];
   /** Editor-set close date, or "Open-ended". */
   closes: string;
   /**
@@ -275,14 +421,24 @@ export interface Poll {
    */
   spread?: number;
   /**
-   * Pins the A-side share for named regions, as whole percentages.
+   * Pins a named region's split, as whole percentages in option order.
    *
    * Derived swings are fine when nobody knows the real pattern, but on some
    * questions the geography is common knowledge — a South Indian reader seeing
    * "Tamil Nadu: 94% chai" would rightly stop trusting every other number on
    * the page. Editors override those rows explicitly.
    */
-  regionOverrides?: Record<string, number>;
+  regionOverrides?: Record<string, number[]>;
+  /**
+   * How the split moved over time, oldest first.
+   *
+   * Optional and deliberately NOT derived. Every other aggregate in this file
+   * can be computed from the current counts, but a past reading cannot —
+   * inventing a plausible curve from today's numbers would put a chart of
+   * measurements on screen where no measurement was ever taken. A poll with no
+   * recorded history says so and draws nothing.
+   */
+  history?: PollHistoryPoint[];
   trend: number;
   recency: number;
   updated: string;
@@ -292,7 +448,7 @@ export interface Poll {
 export interface PollReason {
   id: string;
   pollId: string;
-  side: PollSideId;
+  side: PollOptionId;
   name: string;
   initials: string;
   text: string;
@@ -300,26 +456,38 @@ export interface PollReason {
   helpful: number;
 }
 
-/** How one segment of the audience split between the two options. */
+/** How one segment of the audience divided across the options. */
 export interface PollSplitRow {
   label: string;
   /** This segment's share of all voters. */
   share: number;
   voters: number;
-  aPct: number;
-  bPct: number;
-  leans: PollSideId | "even";
+  /** Per-option percentages, aligned with `poll.options`. Sums to 100. */
+  pcts: number[];
+  /** The option this segment favoured, or "even" on an exact tie. */
+  leans: PollOptionId | "even";
+  /** Percentage points between this segment's top two. */
+  margin: number;
 }
 
-export interface DecoratedPollSide extends PollSide {
+/**
+ * `color` is the literal fill — bars, dots, the PDF. `textColor` is the same
+ * identity as a theme variable, for when the option's colour is set in type.
+ */
+export interface DecoratedPollOption extends PollOption {
   pct: number;
   color: string;
+  textColor: string;
   votesLabel: string;
   reasonCount: number;
 }
 
 export interface DecoratedPoll extends Poll {
   category: Category;
+  /** Resolved from `place`, so a card never has to import the registry. */
+  placeLabel: string;
+  /** "Karnataka, India" — the containing places, outermost last. */
+  placeContext: string;
   /** True when nobody has voted yet — a 0/0 split is not a dead heat. */
   unvoted: boolean;
   /**
@@ -327,13 +495,16 @@ export interface DecoratedPoll extends Poll {
    * landslide, and cross-tabs off a single voter would be fabrication.
    */
   smallSample: boolean;
-  sides: [DecoratedPollSide, DecoratedPollSide];
+  /** Decorated options in author order. */
+  options: DecoratedPollOption[];
+  /** The same options sorted by share, highest first. */
+  ranked: DecoratedPollOption[];
   total: number;
   totalLabel: string;
   totalShort: string;
-  leader: DecoratedPollSide;
-  trailer: DecoratedPollSide;
-  /** Percentage-point gap between the two options. */
+  leader: DecoratedPollOption;
+  runnerUp: DecoratedPollOption;
+  /** Percentage-point gap between the top two options. */
   margin: number;
   marginLabel: string;
   /** "Too close to call" … "Landslide". */
@@ -371,11 +542,18 @@ export interface ArcDash {
 /** A topic plus every value derived from it for presentation. */
 export interface DecoratedTopic extends Topic {
   category: Category;
+  /** Resolved from `place`, so a card never has to import the registry. */
+  placeLabel: string;
+  /** "Karnataka, India" — the containing places, outermost last. */
+  placeContext: string;
   /** True when nobody has voted yet — every headline string reads differently. */
   unrated: boolean;
   dominant: Sentiment | "Split" | "Unrated";
   dominantPct: number;
+  /** Literal hex. For the PDF export, which has no CSS engine. */
   dominantColor: string;
+  /** The same colour as a theme variable. For anything rendered in the DOM. */
+  dominantVar: string;
   /** e.g. "78% Negative" — readable without an icon. */
   headlineMetric: string;
   sentimentLabel: string;

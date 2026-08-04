@@ -5,7 +5,9 @@
  */
 
 import { decorate } from "@/lib/derive";
+import { matchesPlaceFilter, type PlaceFilterId } from "@/lib/places";
 import { TOPICS } from "@/lib/sample-data/topics";
+import type { SuggestItem } from "@/lib/suggest";
 import type { CategoryFilterId, DecoratedTopic, SortId } from "@/lib/types";
 
 const DECORATED: DecoratedTopic[] = TOPICS.map(decorate);
@@ -27,19 +29,30 @@ export interface CatalogFilters {
   category: CategoryFilterId;
   sort: SortId;
   query: string;
+  /** "any" is no filter at all — see `lib/places.ts`. */
+  place: PlaceFilterId;
 }
 
 export function filterAndSort(
   topics: DecoratedTopic[],
-  { category, sort, query }: CatalogFilters,
+  { category, sort, query, place }: CatalogFilters,
 ): DecoratedTopic[] {
   const q = query.trim().toLowerCase();
 
   const matched = topics.filter((e) => {
     if (category !== "All" && e.cat !== category) return false;
+    if (!matchesPlaceFilter(place, e.place)) return false;
     if (!q) return true;
-    // Name, category label, tags, status and summary are all searchable.
-    const haystack = [e.name, e.category.label, e.status, e.summary, ...e.tags]
+    // Name, category label, place, tags, status and summary are all searchable.
+    const haystack = [
+      e.name,
+      e.category.label,
+      e.placeLabel,
+      e.placeContext,
+      e.status,
+      e.summary,
+      ...e.tags,
+    ]
       .join(" ")
       .toLowerCase();
     return haystack.includes(q);
@@ -76,4 +89,46 @@ export function topicCountByCategory(): Map<string, number> {
     counts.set(topic.cat, (counts.get(topic.cat) ?? 0) + 1);
   }
   return counts;
+}
+
+/**
+ * Everything on the topics catalog worth suggesting.
+ *
+ * Topics carry an `href` so picking one goes straight there — a suggestion that
+ * only fills the box in makes you press Enter to reach the thing you already
+ * named. Categories, places and tags have none, because they are queries rather
+ * than destinations.
+ */
+export function topicIndex(topics: readonly DecoratedTopic[]): SuggestItem[] {
+  const items: SuggestItem[] = topics.map((topic) => ({
+    id: `topic-${topic.id}`,
+    label: topic.name,
+    kind: "topic",
+    href: `/topics/${topic.id}`,
+    hint: `${topic.category.label} · ${topic.placeLabel} · ${topic.participantsShort}`,
+    keywords: [topic.category.label, topic.placeLabel, topic.status, ...topic.tags],
+    weight: topic.participants,
+  }));
+
+  const places = new Map<string, number>();
+  const tags = new Map<string, number>();
+  for (const topic of topics) {
+    places.set(topic.placeLabel, (places.get(topic.placeLabel) ?? 0) + 1);
+    for (const tag of topic.tags) tags.set(tag, (tags.get(tag) ?? 0) + 1);
+  }
+
+  for (const [label, count] of places) {
+    items.push({
+      id: `place-${label}`,
+      label,
+      kind: "place",
+      hint: `${count} ${count === 1 ? "topic" : "topics"}`,
+      weight: count,
+    });
+  }
+  for (const [label, count] of tags) {
+    if (count < 2) continue;
+    items.push({ id: `tag-${label}`, label, kind: "tag", hint: `${count} topics`, weight: count });
+  }
+  return items;
 }

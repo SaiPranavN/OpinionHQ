@@ -85,6 +85,14 @@ const PATHS: Record<CategoryId, React.ReactNode> = {
       <path d="M17.5 21v-7.5c2 0 2.5-1.6 2.5-4.5S19 3.5 17.5 3.5 15 6 15 9s.5 4.5 2.5 4.5" />
     </>
   ),
+  /* A map pin over a horizon line: somewhere you go, rather than a building —
+     the category covers monuments and hill stations as well as hotels. */
+  places: (
+    <>
+      <path d="M12 21s6.5-6.1 6.5-10.5a6.5 6.5 0 0 0-13 0C5.5 14.9 12 21 12 21z" />
+      <circle cx="12" cy="10.3" r="2.4" />
+    </>
+  ),
   other: (
     <>
       <circle cx="12" cy="12" r="9" strokeDasharray="3 3" />

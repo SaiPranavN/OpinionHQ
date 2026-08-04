@@ -27,7 +27,7 @@ export function Toast({ message, onDone }: ToastProps) {
     <div
       role="status"
       aria-live="polite"
-      className="pointer-events-none fixed bottom-8 left-1/2 z-80 rounded-full border border-white/12 bg-[rgba(18,18,18,0.94)] px-5 py-3 text-[13.5px] text-soft backdrop-blur-[10px] transition-[opacity,transform] duration-500 ease-ohq"
+      className="pointer-events-none fixed bottom-8 left-1/2 z-80 rounded-full border border-veil/12 bg-[rgba(18,18,18,0.94)] px-5 py-3 text-[13.5px] text-soft backdrop-blur-[10px] transition-[opacity,transform] duration-500 ease-ohq"
       style={{
         opacity: visible ? 1 : 0,
         transform: `translate(-50%, ${visible ? "0" : "26px"})`,

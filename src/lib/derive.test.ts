@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { arc, decorate, participationBars, trendPath } from "@/lib/derive";
-import { filterAndSort } from "@/lib/topics";
+import {
+  arc,
+  decorate,
+  participationBars,
+  trendPath,
+  trendPoints,
+  trendValues,
+} from "@/lib/derive";
+import { allTopics, filterAndSort } from "@/lib/topics";
 import { DEFAULT_FACET_SET, FACET_SETS } from "@/lib/facets";
 import { TOPICS } from "@/lib/sample-data/topics";
 import { OPINIONS } from "@/lib/sample-data/opinions";
@@ -13,6 +20,7 @@ const base: Topic = {
   id: "test",
   name: "Test topic",
   cat: "policies",
+  place: "india",
   status: "Proposed",
   summary: "A test topic.",
   about: "Longer context for the test topic.",
@@ -115,14 +123,14 @@ describe("aspects", () => {
     }
   });
 
-  it("uses unique aspect ids within a topic", () => {
+  it("uses unique aspect ids within an topic", () => {
     for (const topic of TOPICS) {
       const ids = topic.aspects!.map((a) => a.id);
       expect(new Set(ids).size, topic.id).toBe(ids.length);
     }
   });
 
-  it("prefers a topic's own aspects over the category fallback", () => {
+  it("prefers an topic's own aspects over the category fallback", () => {
     const withOwn = decorate({
       ...base,
       aspects: [
@@ -262,7 +270,7 @@ describe("topics nobody has voted on", () => {
   });
 
   it("never derives aspect tallies for a participant-created topic", () => {
-    // Derived tallies stand in for server aggregates. On a topic created in
+    // Derived tallies stand in for server aggregates. On an topic created in
     // the browser there is no server, so inventing shares would be fabrication.
     const mine = decorate({
       ...base,
@@ -373,6 +381,7 @@ describe("catalog filtering", () => {
       category: "All",
       sort: "trending",
       query: "under investigation",
+      place: "any",
     });
     expect(byStatus.map((e) => e.id)).toContain("neet");
 
@@ -380,6 +389,7 @@ describe("catalog filtering", () => {
       category: "All",
       sort: "trending",
       query: "signalling",
+      place: "any",
     });
     expect(byTag.map((e) => e.id)).toContain("blrmetro");
   });
@@ -389,13 +399,14 @@ describe("catalog filtering", () => {
       category: "sports",
       sort: "trending",
       query: "metro",
+      place: "any",
     });
     expect(results).toHaveLength(0);
   });
 
   it("orders by the selected sort key", () => {
     const check = (sort: Parameters<typeof filterAndSort>[1]["sort"]) =>
-      filterAndSort(decorated, { category: "All", sort, query: "" });
+      filterAndSort(decorated, { category: "All", sort, query: "", place: "any" });
 
     expect(check("trending")[0]!.trend).toBeGreaterThanOrEqual(check("trending")[1]!.trend);
     expect(check("positive")[0]!.pos).toBeGreaterThanOrEqual(check("positive")[1]!.pos);
@@ -411,7 +422,68 @@ describe("catalog filtering", () => {
 
   it("leaves the source list untouched", () => {
     const before = decorated.map((e) => e.id);
-    filterAndSort(decorated, { category: "All", sort: "polarizing", query: "" });
+    filterAndSort(decorated, { category: "All", sort: "polarizing", query: "", place: "any" });
     expect(decorated.map((e) => e.id)).toEqual(before);
+  });
+});
+
+describe("trend series", () => {
+  it("never plots a share below zero or above a hundred", () => {
+    // A topic with a large weekly swing used to ease from a negative start,
+    // which drew the line under the baseline and read out "-3% negative".
+    for (const [from, to] of [
+      [-20, 13],
+      [110, 68],
+      [0, 100],
+      [50, 50],
+    ] as const) {
+      for (const value of trendValues(from, to)) {
+        expect(value, `${from}→${to}`).toBeGreaterThanOrEqual(0);
+        expect(value, `${from}→${to}`).toBeLessThanOrEqual(100);
+      }
+    }
+  });
+
+  it("stays inside the plot area for every fixture topic", () => {
+    for (const topic of allTopics()) {
+      if (topic.unrated) continue;
+      const series = [
+        ...trendPoints(topic.neg - topic.change.value, topic.neg),
+        ...trendPoints(topic.pos + topic.change.value, topic.pos),
+      ];
+      for (const point of series) {
+        expect(point.y, topic.id).toBeGreaterThanOrEqual(40);
+        expect(point.y, topic.id).toBeLessThanOrEqual(240);
+      }
+    }
+  });
+
+  it("starts and ends on the values it claims", () => {
+    // The wobble tapers to nothing at both ends, so the right edge of the chart
+    // agrees with the headline share sitting next to it.
+    const series = trendValues(30, 68);
+    expect(series[0]).toBe(30);
+    expect(series.at(-1)).toBe(68);
+  });
+
+  it("keeps the wobble in the middle, where it belongs", () => {
+    const flat = trendValues(50, 50);
+    expect(flat[0]).toBe(50);
+    expect(flat.at(-1)).toBe(50);
+    expect(flat.some((v) => v !== 50)).toBe(true);
+  });
+
+  it("ends every fixture topic's line on its stated share", () => {
+    for (const topic of allTopics()) {
+      if (topic.unrated) continue;
+      expect(
+        trendValues(topic.neg - topic.change.value, topic.neg).at(-1),
+        topic.id,
+      ).toBe(topic.neg);
+      expect(
+        trendValues(topic.pos + topic.change.value, topic.pos).at(-1),
+        topic.id,
+      ).toBe(topic.pos);
+    }
   });
 });

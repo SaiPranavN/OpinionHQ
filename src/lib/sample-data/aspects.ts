@@ -392,6 +392,47 @@ export const ASPECTS: Record<string, Facet[]> = {
     a("order", "Would you order it", "Are you choosing it over rice or wheat?", "Yes", "Occasionally", "No"),
   ],
 
+  /* ------------------------------------------------------- Places & Travel */
+  tajmahal: [
+    a("queue", "Getting in", "How was the queue and security check?", "Quick", "Slow but moving", "Chaotic"),
+    a("touts", "Touts & guides", "Were you hassled outside the complex?", "Left alone", "Some pestering", "Relentless"),
+    a("platform", "The mausoleum charge", "Is the extra charge for the main platform justified?", "Worth it", "Debatable", "A shakedown"),
+    a("timing", "Time of day", "Did the slot you booked show it well?", "Perfect light", "Fine", "Wrong time entirely"),
+    a("upkeep", "Condition of the monument", "How is it being maintained?", "Immaculate", "Showing wear", "Poorly kept"),
+  ],
+  "goa-season": [
+    a("shackprice", "Shack pricing", "Was the beach shack bill reasonable?", "Reasonable", "Steep", "Absurd"),
+    a("taxi", "Getting around", "How was local transport?", "Manageable", "Expensive", "A racket"),
+    a("beach", "The beaches themselves", "How were the beaches when you went?", "Clean and calm", "Crowded", "Unpleasant"),
+    a("value", "Against the alternatives", "Better value than flying to Sri Lanka or Thailand?", "Still better", "About the same", "Worse"),
+  ],
+  "manali-traffic": [
+    a("drive", "The drive up", "How was the approach road?", "Clear", "Slow in stretches", "Gridlocked"),
+    a("cap", "Entry caps", "Should visitor numbers be capped on peak weekends?", "Cap them", "Unsure", "Leave it open"),
+    a("crowd", "On the ground", "Was the town itself pleasant?", "Pleasant", "Busy", "Overrun"),
+    a("stay", "Where you stayed", "Did the stay match what was advertised?", "Matched", "Roughly", "Nothing like it"),
+  ],
+  "alleppey-houseboats": [
+    a("boat", "The boat itself", "Did the boat match the listing?", "Matched it", "Roughly", "Nothing like the photos"),
+    a("food", "Food on board", "How was the cooking?", "Excellent", "Fine", "Poor"),
+    a("water", "The backwaters", "How did the water and banks look?", "Clean", "Patchy", "Visibly polluted"),
+    a("agent", "Booking through an agent", "Was the agent worth what they took?", "Worth it", "Unnecessary", "Actively misleading"),
+    a("crew", "Crew", "How were you looked after?", "Attentive", "Fine", "Neglectful"),
+  ],
+  "corbett-safari": [
+    a("permit", "Getting a permit", "Could you book at official rates?", "Booked at face value", "Paid a markup", "Impossible without an operator"),
+    a("sighting", "What you saw", "Was the wildlife worth the trip?", "Worth it", "Quiet day", "Barely anything"),
+    a("vehicles", "Vehicles per zone", "Were there too many jeeps in your zone?", "Well spaced", "Busy", "A convoy"),
+    a("guide", "The guide", "How was your assigned guide?", "Knowledgeable", "Adequate", "Disinterested"),
+    a("markup", "Operator pricing", "Is the operator markup defensible?", "Defensible", "Steep", "Profiteering"),
+  ],
+  "hotel-hidden-charges": [
+    a("gap", "Search price vs final price", "How far apart were they?", "Same", "A little higher", "Far higher"),
+    a("timing", "When you were told", "When did the extra charges appear?", "Up front", "At checkout", "On the bill at the property"),
+    a("mandatory", "Resort & destination fees", "Are unavoidable fees defensible?", "Defensible", "Depends", "Should be illegal"),
+    a("blame", "Who is responsible", "Who do you hold responsible for the gap?", "Neither, it's clear enough", "The aggregator", "The hotel"),
+  ],
+
   /* -------------------------------------------------------- Controversies */
   blrmetro: [
     a("explanation", "The explanation given", "Is the stated reason for the delay adequate?", "Adequate", "Thin", "Not credible"),

@@ -7,6 +7,7 @@
  * tone before real submissions exist.
  */
 
+import { PRO_CONTRIBUTIONS } from "@/lib/sample-data/contributions";
 import type { Opinion, Reply, Sentiment } from "@/lib/types";
 
 interface RawOpinion {
@@ -1485,7 +1486,7 @@ const RAW: Record<string, RawOpinion[]> = {
   ],
   "deepfake-ads": [
     {
-      id: "df1",
+      id: "da1",
       name: "Sunita Kaul",
       initials: "SK",
       vote: "Negative",
@@ -1503,7 +1504,7 @@ const RAW: Record<string, RawOpinion[]> = {
       ],
     },
     {
-      id: "df2",
+      id: "da2",
       name: "Arjun Vaidya",
       initials: "AV",
       vote: "Negative",
@@ -1513,7 +1514,7 @@ const RAW: Record<string, RawOpinion[]> = {
       replies: 194,
     },
     {
-      id: "df3",
+      id: "da3",
       name: "Nivedita Ram",
       initials: "NR",
       vote: "Neutral",
@@ -1605,9 +1606,19 @@ const RAW: Record<string, RawOpinion[]> = {
   ],
 };
 
-export const OPINIONS: Opinion[] = Object.entries(RAW).flatMap(
-  ([topicId, list]) => list.map((o) => ({ ...o, topicId })),
-);
+/**
+ * Every contribution on every topic — standard and Pro in one array.
+ *
+ * The Pro fixtures are concatenated here rather than exposed through a second
+ * accessor, so a caller that wants "the opinions on this topic" cannot
+ * accidentally get only half of them. There is one list, and both tabs read it.
+ */
+export const OPINIONS: Opinion[] = [
+  ...Object.entries(RAW).flatMap(([topicId, list]) =>
+    list.map((o) => ({ ...o, topicId })),
+  ),
+  ...PRO_CONTRIBUTIONS,
+];
 
 export function opinionsFor(topicId: string): Opinion[] {
   return OPINIONS.filter((o) => o.topicId === topicId);

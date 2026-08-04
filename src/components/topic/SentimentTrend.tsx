@@ -1,15 +1,41 @@
+"use client";
+
+import { useRef, useState } from "react";
+
 import { Brand } from "@/components/ui/Brand";
-import { formatNumber } from "@/lib/derive";
+import { ChartTooltip } from "@/components/ui/ChartTooltip";
+import { formatNumber, trendPoints, trendValues } from "@/lib/derive";
 import type { DecoratedTopic, TrendMarker } from "@/lib/types";
 
 const AXIS_LABELS = ["30d ago", "22d", "15d", "7d", "Today"];
+
+/** Points in the sampled series — matches `trendPoints` in lib/derive. */
+const SAMPLES = 15;
+
+function dayLabel(i: number): string {
+  const daysAgo = Math.round(((SAMPLES - 1 - i) / (SAMPLES - 1)) * 30);
+  if (daysAgo === 0) return "Today";
+  return `${daysAgo} ${daysAgo === 1 ? "day" : "days"} ago`;
+}
 
 interface SentimentTrendProps {
   topic: DecoratedTopic;
   markers: TrendMarker[];
 }
 
+/**
+ * Sentiment over 30 days, with verified developments plotted on it.
+ *
+ * Interactive: moving across the plot snaps a crosshair to the nearest sampled
+ * day and reads out both lines at that point, so "when did this turn?" is a
+ * question the chart can actually answer rather than one a reader has to
+ * estimate by eye. The full series is still summarised in the `aria-label`, and
+ * the numbered pins remain keyed to the list below — nothing is available only
+ * on hover.
+ */
 export function SentimentTrend({ topic, markers }: SentimentTrendProps) {
+  const plotRef = useRef<HTMLDivElement | null>(null);
+  const [hover, setHover] = useState<number | null>(null);
   // No votes means no history — an interpolated curve here would be fiction.
   if (topic.unrated) {
     return (
@@ -24,6 +50,13 @@ export function SentimentTrend({ topic, markers }: SentimentTrendProps) {
       </figure>
     );
   }
+
+  // The same sampled series the paths are drawn from, so the crosshair lands
+  // exactly on the line rather than near it.
+  const neg = trendPoints(topic.neg - topic.change.value, topic.neg);
+  const pos = trendPoints(topic.pos + topic.change.value, topic.pos);
+  const negSeries = trendValues(topic.neg - topic.change.value, topic.neg);
+  const posSeries = trendValues(topic.pos + topic.change.value, topic.pos);
 
   // Marker positions come from event dates and can land anywhere, including on
   // top of each other. Parsed once so the guide line and its pin always agree.
@@ -49,7 +82,36 @@ export function SentimentTrend({ topic, markers }: SentimentTrendProps) {
       </figcaption>
 
       {/* Top padding leaves room for the pins to sit on the chart's edge. */}
-      <div className="relative w-full pt-2.5">
+      <div
+        ref={plotRef}
+        className="relative w-full pt-2.5"
+        onMouseMove={(e) => {
+          const box = plotRef.current?.getBoundingClientRect();
+          if (!box || box.width === 0) return;
+          const ratio = (e.clientX - box.left) / box.width;
+          setHover(
+            Math.min(
+              Math.max(Math.round(ratio * (SAMPLES - 1)), 0),
+              SAMPLES - 1,
+            ),
+          );
+        }}
+        onMouseLeave={() => setHover(null)}
+      >
+        {hover !== null ? (
+          <ChartTooltip
+            // Sits inside the plot rather than above it: the panel has no room
+            // overhead, and a tooltip that escapes its card reads as a bug.
+            x={(hover / (SAMPLES - 1)) * 100}
+            y={34}
+            title={dayLabel(hover)}
+            rows={[
+              { label: "Negative", value: `${negSeries[hover]}%`, color: "#E5484D" },
+              { label: "Positive", value: `${posSeries[hover]}%`, color: "#1DB954" },
+              { label: "Share of votes cast that day", value: "", note: true },
+            ]}
+          />
+        ) : null}
         <svg
           viewBox="0 0 800 260"
           preserveAspectRatio="none"
@@ -57,7 +119,7 @@ export function SentimentTrend({ topic, markers }: SentimentTrendProps) {
           aria-label={`Sentiment trend over the last 30 days, with verified developments marked. Negative share ends at ${topic.neg} percent and positive at ${topic.pos} percent, of ${formatNumber(topic.participants)} participants.`}
           className="block h-[clamp(200px,26vw,300px)] w-full"
         >
-          <g stroke="rgba(255,255,255,0.06)" strokeWidth="1">
+          <g stroke="color-mix(in oklab, var(--color-veil) 6%, transparent)" strokeWidth="1">
             <line x1="0" y1="40" x2="800" y2="40" />
             <line x1="0" y1="90" x2="800" y2="90" />
             <line x1="0" y1="140" x2="800" y2="140" />
@@ -96,6 +158,22 @@ export function SentimentTrend({ topic, markers }: SentimentTrendProps) {
             strokeLinejoin="round"
             strokeLinecap="round"
           />
+
+          {/* Crosshair. Drawn last so it sits over both lines. */}
+          {hover !== null ? (
+            <g pointerEvents="none">
+              <line
+                x1={neg[hover]!.x}
+                y1="0"
+                x2={neg[hover]!.x}
+                y2="240"
+                stroke="color-mix(in oklab, var(--color-veil) 28%, transparent)"
+                strokeWidth="1"
+              />
+              <circle cx={neg[hover]!.x} cy={neg[hover]!.y} r="5" fill="#E5484D" />
+              <circle cx={pos[hover]!.x} cy={pos[hover]!.y} r="5" fill="#1DB954" />
+            </g>
+          ) : null}
         </svg>
 
         {/* Just a numbered pin on the line. The text lives in the key below,
@@ -104,7 +182,7 @@ export function SentimentTrend({ topic, markers }: SentimentTrendProps) {
           <span
             key={i}
             aria-hidden
-            className="absolute grid h-[18px] w-[18px] -translate-x-1/2 place-items-center rounded-full border border-positive/45 bg-[rgba(10,10,10,0.94)] font-mono text-[9.5px] text-positive-light"
+            className="absolute grid h-[18px] w-[18px] -translate-x-1/2 place-items-center rounded-full border border-positive/45 bg-ink/94 font-mono text-[9.5px] text-positive-light"
             style={{ left: `clamp(9px, ${pct}%, calc(100% - 9px))`, top: "-9px" }}
           >
             {i + 1}

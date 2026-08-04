@@ -2,7 +2,7 @@
 
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { formatNumber } from "@/lib/derive-poll";
-import type { DecoratedPoll, PollReason, PollSideId } from "@/lib/types";
+import type { DecoratedPoll, PollOptionId, PollReason } from "@/lib/types";
 
 /**
  * Reasons, in two columns — one per side.
@@ -21,7 +21,7 @@ export function PollReasons({
   const { pollVotes, displayName } = usePrototype();
   const mine = pollVotes[poll.id];
 
-  const columnFor = (side: PollSideId): PollReason[] => {
+  const columnFor = (side: PollOptionId): PollReason[] => {
     const list = reasons.filter((r) => r.side === side);
     if (mine?.side === side && mine.reason.trim()) {
       const name = displayName || "You";
@@ -56,7 +56,7 @@ export function PollReasons({
       </div>
 
       <div className="grid grid-cols-1 gap-[clamp(14px,1.6vw,20px)] lg:grid-cols-2">
-        {poll.sides.map((option) => {
+        {poll.options.map((option) => {
           const column = columnFor(option.id);
           return (
             <div key={option.id} className="flex min-w-0 flex-col gap-3">
@@ -115,7 +115,7 @@ export function PollReasons({
               ))}
 
               {column.length === 0 ? (
-                <p className="m-0 rounded-[14px] border border-dashed border-white/10 px-4 py-8 text-center text-[13px] text-dim">
+                <p className="m-0 rounded-[14px] border border-dashed border-veil/10 px-4 py-8 text-center text-[13px] text-dim">
                   Nobody has explained this pick yet.
                 </p>
               ) : null}

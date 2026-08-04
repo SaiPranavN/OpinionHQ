@@ -18,7 +18,7 @@ export function MovementSection() {
   return (
     <section
       id="movement"
-      className="relative border-t border-white/5 px-5 py-[clamp(90px,13vh,170px)] sm:px-10 lg:px-20"
+      className="relative border-t border-veil/5 px-5 py-[clamp(90px,13vh,170px)] sm:px-10 lg:px-20"
     >
       <div className="mx-auto max-w-[1180px]">
         <div
@@ -77,7 +77,7 @@ export function MovementSection() {
                   <stop offset="100%" stopColor="#E5484D" stopOpacity="0" />
                 </linearGradient>
               </defs>
-              <g stroke="rgba(255,255,255,0.06)" strokeWidth="1">
+              <g stroke="color-mix(in oklab, var(--color-veil) 6%, transparent)" strokeWidth="1">
                 <line x1="0" y1="40" x2="800" y2="40" />
                 <line x1="0" y1="90" x2="800" y2="90" />
                 <line x1="0" y1="140" x2="800" y2="140" />
@@ -89,7 +89,7 @@ export function MovementSection() {
                 y1="20"
                 x2="144"
                 y2="240"
-                stroke="rgba(255,255,255,0.22)"
+                stroke="color-mix(in oklab, var(--color-veil) 22%, transparent)"
                 strokeWidth="1"
                 strokeDasharray="3 5"
               />
@@ -98,7 +98,7 @@ export function MovementSection() {
                 y1="20"
                 x2="368"
                 y2="240"
-                stroke="rgba(255,255,255,0.22)"
+                stroke="color-mix(in oklab, var(--color-veil) 22%, transparent)"
                 strokeWidth="1"
                 strokeDasharray="3 5"
               />
@@ -123,10 +123,10 @@ export function MovementSection() {
               />
             </svg>
 
-            <span className="absolute top-0 left-[27.5%] inline-flex max-w-[min(46%,220px)] items-center gap-[7px] overflow-hidden rounded-[4px] border border-positive/30 bg-[rgba(10,10,10,0.92)] px-2.5 py-[5px] font-mono text-[clamp(8.5px,1.1vw,10px)] tracking-[0.06em] text-ellipsis whitespace-nowrap uppercase text-positive-light">
+            <span className="absolute top-0 left-[27.5%] inline-flex max-w-[min(46%,220px)] items-center gap-[7px] overflow-hidden rounded-[4px] border border-positive/30 bg-ink/94 px-2.5 py-[5px] font-mono text-[clamp(8.5px,1.1vw,10px)] tracking-[0.06em] text-ellipsis whitespace-nowrap uppercase text-positive-light">
               <span aria-hidden>✓</span>6 May · NTA acknowledges
             </span>
-            <span className="absolute top-11 right-0 inline-flex max-w-[min(44%,220px)] items-center gap-[7px] overflow-hidden rounded-[4px] border border-positive/30 bg-[rgba(10,10,10,0.92)] px-2.5 py-[5px] font-mono text-[clamp(8.5px,1.1vw,10px)] tracking-[0.06em] text-ellipsis whitespace-nowrap uppercase text-positive-light">
+            <span className="absolute top-11 right-0 inline-flex max-w-[min(44%,220px)] items-center gap-[7px] overflow-hidden rounded-[4px] border border-positive/30 bg-ink/94 px-2.5 py-[5px] font-mono text-[clamp(8.5px,1.1vw,10px)] tracking-[0.06em] text-ellipsis whitespace-nowrap uppercase text-positive-light">
               <span aria-hidden>✓</span>11 May · Committee formed
             </span>
           </div>

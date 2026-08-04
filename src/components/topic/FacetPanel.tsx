@@ -52,7 +52,7 @@ export function FacetPanel({ topic }: { topic: DecoratedTopic }) {
           return (
             <div
               key={result.facet.id}
-              className="flex flex-col gap-3 rounded-[14px] border border-white/7 bg-surface p-4"
+              className="flex flex-col gap-3 rounded-[14px] border border-veil/7 bg-surface p-4"
             >
               <div className="flex flex-col gap-1">
                 <h3 className="m-0 text-[14.5px] font-semibold tracking-[-0.01em] text-cream">
@@ -77,9 +77,9 @@ export function FacetPanel({ topic }: { topic: DecoratedTopic }) {
                       type="button"
                       onClick={() => answerFacet(topic.id, result.facet.id, option.id)}
                       aria-pressed={active}
-                      className="cursor-pointer rounded-[10px] border px-2 py-2 text-[12px] leading-tight font-medium transition-[color,background,border-color] duration-300 outline-none hover:border-white/30 focus-visible:ring-2 focus-visible:ring-positive/60"
+                      className="cursor-pointer rounded-[10px] border px-2 py-2 text-[12px] leading-tight font-medium transition-[color,background,border-color] duration-300 outline-none hover:border-veil/30 focus-visible:ring-2 focus-visible:ring-positive/60"
                       style={{
-                        borderColor: active ? tone : "rgba(255,255,255,0.12)",
+                        borderColor: active ? tone : "color-mix(in oklab, var(--color-veil) 12%, transparent)",
                         background: active ? `${tone}1F` : "transparent",
                         color: active ? "#F7F5F1" : "#A1A1A1",
                       }}

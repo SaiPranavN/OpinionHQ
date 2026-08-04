@@ -21,9 +21,9 @@ function DistributionBars({
           >
             {row.label}
           </span>
-          <span className="h-2 flex-[1_1_50px] overflow-hidden rounded-[3px] bg-white/5">
+          <span className="h-2 flex-[1_1_50px] overflow-hidden rounded-[3px] bg-veil/5">
             <span
-              className="block h-full max-w-full rounded-[3px] bg-white/55"
+              className="block h-full max-w-full rounded-[3px] bg-veil/55"
               style={{ width: `${row.pct * 2.6}%` }}
             />
           </span>
@@ -73,9 +73,9 @@ export function AudiencePanels({ topic }: { topic: DecoratedTopic }) {
               <span className="flex-none basis-[clamp(96px,14vw,140px)] text-[13.5px] text-soft">
                 {row.label}
               </span>
-              <span className="h-2 min-w-20 flex-[1_1_120px] overflow-hidden rounded-[3px] bg-white/5">
+              <span className="h-2 min-w-20 flex-[1_1_120px] overflow-hidden rounded-[3px] bg-veil/5">
                 <span
-                  className="block h-full max-w-full rounded-[3px] bg-white/55"
+                  className="block h-full max-w-full rounded-[3px] bg-veil/55"
                   style={{ width: `${row.pct * 3.4}%` }}
                 />
               </span>

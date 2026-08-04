@@ -4,7 +4,9 @@
  */
 
 import { decoratePoll } from "@/lib/derive-poll";
+import { matchesPlaceFilter, type PlaceFilterId } from "@/lib/places";
 import { POLLS } from "@/lib/sample-data/polls";
+import type { SuggestItem } from "@/lib/suggest";
 import type { CategoryFilterId, DecoratedPoll } from "@/lib/types";
 
 const DECORATED: DecoratedPoll[] = POLLS.map(decoratePoll);
@@ -36,19 +38,32 @@ export function pollSortLabel(id: PollSortId): string {
 
 export function filterAndSortPolls(
   polls: DecoratedPoll[],
-  { category, sort, query }: { category: CategoryFilterId; sort: PollSortId; query: string },
+  {
+    category,
+    sort,
+    query,
+    place,
+  }: {
+    category: CategoryFilterId;
+    sort: PollSortId;
+    query: string;
+    /** "any" is no filter at all — see `lib/places.ts`. */
+    place: PlaceFilterId;
+  },
 ): DecoratedPoll[] {
   const q = query.trim().toLowerCase();
 
   const matched = polls.filter((poll) => {
     if (category !== "All" && poll.cat !== category) return false;
+    if (!matchesPlaceFilter(place, poll.place)) return false;
     if (!q) return true;
     const haystack = [
       poll.question,
       poll.category.label,
+      poll.placeLabel,
+      poll.placeContext,
       poll.summary,
-      poll.a.name,
-      poll.b.name,
+      ...poll.options.map((o) => o.name),
       ...poll.tags,
     ]
       .join(" ")
@@ -81,4 +96,42 @@ export function pollCountByCategory(): Map<string, number> {
     counts.set(poll.cat, (counts.get(poll.cat) ?? 0) + 1);
   }
   return counts;
+}
+
+/**
+ * Everything on the polls catalog worth suggesting.
+ *
+ * Option names are keywords rather than entries of their own: somebody typing
+ * "Messi" wants the poll, not a row saying "Messi".
+ */
+export function pollIndex(polls: readonly DecoratedPoll[]): SuggestItem[] {
+  const items: SuggestItem[] = polls.map((poll) => ({
+    id: `poll-${poll.id}`,
+    label: poll.question,
+    kind: "poll",
+    href: `/polls/${poll.id}`,
+    hint: `${poll.category.label} · ${poll.placeLabel} · ${poll.totalShort}`,
+    keywords: [
+      poll.category.label,
+      poll.placeLabel,
+      ...poll.options.map((o) => o.name),
+      ...poll.tags,
+    ],
+    weight: poll.total,
+  }));
+
+  const places = new Map<string, number>();
+  for (const poll of polls) {
+    places.set(poll.placeLabel, (places.get(poll.placeLabel) ?? 0) + 1);
+  }
+  for (const [label, count] of places) {
+    items.push({
+      id: `place-${label}`,
+      label,
+      kind: "place",
+      hint: `${count} ${count === 1 ? "poll" : "polls"}`,
+      weight: count,
+    });
+  }
+  return items;
 }
