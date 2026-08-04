@@ -32,6 +32,11 @@ import {
   readIdentifier,
 } from "@/components/auth/CredentialForm";
 import { GoogleButton, type GoogleAccount } from "@/components/auth/GoogleSignIn";
+import {
+  ProfileFields,
+  ProfilePrivacyNote,
+  type ProfileDetails,
+} from "@/components/auth/ProfileFields";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Brand } from "@/components/ui/Brand";
 
@@ -59,9 +64,20 @@ export function SignInView() {
   const [mode, setMode] = useState<"signin" | "signup">(
     params.get("mode") === "signup" ? "signup" : "signin",
   );
+  /**
+   * Creating an account is two screens, not one.
+   *
+   * Credentials first, then the optional detail. Nine fields stacked in a
+   * 460px panel is a wall people abandon, and burying the demographics under
+   * a password field is how they get skipped without being read. Splitting
+   * them also lets the second screen carry its own argument for why it is
+   * worth answering — which is the only thing that actually gets it answered.
+   */
+  const [step, setStep] = useState<"credentials" | "details">("credentials");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [profile, setProfile] = useState<ProfileDetails>({ country: "India" });
   const [error, setError] = useState<string | null>(null);
   const firstField = useRef<HTMLInputElement>(null);
 
@@ -70,7 +86,7 @@ export function SignInView() {
 
   useEffect(() => {
     firstField.current?.focus();
-  }, [mode]);
+  }, [mode, step]);
 
   const finish = (details: Parameters<typeof signInWith>[0], created: boolean) => {
     // Cleared before navigating, not after: an unmount that races the reset
@@ -78,6 +94,18 @@ export function SignInView() {
     setPassword("");
     signInWith(details, created);
     router.push(next);
+  };
+
+  /** Everything gathered so far, in the one shape the provider accepts. */
+  const account = () => {
+    const read = readIdentifier(identifier);
+    if ("error" in read) return null;
+    return {
+      ...profile,
+      name: name.trim() || nameFrom(read),
+      email: read.email,
+      username: read.username || undefined,
+    };
   };
 
   const submit = (e: React.FormEvent) => {
@@ -101,6 +129,11 @@ export function SignInView() {
       return;
     }
     // The password stops here. It is checked for shape and then dropped.
+    if (signup) {
+      setError(null);
+      setStep("details");
+      return;
+    }
     finish(
       {
         name: name.trim() || nameFrom(read),
@@ -111,8 +144,33 @@ export function SignInView() {
     );
   };
 
+  /**
+   * Google gives a name and an address and nothing else.
+   *
+   * So in sign-up mode it lands on the detail step exactly like the form path
+   * does, rather than creating a demographics-free account in one click. In
+   * sign-in mode it is what it says it is and goes straight through.
+   */
   const withGoogle = (account: GoogleAccount) => {
+    if (signup) {
+      setName(account.name);
+      setIdentifier(account.email);
+      setError(null);
+      setStep("details");
+      return;
+    }
     finish({ name: account.name, email: account.email }, false);
+  };
+
+  const createAccount = () => {
+    const details = account();
+    if (!details) {
+      // Only reachable if the credential step were bypassed; it re-opens
+      // rather than failing silently or writing a half-formed account.
+      setStep("credentials");
+      return;
+    }
+    finish(details, true);
   };
 
   if (ready && signedIn) {
@@ -144,10 +202,61 @@ export function SignInView() {
     );
   }
 
+  if (signup && step === "details") {
+    return (
+      <Shell>
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
+            <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-dim">
+              Step 2 of 2
+            </span>
+            <h1 className="m-0 font-serif text-[clamp(1.8rem,3.6vw,2.5rem)] leading-[1.06] tracking-[-0.02em] text-cream-bright">
+              A little <em className="italic">about you</em>
+            </h1>
+            <p className="m-0 text-[13.5px] leading-[1.55] text-muted">
+              Every field is optional — leave them blank and press Create
+              account, or add them later from your dashboard.
+            </p>
+          </div>
+
+          <ProfileFields value={profile} onChange={setProfile} columns={1} />
+
+          <ProfilePrivacyNote />
+
+          <div className="flex flex-col gap-2.5">
+            <button
+              type="button"
+              onClick={createAccount}
+              className="cursor-pointer rounded-full bg-positive px-6 py-3.5 text-[14.5px] font-semibold text-positive-ink transition-colors duration-300 outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            >
+              Create account
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setStep("credentials");
+              setError(null);
+            }}
+            className="m-0 cursor-pointer text-center text-[13px] text-muted transition-colors hover:text-cream"
+          >
+            ← Back to your sign-in details
+          </button>
+        </div>
+      </Shell>
+    );
+  }
+
   return (
     <Shell>
       <form onSubmit={submit} className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
+          {signup ? (
+            <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-dim">
+              Step 1 of 2
+            </span>
+          ) : null}
           <h1 className="m-0 font-serif text-[clamp(1.8rem,3.6vw,2.5rem)] leading-[1.06] tracking-[-0.02em] text-cream-bright">
             {signup ? (
               <>
@@ -226,7 +335,7 @@ export function SignInView() {
           type="submit"
           className="cursor-pointer rounded-full bg-positive px-6 py-3.5 text-[14.5px] font-semibold text-positive-ink transition-colors duration-300 outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
         >
-          {signup ? "Create account" : "Sign in"}
+          {signup ? "Continue" : "Sign in"}
         </button>
 
         <p className="m-0 text-center text-[13px] text-muted">
@@ -262,7 +371,11 @@ export function SignInView() {
  */
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="mx-auto grid min-h-[calc(100dvh-var(--ohq-nav-h))] w-full max-w-[1240px] grid-cols-1 items-center gap-10 px-4 py-[clamp(32px,6vw,72px)] sm:px-8 lg:grid-cols-[1.05fr_460px] lg:gap-16">
+    // `section`, not `main`. The root layout already renders the page's one
+    // `main`, and nesting a second inside it is invalid — React then leaves the
+    // streamed Suspense content stranded in its staging container instead of
+    // adopting it, so the whole page renders twice.
+    <section className="mx-auto grid min-h-[calc(100dvh-var(--ohq-nav-h))] w-full max-w-[1240px] grid-cols-1 items-center gap-10 px-4 py-[clamp(32px,6vw,72px)] sm:px-8 lg:grid-cols-[1.05fr_460px] lg:gap-16">
       <aside className="hidden flex-col gap-7 lg:flex">
         <h2 className="m-0 max-w-[15ch] font-serif text-[clamp(2.2rem,3.6vw,3.2rem)] leading-[1.04] font-normal tracking-[-0.025em] text-balance text-cream-bright">
           An account is <em className="italic">one vote</em>.
@@ -296,6 +409,6 @@ function Shell({ children }: { children: React.ReactNode }) {
       <div className="ohq-panel w-full max-w-[460px] justify-self-center p-6 sm:p-8 lg:justify-self-end">
         {children}
       </div>
-    </main>
+    </section>
   );
 }

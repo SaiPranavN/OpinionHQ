@@ -31,6 +31,7 @@ import {
   readIdentifier,
 } from "@/components/auth/CredentialForm";
 import { GoogleButton, type GoogleAccount } from "@/components/auth/GoogleSignIn";
+import { ProfileFields, type ProfileDetails } from "@/components/auth/ProfileFields";
 import { Brand } from "@/components/ui/Brand";
 import type { Sentiment } from "@/lib/types";
 
@@ -46,27 +47,6 @@ export interface AccountDetails {
   state?: string;
   city?: string;
 }
-
-const OCCUPATIONS = [
-  "Student",
-  "Working professional",
-  "Self-employed or business owner",
-  "Parent or guardian",
-  "Educator",
-  "Retired",
-  "Prefer not to say",
-];
-
-const COUNTRIES = [
-  "India",
-  "United States",
-  "United Kingdom",
-  "United Arab Emirates",
-  "Canada",
-  "Australia",
-  "Singapore",
-  "Other",
-];
 
 interface AuthModalProps {
   mode: "signin" | "signup" | null;
@@ -85,11 +65,9 @@ export function AuthModal({
   onCancel,
   onComplete,
 }: AuthModalProps) {
-  const [form, setForm] = useState<AccountDetails>({
-    name: "",
-    email: "",
-    country: "India",
-  });
+  const [form, setForm] = useState<AccountDetails>({ name: "", email: "" });
+  /** The optional half, shaped by `ProfileFields` and merged in on submit. */
+  const [profile, setProfile] = useState<ProfileDetails>({ country: "India" });
   /** An address or a username — `readIdentifier` decides which. */
   const [identifier, setIdentifier] = useState("");
   /**
@@ -154,6 +132,8 @@ export function AuthModal({
     onComplete(
       {
         ...form,
+        // Only a sign-up collected these, so a sign-in never carries them.
+        ...(signup ? profile : {}),
         name: form.name.trim() || nameFrom(read),
         email: read.email,
         username: read.username || undefined,
@@ -164,7 +144,10 @@ export function AuthModal({
 
   const withGoogle = (account: GoogleAccount) => {
     setPassword("");
-    onComplete({ ...form, name: account.name, email: account.email }, false);
+    onComplete(
+      { ...form, ...(signup ? profile : {}), name: account.name, email: account.email },
+      signup,
+    );
   };
 
   return (
@@ -270,81 +253,12 @@ export function AuthModal({
             className="sm:col-span-2"
           />
 
-          {signup ? (
-            <>
-              <Field label="Date of birth" hint="Optional">
-                <input
-                  type="date"
-                  value={form.dob ?? ""}
-                  onChange={(e) => set("dob", e.target.value)}
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field label="Mobile number" hint="Optional">
-                <input
-                  type="tel"
-                  inputMode="tel"
-                  value={form.mobile ?? ""}
-                  onChange={(e) => set("mobile", e.target.value)}
-                  placeholder="+91 ·········"
-                  autoComplete="tel"
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field label="Occupation" hint="Optional">
-                <select
-                  value={form.occupation ?? ""}
-                  onChange={(e) => set("occupation", e.target.value)}
-                  className={inputClass}
-                >
-                  <option value="">Select…</option>
-                  {OCCUPATIONS.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="Country" hint="Optional">
-                <select
-                  value={form.country ?? ""}
-                  onChange={(e) => set("country", e.target.value)}
-                  className={inputClass}
-                >
-                  <option value="">Select…</option>
-                  {COUNTRIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="State" hint="Optional">
-                <input
-                  value={form.state ?? ""}
-                  onChange={(e) => set("state", e.target.value)}
-                  placeholder="e.g. Karnataka"
-                  autoComplete="address-level1"
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field label="City" hint="Optional">
-                <input
-                  value={form.city ?? ""}
-                  onChange={(e) => set("city", e.target.value)}
-                  placeholder="e.g. Bengaluru"
-                  autoComplete="address-level2"
-                  className={inputClass}
-                />
-              </Field>
-            </>
-          ) : null}
         </div>
+
+        {/* The same component the /signin page renders. These fields used to
+            live only here, which is exactly how the standalone page shipped
+            without them — one copy now, so adding a field adds it to both. */}
+        {signup ? <ProfileFields value={profile} onChange={setProfile} /> : null}
 
         {error ? (
           <p role="alert" className="m-0 text-[12.5px] text-negative-light">
