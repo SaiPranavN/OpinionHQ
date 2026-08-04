@@ -948,7 +948,6 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
         mode={authMode}
         heldVote={pending?.vote ?? null}
         heldNote={pending?.note ?? ""}
-        onModeChange={setAuthMode}
         onCancel={() => {
           setAuthMode(null);
           setPending(null);

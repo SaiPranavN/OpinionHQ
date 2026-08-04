@@ -1,28 +1,44 @@
 "use client";
 
 /**
- * `/signin` — the standalone sign-in page.
+ * `/signin` — signing in, and the whole account-creation flow.
  *
- * Two panels. The left says what an account is for, because a login box with no
- * argument attached is asking for a commitment and offering nothing; the right
- * is the form, and on a phone it is the only thing on screen.
+ * LAYOUT. The panel used to be vertically centred inside a forced full-height
+ * grid, which is fine for a three-field sign-in and cuts the bottom off
+ * everything taller — the details step ran past the fold with no way to reach
+ * it. So the page scrolls normally now: the card sizes to its content, the
+ * argument on the left is sticky so it stays put while a long step scrolls,
+ * and below `lg` the card is the only thing on screen.
  *
- * The sheet in `AuthModal` still exists and is still the right thing when
- * somebody hits a wall mid-task — it keeps their held vote and puts them back
- * where they were. This page is for arriving deliberately, and both run the
- * same validation out of `CredentialForm`.
+ * CREATING AN ACCOUNT IS FOUR STEPS, in this order for a reason:
  *
- * NOTHING IS AUTHENTICATED. There is no identity provider behind either door,
- * which the page says plainly rather than implying a security it does not have.
+ *   1. Name, address, and a bot check.
+ *   2. Prove the address before anything is built on it.
+ *   3. Set a password, twice.
+ *   4. The demographics the product's charts are made of.
+ *
+ * Verifying before the password means a mistyped address fails while nobody has
+ * invested anything, and — the part that matters on a product whose claim is
+ * "one account, one vote" — no account can exist against an address its owner
+ * never confirmed. An unverified account is a vote somebody manufactured.
+ *
+ * Google skips steps 2 and 3: an OAuth address arrives verified and there is no
+ * password to set. It does not skip step 4, because nothing in an OAuth profile
+ * says where somebody lives or what they do.
+ *
+ * NONE OF IT IS AUTHENTICATED YET. No mail service, no captcha provider, no
+ * identity provider. Every one of those is labelled on the screen it appears
+ * on, and the rules they gate are real: the code has to match, the passwords
+ * have to agree, the fields have to be filled.
  */
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { CaptchaBox, type CaptchaState } from "@/components/auth/CaptchaBox";
 import {
   IdentifierField,
-  MIN_PASSWORD,
   OrRule,
   PasswordField,
   authInput,
@@ -32,6 +48,7 @@ import {
   readIdentifier,
 } from "@/components/auth/CredentialForm";
 import { GoogleButton, type GoogleAccount } from "@/components/auth/GoogleSignIn";
+import { OtpInput } from "@/components/auth/OtpInput";
 import {
   ProfileFields,
   ProfilePrivacyNote,
@@ -39,6 +56,20 @@ import {
 } from "@/components/auth/ProfileFields";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Brand } from "@/components/ui/Brand";
+import {
+  CODE_LENGTH,
+  MIN_PASSWORD_LENGTH,
+  RESEND_SECONDS,
+  checkCode,
+  hasErrors,
+  newVerificationCode,
+  passwordsMatch,
+  scorePassword,
+  stepPosition,
+  validateDetails,
+  type DetailErrors,
+  type SignupStep,
+} from "@/lib/auth/signup";
 
 /** Where to land afterwards. Constrained to this app — see `safeNext`. */
 const DEFAULT_NEXT = "/topics";
@@ -64,120 +95,192 @@ export function SignInView() {
   const [mode, setMode] = useState<"signin" | "signup">(
     params.get("mode") === "signup" ? "signup" : "signin",
   );
-  /**
-   * Creating an account is two screens, not one.
-   *
-   * Credentials first, then the optional detail. Nine fields stacked in a
-   * 460px panel is a wall people abandon, and burying the demographics under
-   * a password field is how they get skipped without being read. Splitting
-   * them also lets the second screen carry its own argument for why it is
-   * worth answering — which is the only thing that actually gets it answered.
-   */
-  const [step, setStep] = useState<"credentials" | "details">("credentials");
+  const [step, setStep] = useState<SignupStep>("account");
+  const [viaGoogle, setViaGoogle] = useState(false);
+
+  const [name, setName] = useState("");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [profile, setProfile] = useState<ProfileDetails>({ country: "India" });
+
+  const [captcha, setCaptcha] = useState<CaptchaState>("idle");
+  const [sentCode, setSentCode] = useState("");
+  const [code, setCode] = useState("");
+  const [attempts, setAttempts] = useState(0);
+  const [cooldown, setCooldown] = useState(0);
+
   const [error, setError] = useState<string | null>(null);
+  const [detailErrors, setDetailErrors] = useState<DetailErrors>({});
   const firstField = useRef<HTMLInputElement>(null);
 
   const next = safeNext(params.get("next"));
   const signup = mode === "signup";
+  const strength = scorePassword(password);
 
   useEffect(() => {
     firstField.current?.focus();
   }, [mode, step]);
 
-  const finish = (details: Parameters<typeof signInWith>[0], created: boolean) => {
-    // Cleared before navigating, not after: an unmount that races the reset
-    // would leave the value in a state tree the router is still holding.
+  // Resend cooldown. A code you can request forty times a second is a mail
+  // provider's problem and an abuse vector; real deployments rate-limit this
+  // server-side and this is the same rule where the build can hold it.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = window.setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [cooldown]);
+
+  const reset = () => {
+    setStep("account");
+    setViaGoogle(false);
     setPassword("");
+    setConfirm("");
+    setCode("");
+    setSentCode("");
+    setAttempts(0);
+    setCaptcha("idle");
+    setError(null);
+    setDetailErrors({});
+  };
+
+  const finish = (details: Parameters<typeof signInWith>[0], created: boolean) => {
+    setPassword("");
+    setConfirm("");
     signInWith(details, created);
     router.push(next);
   };
 
-  /** Everything gathered so far, in the one shape the provider accepts. */
-  const account = () => {
-    const read = readIdentifier(identifier);
-    if ("error" in read) return null;
-    return {
-      ...profile,
-      name: name.trim() || nameFrom(read),
-      email: read.email,
-      username: read.username || undefined,
-    };
-  };
+  /* ------------------------------------------------------------ step one */
 
-  const submit = (e: React.FormEvent) => {
+  const submitAccount = (e: React.FormEvent) => {
     e.preventDefault();
     const read = readIdentifier(identifier);
     if ("error" in read) {
       setError(read.error);
       return;
     }
-    if (signup && !name.trim()) {
+
+    if (!signup) {
+      const bad = checkPassword(password);
+      if (bad) {
+        setError(bad);
+        return;
+      }
+      // The password stops here. It is checked for shape and then dropped —
+      // `AccountDetails` has no field it could travel in.
+      finish(
+        { name: nameFrom(read), email: read.email, username: read.username || undefined },
+        false,
+      );
+      return;
+    }
+
+    if (!name.trim()) {
       setError("Add a display name — it is what signs your opinions.");
       return;
     }
-    if (signup && !read.email) {
-      setError("Creating an account needs an email address.");
+    if (!read.email) {
+      setError("Creating an account needs an email address, not a username.");
       return;
     }
-    const bad = checkPassword(password);
-    if (bad) {
-      setError(bad);
+    if (captcha !== "passed") {
+      setError("Complete the bot check first.");
       return;
     }
-    // The password stops here. It is checked for shape and then dropped.
-    if (signup) {
-      setError(null);
-      setStep("details");
+    setError(null);
+    setSentCode(newVerificationCode());
+    setCode("");
+    setAttempts(0);
+    setCooldown(RESEND_SECONDS);
+    setStep("verify");
+  };
+
+  /* ------------------------------------------------------------ step two */
+
+  const submitCode = (entered = code) => {
+    const verdict = checkCode(entered, sentCode, attempts);
+    if (!verdict.ok) {
+      if (verdict.reason === "mismatch") setAttempts((a) => a + 1);
+      setError(verdict.message);
+      return;
+    }
+    setError(null);
+    setStep("password");
+  };
+
+  const resend = () => {
+    if (cooldown > 0) return;
+    setSentCode(newVerificationCode());
+    setCode("");
+    setAttempts(0);
+    setCooldown(RESEND_SECONDS);
+    setError(null);
+  };
+
+  /* ---------------------------------------------------------- step three */
+
+  const submitPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!strength.ok) {
+      setError(strength.hints[0] ?? `Passwords are at least ${MIN_PASSWORD_LENGTH} characters.`);
+      return;
+    }
+    const mismatch = passwordsMatch(password, confirm);
+    if (mismatch) {
+      setError(mismatch);
+      return;
+    }
+    setError(null);
+    setStep("details");
+  };
+
+  /* ----------------------------------------------------------- step four */
+
+  const submitDetails = (e: React.FormEvent) => {
+    e.preventDefault();
+    const found = validateDetails(profile);
+    setDetailErrors(found);
+    if (hasErrors(found)) {
+      setError("A few fields still need filling in.");
+      return;
+    }
+    const read = readIdentifier(identifier);
+    if ("error" in read) {
+      setStep("account");
       return;
     }
     finish(
       {
+        ...profile,
         name: name.trim() || nameFrom(read),
         email: read.email,
         username: read.username || undefined,
       },
-      signup,
+      true,
     );
   };
 
-  /**
-   * Google gives a name and an address and nothing else.
-   *
-   * So in sign-up mode it lands on the detail step exactly like the form path
-   * does, rather than creating a demographics-free account in one click. In
-   * sign-in mode it is what it says it is and goes straight through.
-   */
   const withGoogle = (account: GoogleAccount) => {
-    if (signup) {
-      setName(account.name);
-      setIdentifier(account.email);
-      setError(null);
-      setStep("details");
+    if (!signup) {
+      finish({ name: account.name, email: account.email }, false);
       return;
     }
-    finish({ name: account.name, email: account.email }, false);
+    // A Google address is already verified and there is no password to set.
+    setViaGoogle(true);
+    setName(account.name);
+    setIdentifier(account.email);
+    setError(null);
+    setStep("details");
   };
 
-  const createAccount = () => {
-    const details = account();
-    if (!details) {
-      // Only reachable if the credential step were bypassed; it re-opens
-      // rather than failing silently or writing a half-formed account.
-      setStep("credentials");
-      return;
-    }
-    finish(details, true);
-  };
+  /* -------------------------------------------------------------- render */
 
   if (ready && signedIn) {
     return (
       <Shell>
         <div className="flex flex-col items-start gap-4">
-          <h1 className="m-0 font-serif text-[clamp(1.7rem,3.4vw,2.4rem)] leading-[1.08] text-cream-bright">
+          <h1 className="m-0 font-serif text-[clamp(1.7rem,3.4vw,2.3rem)] leading-[1.08] text-cream-bright">
             You are signed in as <em className="italic">{displayName || "you"}</em>.
           </h1>
           <p className="m-0 text-[14px] leading-[1.6] font-light text-muted">
@@ -202,211 +305,431 @@ export function SignInView() {
     );
   }
 
-  if (signup && step === "details") {
-    return (
-      <Shell>
-        <div className="flex flex-col gap-5">
-          <div className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-dim">
-              Step 2 of 2
-            </span>
-            <h1 className="m-0 font-serif text-[clamp(1.8rem,3.6vw,2.5rem)] leading-[1.06] tracking-[-0.02em] text-cream-bright">
-              A little <em className="italic">about you</em>
-            </h1>
-            <p className="m-0 text-[13.5px] leading-[1.55] text-muted">
-              Every field is optional — leave them blank and press Create
-              account, or add them later from your dashboard.
-            </p>
-          </div>
-
-          <ProfileFields value={profile} onChange={setProfile} columns={1} />
-
-          <ProfilePrivacyNote />
-
-          <div className="flex flex-col gap-2.5">
-            <button
-              type="button"
-              onClick={createAccount}
-              className="cursor-pointer rounded-full bg-positive px-6 py-3.5 text-[14.5px] font-semibold text-positive-ink transition-colors duration-300 outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-            >
-              Create account
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setStep("credentials");
-              setError(null);
-            }}
-            className="m-0 cursor-pointer text-center text-[13px] text-muted transition-colors hover:text-cream"
-          >
-            ← Back to your sign-in details
-          </button>
-        </div>
-      </Shell>
-    );
-  }
+  const position = stepPosition(step, viaGoogle);
 
   return (
     <Shell>
-      <form onSubmit={submit} className="flex flex-col gap-5">
-        <div className="flex flex-col gap-2">
-          {signup ? (
-            <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-dim">
-              Step 1 of 2
+      {signup ? <Progress index={position.index} total={position.total} /> : null}
+
+      {/* ---------------------------------------------------- verify email */}
+      {signup && step === "verify" ? (
+        <div className="flex flex-col gap-5">
+          <Heading
+            title={
+              <>
+                Check your <em className="italic">email</em>
+              </>
+            }
+            blurb={
+              <>
+                We sent a {CODE_LENGTH}-digit code to{" "}
+                <strong className="font-medium text-cream">{identifier.trim()}</strong>. Enter it
+                below to prove the address is yours.
+              </>
+            }
+          />
+
+          {/* There is no mail service, so the code is shown rather than sent.
+              Saying so is the only honest option — and a reviewer who cannot
+              read the code cannot walk the flow at all. */}
+          <p className="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[12px] border border-dashed border-veil/18 bg-veil/3 px-3.5 py-3 text-[12px] text-dim">
+            <span>
+              <strong className="font-medium text-muted">Simulated.</strong> No email is sent —
+              your code is
             </span>
-          ) : null}
-          <h1 className="m-0 font-serif text-[clamp(1.8rem,3.6vw,2.5rem)] leading-[1.06] tracking-[-0.02em] text-cream-bright">
-            {signup ? (
-              <>
-                Create your <em className="italic">account</em>
-              </>
-            ) : (
-              <>
-                Sign in to <Brand />
-              </>
-            )}
-          </h1>
-          <p className="m-0 text-[13.5px] leading-[1.55] text-muted">
-            {signup
-              ? "One vote counts per account. Reading never needs one."
-              : "Reading needs no account. Signing in lets you vote, reply and follow."}
+            <span className="font-mono text-[15px] tracking-[0.28em] text-cream-bright">
+              {sentCode}
+            </span>
           </p>
+
+          <OtpInput
+            length={CODE_LENGTH}
+            value={code}
+            onChange={(nextCode) => {
+              setCode(nextCode);
+              setError(null);
+            }}
+            onComplete={submitCode}
+            invalid={Boolean(error)}
+          />
+
+          {error ? <ErrorLine>{error}</ErrorLine> : null}
+
+          <div className="flex flex-col gap-2.5">
+            <PrimaryButton onClick={() => submitCode()}>Verify email</PrimaryButton>
+            <div className="flex items-center justify-between gap-3 text-[12.5px]">
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("account");
+                  setError(null);
+                }}
+                className="cursor-pointer text-muted transition-colors hover:text-cream"
+              >
+                ← Wrong address?
+              </button>
+              <button
+                type="button"
+                onClick={resend}
+                disabled={cooldown > 0}
+                className="cursor-pointer text-muted transition-colors hover:text-cream disabled:cursor-default disabled:text-dim/60"
+              >
+                {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
+              </button>
+            </div>
+          </div>
         </div>
+      ) : null}
 
-        <GoogleButton
-          label={signup ? "Sign up with Google" : "Continue with Google"}
-          onPick={withGoogle}
-        />
+      {/* -------------------------------------------------- set a password */}
+      {signup && step === "password" ? (
+        <form onSubmit={submitPassword} className="flex flex-col gap-5">
+          <Heading
+            title={
+              <>
+                Set a <em className="italic">password</em>
+              </>
+            }
+            blurb="Your email is confirmed. This is the last thing standing between your account and somebody else."
+          />
 
-        <OrRule />
-
-        <div className="flex flex-col gap-3.5">
-          {signup ? (
-            <AuthField label="Display name" required>
+          <div className="flex flex-col gap-4">
+            <PasswordField
+              value={password}
+              onChange={(v) => {
+                setPassword(v);
+                setError(null);
+              }}
+              signup
+              minLength={MIN_PASSWORD_LENGTH}
+            />
+            <StrengthMeter score={strength.score} label={strength.label} hints={strength.hints} />
+            <AuthField label="Confirm password" required>
               <input
-                ref={firstField}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="How your opinions are signed"
-                autoComplete="name"
+                type="password"
+                value={confirm}
+                onChange={(e) => {
+                  setConfirm(e.target.value);
+                  setError(null);
+                }}
+                placeholder="Type it again"
+                autoComplete="new-password"
                 className={authInput}
               />
             </AuthField>
-          ) : null}
+          </div>
 
-          <IdentifierField
-            value={identifier}
-            onChange={setIdentifier}
-            signup={signup}
-            inputRef={signup ? undefined : firstField}
-          />
+          {error ? <ErrorLine>{error}</ErrorLine> : null}
 
-          <PasswordField
-            value={password}
-            onChange={setPassword}
-            signup={signup}
-            forgotHref={
-              signup ? undefined : (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setError(
-                      "There is no account store in this prototype, so there is nothing to reset. Any password of 8+ characters signs you in.",
-                    )
-                  }
-                  className="cursor-pointer text-[11.5px] text-dim underline decoration-veil/25 underline-offset-4 transition-colors hover:text-soft"
-                >
-                  Forgot password?
-                </button>
-              )
+          <div className="flex flex-col gap-2.5">
+            <PrimaryButton type="submit">Continue</PrimaryButton>
+            <BackLink onClick={() => setStep("verify")}>← Back to verification</BackLink>
+          </div>
+        </form>
+      ) : null}
+
+      {/* ------------------------------------------------------- about you */}
+      {signup && step === "details" ? (
+        <form onSubmit={submitDetails} className="flex flex-col gap-5">
+          <Heading
+            title={
+              <>
+                A little <em className="italic">about you</em>
+              </>
             }
+            blurb="Every field is needed — these are what the region, age and occupation breakdowns are built from."
           />
-        </div>
 
-        {error ? (
-          <p role="alert" className="m-0 text-[12.5px] leading-[1.5] text-negative-light">
-            {error}
-          </p>
-        ) : null}
-
-        <button
-          type="submit"
-          className="cursor-pointer rounded-full bg-positive px-6 py-3.5 text-[14.5px] font-semibold text-positive-ink transition-colors duration-300 outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-        >
-          {signup ? "Continue" : "Sign in"}
-        </button>
-
-        <p className="m-0 text-center text-[13px] text-muted">
-          {signup ? "Already have an account?" : "New to OpinionHQ?"}{" "}
-          <button
-            type="button"
-            onClick={() => {
-              setMode(signup ? "signin" : "signup");
+          <ProfileFields
+            value={profile}
+            onChange={(nextProfile) => {
+              setProfile(nextProfile);
               setError(null);
             }}
-            className="cursor-pointer font-medium text-cream underline decoration-veil/30 underline-offset-4 transition-colors hover:decoration-veil/70"
-          >
-            {signup ? "Sign in" : "Create one"}
-          </button>
-        </p>
+            errors={detailErrors}
+            columns={1}
+          />
 
-        <p className="m-0 rounded-[12px] border border-veil/10 bg-veil/3 p-3.5 text-[11.5px] leading-[1.6] text-dim">
-          <strong className="font-medium text-muted">Simulated sign-in.</strong> There is
-          no identity provider behind this page, so any username or address and any
-          password of {MIN_PASSWORD}+ characters is accepted. The password is checked for
-          length and then discarded — it is never stored, and nothing entered here leaves
-          this browser.
-        </p>
-      </form>
+          <ProfilePrivacyNote />
+
+          {error ? <ErrorLine>{error}</ErrorLine> : null}
+
+          <div className="flex flex-col gap-2.5">
+            <PrimaryButton type="submit">Create account</PrimaryButton>
+            <BackLink onClick={() => setStep(viaGoogle ? "account" : "password")}>
+              {viaGoogle ? "← Start over" : "← Back to password"}
+            </BackLink>
+          </div>
+        </form>
+      ) : null}
+
+      {/* --------------------------------------- sign in, or step one of up */}
+      {!signup || step === "account" ? (
+        <form onSubmit={submitAccount} className="flex flex-col gap-5">
+          <Heading
+            title={
+              signup ? (
+                <>
+                  Create your <em className="italic">account</em>
+                </>
+              ) : (
+                <>
+                  Sign in to <Brand />
+                </>
+              )
+            }
+            blurb={
+              signup
+                ? "One vote counts per account — which only means something if every account is a real person. Reading never needs one."
+                : "Reading needs no account. Signing in lets you vote, reply and follow."
+            }
+          />
+
+          <GoogleButton
+            label={signup ? "Sign up with Google" : "Continue with Google"}
+            onPick={withGoogle}
+          />
+
+          <OrRule />
+
+          <div className="flex flex-col gap-4">
+            {signup ? (
+              <AuthField label="Display name" required>
+                <input
+                  ref={firstField}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="How your opinions are signed"
+                  autoComplete="name"
+                  className={authInput}
+                />
+              </AuthField>
+            ) : null}
+
+            <IdentifierField
+              value={identifier}
+              onChange={setIdentifier}
+              signup={signup}
+              inputRef={signup ? undefined : firstField}
+            />
+
+            {/* Sign-in asks for the password here; sign-up sets one two steps
+                later, once the address has actually been proved. */}
+            {!signup ? (
+              <PasswordField
+                value={password}
+                onChange={setPassword}
+                signup={false}
+                forgotHref={
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setError(
+                        "There is no account store in this prototype, so there is nothing to reset. Any password of 8+ characters signs you in.",
+                      )
+                    }
+                    className="cursor-pointer text-[11.5px] text-dim underline decoration-veil/25 underline-offset-4 transition-colors hover:text-soft"
+                  >
+                    Forgot password?
+                  </button>
+                }
+              />
+            ) : (
+              <CaptchaBox
+                state={captcha}
+                onChange={(nextState) => {
+                  setCaptcha(nextState);
+                  setError(null);
+                }}
+              />
+            )}
+          </div>
+
+          {error ? <ErrorLine>{error}</ErrorLine> : null}
+
+          <PrimaryButton type="submit" disabled={signup && captcha !== "passed"}>
+            {signup ? "Send verification code" : "Sign in"}
+          </PrimaryButton>
+
+          <p className="m-0 text-center text-[13px] text-muted">
+            {signup ? "Already have an account?" : "New to OpinionHQ?"}{" "}
+            <button
+              type="button"
+              onClick={() => {
+                setMode(signup ? "signin" : "signup");
+                reset();
+              }}
+              className="cursor-pointer font-medium text-cream underline decoration-veil/30 underline-offset-4 transition-colors hover:decoration-veil/70"
+            >
+              {signup ? "Sign in" : "Create one"}
+            </button>
+          </p>
+        </form>
+      ) : null}
+
+      <p className="m-0 border-t border-veil/8 pt-4 text-[11.5px] leading-[1.6] text-dim">
+        <strong className="font-medium text-muted">Prototype.</strong> There is no identity
+        provider, no mail service and no captcha provider behind this page — the code is generated
+        in your browser and the bot check is a placeholder. Passwords are checked for strength and
+        then discarded; nothing entered here leaves this browser.
+      </p>
     </Shell>
   );
 }
 
+/* ------------------------------------------------------------------ parts */
+
+function Heading({ title, blurb }: { title: React.ReactNode; blurb: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h1 className="m-0 font-serif text-[clamp(1.7rem,3.2vw,2.3rem)] leading-[1.08] tracking-[-0.02em] text-cream-bright">
+        {title}
+      </h1>
+      <p className="m-0 text-[13.5px] leading-[1.55] text-muted">{blurb}</p>
+    </div>
+  );
+}
+
+/** Where you are, and how much is left. Segments, not a percentage. */
+function Progress({ index, total }: { index: number; total: number }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-dim">
+        Step {index} of {total}
+      </span>
+      <span aria-hidden className="flex gap-1.5">
+        {Array.from({ length: total }, (_, i) => (
+          <span
+            key={i}
+            className={`h-[3px] flex-1 rounded-full transition-colors duration-500 ${
+              i < index ? "bg-positive" : "bg-veil/12"
+            }`}
+          />
+        ))}
+      </span>
+    </div>
+  );
+}
+
+function StrengthMeter({
+  score,
+  label,
+  hints,
+}: {
+  score: number;
+  label: string;
+  hints: string[];
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span aria-hidden className="flex gap-1.5">
+        {[0, 1, 2, 3].map((i) => (
+          <span
+            key={i}
+            className={`h-[3px] flex-1 rounded-full transition-colors duration-300 ${
+              i < score ? (BAR[score] ?? "bg-veil/12") : "bg-veil/12"
+            }`}
+          />
+        ))}
+      </span>
+      <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+        <span className="text-[11.5px] text-muted">{label}</span>
+        {hints[0] ? <span className="text-[11.5px] text-dim">{hints[0]}</span> : null}
+      </span>
+    </div>
+  );
+}
+
+const BAR: Record<number, string> = {
+  1: "bg-negative",
+  2: "bg-[#f0a83c]",
+  3: "bg-positive/70",
+  4: "bg-positive",
+};
+
+function PrimaryButton({
+  children,
+  type = "button",
+  onClick,
+  disabled,
+}: {
+  children: React.ReactNode;
+  type?: "button" | "submit";
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className="cursor-pointer rounded-full bg-positive px-6 py-3.5 text-[14.5px] font-semibold text-positive-ink transition-colors duration-300 outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:bg-veil/10 disabled:text-dim"
+    >
+      {children}
+    </button>
+  );
+}
+
+function BackLink({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="m-0 cursor-pointer text-center text-[13px] text-muted transition-colors hover:text-cream"
+    >
+      {children}
+    </button>
+  );
+}
+
+function ErrorLine({ children }: { children: React.ReactNode }) {
+  return (
+    <p role="alert" className="m-0 text-[12.5px] leading-[1.5] text-negative-light">
+      {children}
+    </p>
+  );
+}
+
 /**
- * The frame. The left panel is decoration in the useful sense — it is the only
- * place on this page that says what the account is *for* — and it is dropped
- * entirely below `lg`, where the form is the whole job.
+ * The frame.
+ *
+ * `items-start` with real padding rather than a centred full-height grid: the
+ * four-step flow is much taller than a sign-in box, and centring it meant the
+ * bottom of the tallest step fell off the screen. The argument on the left is
+ * sticky so it stays in view while a long step scrolls, and it is dropped
+ * entirely below `lg` where the form is the whole job.
  */
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    // `section`, not `main`. The root layout already renders the page's one
-    // `main`, and nesting a second inside it is invalid — React then leaves the
-    // streamed Suspense content stranded in its staging container instead of
-    // adopting it, so the whole page renders twice.
-    <section className="mx-auto grid min-h-[calc(100dvh-var(--ohq-nav-h))] w-full max-w-[1240px] grid-cols-1 items-center gap-10 px-4 py-[clamp(32px,6vw,72px)] sm:px-8 lg:grid-cols-[1.05fr_460px] lg:gap-16">
-      <aside className="hidden flex-col gap-7 lg:flex">
-        <h2 className="m-0 max-w-[15ch] font-serif text-[clamp(2.2rem,3.6vw,3.2rem)] leading-[1.04] font-normal tracking-[-0.025em] text-balance text-cream-bright">
+    <section className="mx-auto grid w-full max-w-[1120px] grid-cols-1 items-start gap-10 px-4 py-[clamp(28px,5vw,64px)] sm:px-8 lg:grid-cols-[minmax(0,1fr)_468px] lg:gap-14">
+      <aside className="hidden flex-col gap-6 lg:sticky lg:top-[calc(var(--ohq-nav-h)+56px)] lg:flex">
+        <h2 className="m-0 max-w-[13ch] font-serif text-[clamp(2rem,3.2vw,2.9rem)] leading-[1.04] font-normal tracking-[-0.025em] text-balance text-cream-bright">
           An account is <em className="italic">one vote</em>.
         </h2>
-        <p className="m-0 max-w-[46ch] text-[15px] leading-[1.65] font-light text-muted">
+        <p className="m-0 max-w-[42ch] text-[14.5px] leading-[1.6] font-light text-muted">
           Every number on <Brand /> is worth reading because it counts each person
           once. That is the only reason this page exists — not to gate the
           reading, which is open to everyone, but to make the counting mean
           something.
         </p>
-        <ul className="m-0 flex list-none flex-col gap-3.5 p-0">
+        <ul className="m-0 flex list-none flex-col gap-3 p-0">
           {[
             ["Read everything without one", "Topics, polls and public questions are open."],
-            ["Vote and explain yourself", "Your reason sits next to your vote."],
-            ["Ask people who proved it", "Two questions free, then Pro."],
+            ["One verified email, one account", "Which is what stops a poll being stuffed."],
+            ["Your reason sits next to your vote", "Numbers without reasons explain nothing."],
           ].map(([title, body]) => (
             <li key={title} className="flex items-start gap-3">
-              <span
-                aria-hidden
-                className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-positive"
-              />
+              <span aria-hidden className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-positive" />
               <span className="flex flex-col gap-0.5">
-                <span className="text-[14px] font-medium text-cream">{title}</span>
-                <span className="text-[13px] leading-[1.5] font-light text-dim">{body}</span>
+                <span className="text-[13.5px] font-medium text-cream">{title}</span>
+                <span className="text-[12.5px] leading-[1.5] font-light text-dim">{body}</span>
               </span>
             </li>
           ))}
         </ul>
       </aside>
 
-      <div className="ohq-panel w-full max-w-[460px] justify-self-center p-6 sm:p-8 lg:justify-self-end">
+      <div className="ohq-panel flex w-full max-w-[468px] flex-col gap-5 justify-self-center p-6 sm:p-7 lg:justify-self-end">
         {children}
       </div>
     </section>

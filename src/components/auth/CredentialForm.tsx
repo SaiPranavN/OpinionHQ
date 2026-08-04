@@ -124,12 +124,20 @@ export function PasswordField({
   signup,
   className = "",
   forgotHref,
+  minLength = MIN_PASSWORD,
 }: {
   value: string;
   onChange: (next: string) => void;
   signup: boolean;
   className?: string;
   forgotHref?: React.ReactNode;
+  /**
+   * Sign-in and sign-up have different floors on purpose — sign-in has to
+   * accept a password set under an older rule, sign-up enforces the current
+   * one. The caller passes its own so the placeholder and the strength meter
+   * cannot show two different numbers, which is exactly what they did.
+   */
+  minLength?: number;
 }) {
   const [shown, setShown] = useState(false);
   return (
@@ -138,14 +146,14 @@ export function PasswordField({
       required
       className={className}
       trailing={forgotHref}
-      hint={signup ? `At least ${MIN_PASSWORD} characters` : undefined}
+      hint={signup ? `At least ${minLength} characters` : undefined}
     >
       <span className="relative flex">
         <input
           type={shown ? "text" : "password"}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={`At least ${MIN_PASSWORD} characters`}
+          placeholder={`At least ${minLength} characters`}
           autoComplete={signup ? "new-password" : "current-password"}
           className={`${authInput} pr-[64px]`}
         />
@@ -165,37 +173,70 @@ export function PasswordField({
 export const authInput =
   "w-full rounded-[11px] border border-veil/12 bg-surface-sunken px-3.5 py-3 text-[14px] text-cream outline-none transition-colors duration-300 focus:border-positive/50";
 
+/**
+ * One labelled field.
+ *
+ * Renders a `<label>` when it wraps a real form control and a `<div>` when the
+ * control is a custom listbox — wrapping a `<button>` in a label makes clicking
+ * the label toggle the popup open and straight back shut, so `htmlFor` points
+ * at the button instead.
+ *
+ * The error sits under the field rather than in a summary at the top, because
+ * a message that is not next to the box it is about makes somebody hunt for
+ * which of six fields it means.
+ */
 export function AuthField({
   label,
   hint,
   required,
+  error,
   trailing,
+  htmlFor,
   className = "",
   children,
 }: {
   label: string;
   hint?: string;
   required?: boolean;
+  error?: string;
   trailing?: React.ReactNode;
+  /** Set when the control is not a native input — renders a div, not a label. */
+  htmlFor?: string;
   className?: string;
   children: React.ReactNode;
 }) {
+  const Wrapper = htmlFor ? "div" : "label";
   return (
-    <label className={`flex flex-col gap-1.5 ${className}`}>
+    <Wrapper className={`flex flex-col gap-1.5 ${className}`}>
       <span className="flex items-baseline justify-between gap-3">
-        <span className="flex items-baseline gap-1.5 text-[12.5px] text-muted">
-          {label}
-          {required ? (
-            <span aria-hidden className="text-positive-light">
-              *
-            </span>
-          ) : null}
-          {hint ? <span className="text-[10.5px] text-dim">{hint}</span> : null}
-        </span>
+        {htmlFor ? (
+          <label htmlFor={htmlFor} className="flex items-baseline gap-1.5 text-[12.5px] text-muted">
+            {label}
+            {required ? (
+              <span aria-hidden className="text-positive-light">
+                *
+              </span>
+            ) : null}
+            {hint ? <span className="text-[10.5px] text-dim">{hint}</span> : null}
+          </label>
+        ) : (
+          <span className="flex items-baseline gap-1.5 text-[12.5px] text-muted">
+            {label}
+            {required ? (
+              <span aria-hidden className="text-positive-light">
+                *
+              </span>
+            ) : null}
+            {hint ? <span className="text-[10.5px] text-dim">{hint}</span> : null}
+          </span>
+        )}
         {trailing}
       </span>
       {children}
-    </label>
+      {error ? (
+        <span className="text-[11.5px] leading-[1.4] text-negative-light">{error}</span>
+      ) : null}
+    </Wrapper>
   );
 }
 
