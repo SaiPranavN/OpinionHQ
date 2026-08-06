@@ -8,13 +8,23 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "supabase": "node --env-file-if-exists=.env.local node_modules/supabase/dist/supabase.js",
+    "db:link": "npm run supabase -- link --project-ref vagxiakadfsfykspfqui",
+    "db:push": "npm run supabase -- db push",
+    "db:diff": "npm run supabase -- db diff --linked",
+    "db:types": "npm run supabase -- gen types typescript --linked --schema public > src/lib/supabase/database.types.ts",
+    "db:gen-reference": "node --import tsx scripts/generate-reference-migration.ts",
+    "db:verify": "node --env-file-if-exists=.env.local --import tsx scripts/verify-supabase.ts"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.1",
     "jspdf": "^4.2.1",
     "next": "15.5.4",
     "react": "19.1.1",
-    "react-dom": "19.1.1"
+    "react-dom": "19.1.1",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.1",
@@ -22,9 +32,12 @@
     "@types/node": "24.5.2",
     "@types/react": "19.1.13",
     "@types/react-dom": "19.1.9",
+    "dotenv": "^17.4.2",
     "eslint": "9.36.0",
     "eslint-config-next": "15.5.4",
+    "supabase": "^2.111.0",
     "tailwindcss": "4.1.13",
+    "tsx": "^4.23.9",
     "typescript": "5.9.2",
     "vitest": "3.2.4"
   }

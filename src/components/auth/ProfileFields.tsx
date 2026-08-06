@@ -24,7 +24,13 @@
 import { Select, type SelectOption } from "@/components/ui/Select";
 import { AuthField, authInput } from "@/components/auth/CredentialForm";
 import type { DetailErrors } from "@/lib/auth/signup";
+import { COUNTRIES, OCCUPATIONS } from "@/lib/demographics";
 import { PLACES } from "@/lib/places";
+
+// Re-exported so existing imports keep working. The lists themselves moved to
+// `lib/demographics.ts`, where the database seed can also read them — see the
+// note at the top of that file.
+export { COUNTRIES, OCCUPATIONS };
 
 /** The demographic half of an account. Keys match `Profile` exactly. */
 export interface ProfileDetails {
@@ -35,27 +41,6 @@ export interface ProfileDetails {
   state?: string;
   city?: string;
 }
-
-export const OCCUPATIONS = [
-  "Student",
-  "Working professional",
-  "Self-employed or business owner",
-  "Parent or guardian",
-  "Educator",
-  "Retired",
-  "Prefer not to say",
-];
-
-export const COUNTRIES = [
-  "India",
-  "United States",
-  "United Kingdom",
-  "United Arab Emirates",
-  "Canada",
-  "Australia",
-  "Singapore",
-  "Other",
-];
 
 const asOptions = (values: readonly string[]): SelectOption[] =>
   values.map((value) => ({ value, label: value }));

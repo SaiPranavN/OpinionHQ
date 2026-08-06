@@ -2,12 +2,15 @@
 
 Topic-centric public-opinion intelligence platform.
 
-This repository currently holds a **clickable prototype** of the MVP journey
-described in [`docs/ProjectBrief.md`](docs/ProjectBrief.md), built on the stack
-the production app will use (see
-[`docs/OpinionHQ-Technical-Roadmap.md`](docs/OpinionHQ-Technical-Roadmap.md)).
-Its purpose is to settle features and workflows before the database, auth and
-admin systems are built.
+This repository holds the **clickable prototype** of the MVP journey described in
+[`docs/ProjectBrief.md`](docs/ProjectBrief.md), and — on `feature/version1.0` —
+the beginning of the real thing. The UI below is what the prototype settled; the
+database underneath it is being built now.
+
+**The schema, the keys and the access rules are documented in
+[`docs/database.md`](docs/database.md).** Everything described in "What works
+today" still runs on fixtures and `localStorage`; the Supabase layer exists but
+the read models have not been switched over to it yet.
 
 ## Running it
 
@@ -19,15 +22,24 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:3000.
+Then open http://localhost:3000. The app runs without any Supabase
+configuration — the prototype fixtures do not need it.
 
-| Script              | What it does                            |
-| ------------------- | --------------------------------------- |
-| `npm run dev`       | Dev server                              |
-| `npm run build`     | Production build (`output: standalone`) |
-| `npm run typecheck` | `tsc --noEmit`                          |
-| `npm run lint`      | ESLint                                  |
-| `npm test`          | Vitest unit tests                       |
+To connect the database, copy `.env.example` to `.env.local`, fill it in, and
+follow [`docs/database.md`](docs/database.md).
+
+| Script                     | What it does                                             |
+| -------------------------- | -------------------------------------------------------- |
+| `npm run dev`              | Dev server                                                |
+| `npm run build`            | Production build (`output: standalone`)                   |
+| `npm run typecheck`        | `tsc --noEmit`                                            |
+| `npm run lint`             | ESLint                                                    |
+| `npm test`                 | Vitest unit tests                                         |
+| `npm run db:link`          | Point the Supabase CLI at the project                     |
+| `npm run db:push`          | Apply pending migrations                                  |
+| `npm run db:types`         | Regenerate `src/lib/supabase/database.types.ts`           |
+| `npm run db:gen-reference` | Write a reference-data migration from the TypeScript      |
+| `npm run db:verify`        | Round-trip the live project, including that RLS refuses   |
 
 ## What works today
 

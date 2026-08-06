@@ -184,8 +184,14 @@ export function isVerifiedFor(
   return credentials.some((c) => c.userId === userId && c.category === category);
 }
 
-/** Strongest claim first, so a reader who stops after one line reads that one. */
-const WEIGHT: Record<ProofType, number> = {
+/**
+ * Strongest claim first, so a reader who stops after one line reads that one.
+ *
+ * Exported because the database stores it too: `proof_kinds.weight` is seeded
+ * from here, so an admin queue ordering credentials in SQL and a card ordering
+ * them in React agree without either one restating the ranking.
+ */
+export const PROOF_WEIGHT: Record<ProofType, number> = {
   employment: 0,
   "rank-card": 0,
   "student-id": 0,
@@ -199,7 +205,7 @@ const WEIGHT: Record<ProofType, number> = {
 };
 
 export function orderCredentials(credentials: Credential[]): Credential[] {
-  return [...credentials].sort((a, b) => WEIGHT[a.proofType] - WEIGHT[b.proofType]);
+  return [...credentials].sort((a, b) => PROOF_WEIGHT[a.proofType] - PROOF_WEIGHT[b.proofType]);
 }
 
 /** The disclosure under a set of credential chips, named per area. */

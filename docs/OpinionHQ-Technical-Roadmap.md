@@ -2,6 +2,18 @@
 
 Based on `docs/ProjectBrief.md` and `AGENTS.md`. Solo-dev friendly, TypeScript throughout, no unnecessary microservices, self-hosted on your own domain (no Vercel).
 
+> **§1 "Backend / Data" and "Auth", and §2, are superseded by
+> [`docs/database.md`](database.md).** The data layer is Supabase — Postgres, its
+> auth service, and row-level security — in place of Prisma, Auth.js and a
+> self-hosted Postgres. The decision and what it bought are argued in that
+> document; the short version is that Ask Verified's privacy rules belong in the
+> database rather than in whichever handler remembers to check them.
+>
+> The phasing in §3 still describes the order of the work, and §4's argument
+> about avoiding Vercel is unaffected: the app remains a plain Node container
+> that talks to a Postgres over the network. The sections below are kept as
+> written so the reasoning that led here stays readable.
+
 ---
 
 ## 1. Tech Stack

@@ -1,0 +1,161 @@
+/**
+ * The TypeScript unions and the Postgres enums have to say the same thing.
+ *
+ * WHY THIS TEST IS WORTH ITS WEIGHT. Nothing else catches this. Adding a status
+ * to `StatusId` compiles, ships, renders, and then fails at the one moment it
+ * matters — an editor saves, Postgres rejects `'Postponed'` as not a member of
+ * `artifact_status`, and the error surfaces as a failed write on a form. Adding
+ * a *place* is caught by the generator; adding an enum member is not, because
+ * enum members live in hand-written SQL.
+ *
+ * It reads the migration files as text rather than querying a database, so it
+ * runs in CI with no credentials and no container.
+ */
+
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+
+import { describe, expect, it } from "vitest";
+
+import { ASK_CATEGORIES } from "@/lib/ask/taxonomy";
+import { PROOF_KINDS } from "@/lib/ask/verification";
+import { AGE_BANDS } from "@/lib/demographics";
+import { FREE_ASKS } from "@/lib/entitlements";
+import { MAX_COMMENT_DEPTH } from "@/lib/ask/comments";
+import { MAX_MATCHES, REPLY_CAP } from "@/lib/ask/taxonomy";
+import { MAX_POLL_OPTIONS } from "@/lib/types";
+import { PLACES } from "@/lib/places";
+import { CATEGORIES, STATUS_STYLES } from "@/lib/taxonomy";
+
+const MIGRATIONS = join(process.cwd(), "supabase", "migrations");
+
+const sql = readdirSync(MIGRATIONS)
+  .filter((f) => f.endsWith(".sql"))
+  .sort()
+  .map((f) => readFileSync(join(MIGRATIONS, f), "utf8"))
+  .join("\n");
+
+/** The members of `create type public.<name> as enum (...)`, in file order. */
+function enumMembers(name: string): string[] {
+  const match = sql.match(new RegExp(`create type public\\.${name} as enum \\(([^)]*)\\)`, "s"));
+  if (!match?.[1]) throw new Error(`no enum named ${name} in the migrations`);
+  return [...match[1].matchAll(/'((?:[^']|'')*)'/g)].map((m) => m[1]!.replace(/''/g, "'"));
+}
+
+describe("enums match their TypeScript unions", () => {
+  it("sentiment", () => {
+    expect(enumMembers("sentiment")).toEqual(["Positive", "Neutral", "Negative"]);
+  });
+
+  it("artifact_status covers every StatusId", () => {
+    expect(enumMembers("artifact_status").sort()).toEqual(Object.keys(STATUS_STYLES).sort());
+  });
+
+  it("place_level covers every level in the registry", () => {
+    const used = [...new Set(PLACES.map((p) => p.level))].sort();
+    const declared = enumMembers("place_level");
+    for (const level of used) expect(declared).toContain(level);
+  });
+
+  it("ask_category covers every Ask area", () => {
+    expect(enumMembers("ask_category").sort()).toEqual(ASK_CATEGORIES.map((c) => c.id).sort());
+  });
+
+  it("proof_type covers every kind of proof", () => {
+    expect(enumMembers("proof_type").sort()).toEqual(PROOF_KINDS.map((k) => k.id).sort());
+  });
+
+  it("age_band matches the reported buckets", () => {
+    expect(enumMembers("age_band")).toEqual([...AGE_BANDS]);
+  });
+
+  it("option_slot allows exactly as many options as a poll may have", () => {
+    expect(enumMembers("option_slot")).toHaveLength(MAX_POLL_OPTIONS);
+  });
+});
+
+describe("categories reach the database", () => {
+  it("every category id is inserted by the generated reference migration", () => {
+    for (const category of CATEGORIES) {
+      expect(sql).toContain(`('${category.id}', '${category.label.replace(/'/g, "''")}'`);
+    }
+  });
+
+  it("every place id is inserted", () => {
+    for (const place of PLACES) {
+      expect(sql).toContain(`('${place.id}', '${place.label.replace(/'/g, "''")}'`);
+    }
+  });
+});
+
+describe("limits are enforced in both places", () => {
+  // These are the numbers a policy or a trigger hard-codes because a policy
+  // cannot import a constant. Each one is restated in SQL, so each one can
+  // drift; asserting the literal is the cheapest way to notice.
+
+  it("the free-ask allowance in can_ask matches FREE_ASKS", () => {
+    const fn = sql.match(/create or replace function public\.can_ask[\s\S]*?\$\$;/)?.[0] ?? "";
+    expect(fn).toContain(`public.asks_used(uid) < ${FREE_ASKS}`);
+  });
+
+  it("the match bound matches MAX_MATCHES", () => {
+    const fn = sql.match(/function public\.check_match_count[\s\S]*?\$\$;/)?.[0] ?? "";
+    expect(fn).toContain(`> ${MAX_MATCHES}`);
+  });
+
+  it("the reply cap matches REPLY_CAP", () => {
+    const fn = sql.match(/function public\.check_reply_cap[\s\S]*?\$\$;/)?.[0] ?? "";
+    expect(fn).toContain(`> ${REPLY_CAP}`);
+  });
+
+  it("comment depth is clamped at MAX_COMMENT_DEPTH", () => {
+    // Columns are space-aligned in the migrations, so compare on collapsed
+    // whitespace rather than forcing the SQL to be formatted for a test.
+    const flat = sql.replace(/[ \t]+/g, " ");
+    expect(flat).toContain(`check (depth between 0 and ${MAX_COMMENT_DEPTH})`);
+    const fn = sql.match(/function public\.set_comment_depth[\s\S]*?\$\$;/)?.[0] ?? "";
+    expect(fn).toContain(`least(coalesce(parent_depth, 0) + 1, ${MAX_COMMENT_DEPTH})`);
+  });
+
+  it("a poll's upper option bound matches MAX_POLL_OPTIONS", () => {
+    const fn = sql.match(/function public\.check_poll_option_count[\s\S]*?\$\$;/)?.[0] ?? "";
+    expect(fn).toContain(`> ${MAX_POLL_OPTIONS}`);
+  });
+});
+
+describe("row-level security is not optional", () => {
+  const created = [...sql.matchAll(/^create table public\.(\w+)/gm)].map((m) => m[1]!);
+  const enabled = new Set(
+    [...sql.matchAll(/alter table public\.(\w+)\s+enable row level security/g)].map((m) => m[1]!),
+  );
+
+  it("every table created has RLS turned on", () => {
+    // A table with RLS off is a table the publishable key reads in full. This
+    // is the single check most likely to catch a genuine mistake in a future
+    // migration, because forgetting the `alter table` line is invisible in
+    // review and total in effect.
+    const missing = created.filter((t) => !enabled.has(t));
+    expect(missing).toEqual([]);
+  });
+
+  it("finds the tables it claims to check", () => {
+    // Guards the regex above: if it ever stops matching, the test would pass
+    // vacuously on an empty list and assert nothing at all.
+    expect(created.length).toBeGreaterThan(30);
+  });
+});
+
+describe("security definer functions pin their search path", () => {
+  it("every one sets search_path", () => {
+    // A SECURITY DEFINER function with a mutable search_path is the classic
+    // Postgres privilege-escalation hole: a role that can create a schema can
+    // shadow a table the function reads.
+    const definers = [
+      ...sql.matchAll(/create or replace function public\.(\w+)[\s\S]*?language \w+[\s\S]*?\$\$/g),
+    ];
+    const unpinned = definers
+      .filter((m) => m[0].includes("security definer") && !m[0].includes("set search_path"))
+      .map((m) => m[1]!);
+    expect(unpinned).toEqual([]);
+  });
+});
