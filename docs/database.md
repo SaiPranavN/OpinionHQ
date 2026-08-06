@@ -133,6 +133,79 @@ it preserves the one-directional containment the product needs. Filtering to
 India does **not** return `worldwide` artifacts. A place filter that quietly
 widens itself is a filter you stop trusting.
 
+### The account hierarchy — two axes, not one ladder
+
+This is the thing to hold on to:
+
+| | Meaning |
+|---|---|
+| **role** — `member` / `editor` / `admin` | what you are *permitted* to do |
+| **pro** — a live `subscriptions` row | what you have *paid for* |
+
+A Pro subscriber is a member who pays. An admin may or may not be Pro, and it
+does not matter either way. Folding them into one ladder would mean a declined
+card could touch somebody's permissions, and an admin would need a subscription
+granted to them to use the feature they are meant to be administering.
+
+| | member | editor | admin |
+|---|:--:|:--:|:--:|
+| Vote, write opinions, reply, ask | ● | ● | ● |
+| Answer questions (with verified proof) | ● | ● | ● |
+| Create and publish topics and polls | | ● | ● |
+| Timeline, status, moderation | | ● | ● |
+| Archive a topic | | ● | ● |
+| **Delete** a topic or poll | | | ● |
+| Grant roles, suspend accounts | | | ● |
+| Delete accounts | | | ● |
+| Approve verification proof | | | ● |
+| Read the audit log | | | ● |
+
+Editor and admin are separate because a new teammate needs to publish topics on
+their first day, and no version of that job also requires the power to delete
+somebody's account. Editors *archive*; `archived_at` takes a topic off the site
+and keeps the measurements. Deleting one destroys every opinion attached to it,
+which is why the button is further away.
+
+**Deleting an account is a hard delete.** It removes their votes and opinions,
+and the topic's participant count and sentiment split move to match — a
+percentage published yesterday can read differently today, and a PDF exported
+before the deletion will no longer agree with the live page. It also removes
+**answers they wrote to other people's questions**: if a verified professional
+deletes their account, the askers they helped lose the advice. `topic_daily_stats`
+is not rewritten, so a trend chart shows a step where the deletion landed. That
+is honest; silently editing past measurements to match a present-day deletion
+would be worse.
+
+Reach for `set_account_suspended` first. It is reversible, stops the account
+writing anything (checked in the insert policies, so a token issued before the
+suspension does not get a grace period), and destroys nothing.
+
+Every irreversible admin action writes to `admin_actions` in the same
+transaction, before the thing it describes stops existing.
+
+**One thing the admin UI must get right:** a DELETE that RLS refuses does not
+raise an error — it silently affects zero rows. Check the returned count, not
+just the absence of an error, or the screen will report success on a refusal.
+
+#### The first admin
+
+There is a chicken and egg that cannot be solved in SQL: every privileged
+function requires an admin, and a fresh database has none. A self-service "claim
+admin if there are none" call would close it and would also mean whoever signs up
+first — including somebody who found the site before you did — becomes the
+administrator.
+
+So it is done by hand, once, in the Supabase SQL editor, after signing up
+through the app:
+
+```sql
+update public.profiles set role = 'admin'
+ where id = (select id from auth.users where email = 'you@example.com');
+```
+
+Every grant after that goes through `set_account_role`, which is audited. This is
+the only privileged change in the system that is not.
+
 ### Identity — split, and the split is the privacy model
 
 `profiles` is what other people see: name, monogram, headline, expertise, role.

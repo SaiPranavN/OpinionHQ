@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_actions: {
+        Row: {
+          action: Database["public"]["Enums"]["admin_action"]
+          actor_id: string | null
+          created_at: string
+          id: string
+          reason: string
+          subject_id: string | null
+          subject_label: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["admin_action"]
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string
+          subject_id?: string | null
+          subject_label?: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["admin_action"]
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string
+          subject_id?: string | null
+          subject_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_actions_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "admin_actions_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ask_answer_verdicts: {
         Row: {
           answer_id: string
@@ -2813,7 +2858,12 @@ export type Database = {
         Args: { target: Database["public"]["Enums"]["account_role"] }
         Returns: boolean
       }
+      delete_account: {
+        Args: { reason?: string; target: string }
+        Returns: undefined
+      }
       initials: { Args: { full_name: string }; Returns: string }
+      is_active: { Args: { uid?: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_editor: { Args: never; Returns: boolean }
       is_pro: { Args: { uid?: string }; Returns: boolean }
@@ -2863,6 +2913,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      record_admin_action: {
+        Args: {
+          action: Database["public"]["Enums"]["admin_action"]
+          reason?: string
+          subject_id: string
+          subject_label?: string
+        }
+        Returns: undefined
       }
       review_credential: {
         Args: {
@@ -2917,6 +2976,28 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_account_suspended: {
+        Args: { reason?: string; suspended: boolean; target: string }
+        Returns: {
+          avatar_tone: string
+          created_at: string
+          display_name: string
+          expertise: string[]
+          headline: string
+          id: string
+          initials: string | null
+          role: Database["public"]["Enums"]["account_role"]
+          suspended_at: string | null
+          updated_at: string
+          username: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       topic_demographics: {
         Args: { target: string }
         Returns: {
@@ -2928,6 +3009,14 @@ export type Database = {
     }
     Enums: {
       account_role: "member" | "editor" | "admin"
+      admin_action:
+        | "role_granted"
+        | "account_suspended"
+        | "account_restored"
+        | "account_deleted"
+        | "topic_deleted"
+        | "poll_deleted"
+        | "credential_reviewed"
       age_band: "Under 17" | "17–20" | "21–24" | "25–30" | "31 and over"
       artifact_status:
         | "Proposed"
@@ -3135,6 +3224,15 @@ export const Constants = {
   public: {
     Enums: {
       account_role: ["member", "editor", "admin"],
+      admin_action: [
+        "role_granted",
+        "account_suspended",
+        "account_restored",
+        "account_deleted",
+        "topic_deleted",
+        "poll_deleted",
+        "credential_reviewed",
+      ],
       age_band: ["Under 17", "17–20", "21–24", "25–30", "31 and over"],
       artifact_status: [
         "Proposed",
