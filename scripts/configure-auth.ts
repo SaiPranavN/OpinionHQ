@@ -62,7 +62,11 @@ const smtp = process.env.SMTP_PASSWORD
       smtp_host: process.env.SMTP_HOST ?? "smtp.resend.com",
       // 587 with STARTTLS rather than 465 with implicit TLS: some hosts block
       // 465 outbound, and Supabase's sender negotiates the upgrade fine.
-      smtp_port: Number(process.env.SMTP_PORT ?? 587),
+      //
+      // A string, not a number. The Management API validates this field as text
+      // and rejects the whole PATCH with "expected string, received number" —
+      // which takes every unrelated setting in the request down with it.
+      smtp_port: String(process.env.SMTP_PORT ?? 587),
       smtp_user: process.env.SMTP_USER ?? "resend",
       smtp_pass: process.env.SMTP_PASSWORD,
       smtp_sender_name: process.env.SMTP_SENDER_NAME ?? "OpinionHQ",
