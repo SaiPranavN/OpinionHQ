@@ -32,6 +32,7 @@ import {
   readIdentifier,
 } from "@/components/auth/CredentialForm";
 import { GoogleButton } from "@/components/auth/GoogleSignIn";
+import { useSession } from "@/components/auth/SessionProvider";
 import { Brand } from "@/components/ui/Brand";
 import { startGoogle } from "@/lib/auth/account";
 import { signInWithIdentifier } from "@/lib/auth/actions";
@@ -54,6 +55,7 @@ export function AuthModal({
   onComplete,
 }: AuthModalProps) {
   const pathname = usePathname();
+  const { googleEnabled } = useSession();
   const [identifier, setIdentifier] = useState("");
   /**
    * Held here and nowhere else.
@@ -190,9 +192,13 @@ export function AuthModal({
           </div>
         ) : null}
 
-        <GoogleButton label="Continue with Google" onClick={withGoogle} disabled={busy} />
-
-        <OrRule />
+        {/* Only where it leads somewhere — see the note in `SignInView`. */}
+        {googleEnabled ? (
+          <>
+            <GoogleButton label="Continue with Google" onClick={withGoogle} disabled={busy} />
+            <OrRule />
+          </>
+        ) : null}
 
         <div className="flex flex-col gap-4">
           <IdentifierField

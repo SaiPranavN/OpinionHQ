@@ -29,6 +29,7 @@
 import type { Session, User } from "@supabase/supabase-js";
 
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { supabaseEnv } from "@/lib/supabase/env";
 
 export type AuthResult = { ok: true } | { ok: false; message: string };
 
@@ -214,6 +215,35 @@ const INDIAN_STATE_IDS = new Set([
 ]);
 
 /* --------------------------------------------------------------- Google */
+
+/**
+ * Which sign-in providers this deployment actually has.
+ *
+ * FOUND BY CLICKING THE BUTTON. `signInWithOAuth` does not check whether the
+ * provider exists — it builds the authorize URL and navigates, so the refusal
+ * arrives as a page of JSON on Supabase's domain, with the app's error handling
+ * left behind on a page nobody is looking at any more. There is no return value
+ * to inspect, because there is no return.
+ *
+ * So the question is asked in advance instead. `/auth/v1/settings` is a public
+ * endpoint that reports the enabled providers, which means the button's presence
+ * follows the deployment rather than an environment variable somebody has to
+ * remember to flip on the day they configure Google.
+ */
+export async function enabledProviders(): Promise<{ google: boolean }> {
+  try {
+    const { url, key } = supabaseEnv();
+    const response = await fetch(`${url}/auth/v1/settings`, { headers: { apikey: key } });
+    if (!response.ok) return { google: false };
+    const settings = (await response.json()) as { external?: Record<string, boolean> };
+    return { google: Boolean(settings.external?.google) };
+  } catch {
+    // Offline, or the project is unreachable. Hiding the button is the safer
+    // wrong answer: a missing button is a smaller failure than one that leaves
+    // for an error page.
+    return { google: false };
+  }
+}
 
 /**
  * Hands off to Google and comes back at `/auth/callback`.

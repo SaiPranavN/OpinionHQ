@@ -16,7 +16,8 @@
     "db:types": "node --env-file-if-exists=.env.local node_modules/supabase/dist/supabase.js gen types typescript --linked --schema public > src/lib/supabase/database.types.ts",
     "db:lint": "npm run supabase -- db lint --linked --level warning",
     "db:gen-reference": "node --import tsx scripts/generate-reference-migration.ts",
-    "db:verify": "node --env-file-if-exists=.env.local --import tsx scripts/verify-supabase.ts"
+    "db:verify": "node --env-file-if-exists=.env.local --import tsx scripts/verify-supabase.ts",
+    "auth:configure": "node --env-file-if-exists=.env.local --import tsx scripts/configure-auth.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

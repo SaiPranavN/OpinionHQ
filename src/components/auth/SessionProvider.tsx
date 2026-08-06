@@ -22,6 +22,7 @@
 import type { User } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
+import { enabledProviders } from "@/lib/auth/account";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
@@ -61,6 +62,12 @@ interface SessionValue {
   needsDetails: boolean;
   isEditor: boolean;
   isAdmin: boolean;
+  /**
+   * Whether this deployment has Google configured. False until the answer
+   * arrives, so a button that would lead to an error page is never rendered
+   * during the gap.
+   */
+  googleEnabled: boolean;
   /** Re-reads the profile. Call after writing to it. */
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -102,6 +109,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
 
   const loadAccount = useCallback(async (id: string) => {
     const { data, error } = await supabaseBrowser()
@@ -158,6 +166,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
     const supabase = supabaseBrowser();
     let cancelled = false;
+
+    // Asked once per mount, not per render of a sign-in surface. Which providers
+    // a project has does not change while somebody is looking at the page.
+    void enabledProviders().then(({ google }) => {
+      if (!cancelled) setGoogleEnabled(google);
+    });
 
     // `getUser` on the way in, not `getSession`: the cookie is
     // attacker-controllable and only the auth server can say the token in it is
@@ -222,10 +236,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         Boolean(user) && (!details?.dob || !details?.occupation || !details?.country),
       isEditor: account?.role === "editor" || account?.role === "admin",
       isAdmin: account?.role === "admin",
+      googleEnabled,
       refresh,
       signOut: doSignOut,
     };
-  }, [ready, user, account, refresh, doSignOut]);
+  }, [ready, user, account, googleEnabled, refresh, doSignOut]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

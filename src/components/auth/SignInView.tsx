@@ -90,7 +90,7 @@ export function SignInView() {
   const router = useRouter();
   const params = useSearchParams();
   const { signedIn, ready, signInWith, displayName } = usePrototype();
-  const { refresh, account, needsDetails } = useSession();
+  const { refresh, account, needsDetails, googleEnabled } = useSession();
 
   const [mode, setMode] = useState<"signin" | "signup">(
     params.get("mode") === "signup" ? "signup" : "signin",
@@ -555,13 +555,19 @@ export function SignInView() {
             }
           />
 
-          <GoogleButton
-            label={signup ? "Sign up with Google" : "Continue with Google"}
-            onClick={withGoogle}
-            disabled={busy}
-          />
-
-          <OrRule />
+          {/* Rendered only where it leads somewhere. `signInWithOAuth` navigates
+              before it can report an unconfigured provider, so a button shown
+              regardless hands the visitor a page of JSON on another domain. */}
+          {googleEnabled ? (
+            <>
+              <GoogleButton
+                label={signup ? "Sign up with Google" : "Continue with Google"}
+                onClick={withGoogle}
+                disabled={busy}
+              />
+              <OrRule />
+            </>
+          ) : null}
 
           <div className="flex flex-col gap-4">
             {signup ? (

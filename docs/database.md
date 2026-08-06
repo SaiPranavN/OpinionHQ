@@ -74,6 +74,7 @@ npm run db:verify
 | `npm run db:types`         | Regenerates `src/lib/supabase/database.types.ts` from live schema |
 | `npm run db:gen-reference` | Writes a new reference-data migration from the TypeScript         |
 | `npm run db:verify`        | Round-trips against the live project, including that RLS refuses  |
+| `npm run auth:configure`   | Applies the auth settings that must agree with the code (`-- --dry` to preview) |
 
 Two of these are load-bearing rather than convenient.
 
@@ -132,6 +133,79 @@ Karnataka" one GIN-indexed array test instead of a recursive CTE per query — a
 it preserves the one-directional containment the product needs. Filtering to
 India does **not** return `worldwide` artifacts. A place filter that quietly
 widens itself is a filter you stop trusting.
+
+## Auth
+
+Accounts are real. Everything else in the app is still the prototype.
+
+### The sign-up flow, and why its order survived
+
+Four steps: name and address → prove the address → set a password → demographics.
+Verifying before the password means a mistyped address fails while nobody has
+invested anything, and no account can exist against an address its owner never
+confirmed. On a product whose claim is "one account, one vote", an unverified
+account is a vote somebody manufactured.
+
+The obvious mapping onto Supabase — `signUp({ email, password })` — forces the
+password one step earlier and reorders the screens.
+`signInWithOtp({ shouldCreateUser: true })` does not: it creates the account from
+the address alone, emails a code, and leaves the password to `updateUser`
+afterwards. The four steps map one to one.
+
+One consequence worth knowing: if the address **already** has an account, step
+two is a passwordless login to it and step three sets a new password. That is a
+password reset wearing a sign-up's clothes — legitimate, because both require
+reading a code sent to that address. `alreadyHadAccount` is how the UI notices
+and avoids claiming it created something it did not. "Forgot password?" routes
+here deliberately rather than to a second screen that emails a second code.
+
+### Where each call runs
+
+| | Runs | Why |
+|---|---|---|
+| Sign-up, verify, set password, save details | Browser | The session cookie is written by `@supabase/ssr`; the server adds nothing |
+| **Sign-in** | **Server action** | The field accepts a username, and resolving one to an address is a question a browser must not be able to ask |
+| OAuth callback | Route handler | PKCE code exchange needs to write cookies; a Server Component cannot |
+| Session refresh | Middleware | The only place that can read the request's cookies *and* write the response's |
+
+`email_for_username` is execute-revoked from `anon` and `authenticated` — it is an
+enumeration oracle, and only the service role holds the key. Its single caller
+returns the **same sentence** for a missing username and a wrong password, so the
+oracle is not rebuilt one layer above the function that was locked to prevent it.
+
+### What is configured, and by what
+
+`npm run auth:configure` applies the settings that have to agree with constants
+in the code. Three of them do, and a setting that has to agree with code is a
+setting that drifts:
+
+| Setting | Value | Agrees with |
+|---|---|---|
+| `mailer_otp_length` | 6 | `CODE_LENGTH` |
+| `password_min_length` | 10 | `MIN_PASSWORD_LENGTH` |
+| `uri_allow_list` | localhost + theopinionhq.com callbacks | `/auth/callback` |
+| email templates | carry `{{ .Token }}` | **refused — see below** |
+
+The OTP length is the sharp one. Six boxes rendered for an eight-digit code
+rejects every submission, and nobody looks at a dashboard field when the error
+says "invalid token". `signup.test.ts` asserts `CODE_LENGTH` is 6 for that reason.
+
+### Two things still need a person
+
+**Email templates are plan-blocked.** Supabase will not let a free-tier project on
+the built-in sender change them, and the default template carries a magic link
+with no `{{ .Token }}`. **So no code is emailed and step two of sign-up has nothing
+to type.** Configuring custom SMTP lifts the restriction — and fixes the
+few-emails-an-hour cap on the built-in sender at the same time. Until then,
+sign-up cannot be completed by a real person through the UI.
+
+**Google is switched off.** It needs a Google Cloud client ID and secret in
+Authentication → Sign In / Providers. The button is not rendered while the
+provider is off: `signInWithOAuth` navigates before it can report an
+unconfigured provider, so a button shown regardless hands the visitor a page of
+JSON on Supabase's domain. `enabledProviders()` asks `/auth/v1/settings` once per
+mount, so the button appears on its own the moment the provider is configured —
+no code change, no environment variable to remember.
 
 ### The account hierarchy — two axes, not one ladder
 
@@ -318,14 +392,22 @@ one.
 - **The read models still return fixtures.** `src/lib/topics.ts`,
   `src/lib/polls.ts` and the Ask read model read from `src/lib/sample-data`. Their
   signatures were written to be swappable; swapping them is the next piece of
-  work, not this one.
-- **The providers still hold state in `localStorage`.** `PrototypeProvider` and
-  `AskProvider` are the prototype's store.
+  work.
+- **Votes, follows and drafts are still `localStorage`.** `PrototypeProvider`
+  keeps them; only *who is signed in* moved to the database. That split is
+  deliberate — moving the rest needs the read models rewritten, and this change
+  did not want to be that too. `signOut` says "your votes stay recorded on this
+  device", which is true today and stops being true the moment they move.
+- **No admin UI.** Every admin power exists as a policy or an audited function
+  and has no screen. Topics can only be created by SQL or the Supabase table
+  editor until one exists.
 - **No scheduled jobs.** `trend_score`, `topic_daily_stats`, `poll_history` and
   `professional_stats` have their columns and no writer. Each needs a job under
   the service role.
-- **Google OAuth is not configured.** The provider has to be enabled in the
-  dashboard with the redirect URLs registered.
+- **The bot check is still a placeholder.** Cloudflare Turnstile or hCaptcha, and
+  the server-side verification call is the part that matters — a captcha
+  validated only in the browser stops nobody, because a bot never runs the
+  browser code.
 - **Nothing seeds topics or polls.** By design: the reference migration contains
   no users, no votes and no engagement figures (AGENTS.md §7). The app starts
   genuinely empty and every number on screen will be a real one.
