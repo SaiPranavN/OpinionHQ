@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 
+import { useSession } from "@/components/auth/SessionProvider";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { ThemeToggle } from "@/components/site/ThemeToggle";
 
 export function Nav() {
   const { signedIn, displayName, signOut } = usePrototype();
+  const { isEditor } = useSession();
 
   return (
     // The fade is cut from the page colour rather than a literal near-black,
@@ -75,6 +77,17 @@ export function Nav() {
         <ThemeToggle />
         {signedIn ? (
           <>
+            {/* Only for the people it belongs to. Not a security boundary —
+                the route guards itself and every table refuses a member — but
+                a link most visitors would only ever bounce off is clutter. */}
+            {isEditor ? (
+              <Link
+                href="/admin"
+                className="hidden shrink-0 rounded-full border border-positive/34 px-3.5 py-[7px] text-[12.5px] font-medium whitespace-nowrap text-positive-light transition-colors duration-300 outline-none hover:border-positive/60 focus-visible:ring-2 focus-visible:ring-positive/60 sm:inline-block"
+              >
+                Desk
+              </Link>
+            ) : null}
             {/* The name is the way in to your own account. It was a label;
                 a signed-in person looking for what they wrote has to be able
                 to press something, and their own name is the thing they

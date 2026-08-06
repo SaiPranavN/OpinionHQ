@@ -2842,6 +2842,43 @@ export type Database = {
           responses: number
         }[]
       }
+      author_topic: {
+        Args: {
+          about: string
+          aspects: Json
+          category_id: string
+          name: string
+          place_id: string
+          publish?: boolean
+          slug: string
+          status: Database["public"]["Enums"]["artifact_status"]
+          summary: string
+          tags: string[]
+        }
+        Returns: {
+          about: string
+          archived_at: string | null
+          category_id: string
+          created_at: string
+          created_by: string | null
+          facet_set_id: string | null
+          id: string
+          name: string
+          place_id: string
+          published_at: string | null
+          slug: string
+          status: Database["public"]["Enums"]["artifact_status"]
+          summary: string
+          tags: string[]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "topics"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       block_tallies: {
         Args: { target: string }
         Returns: {
@@ -2999,6 +3036,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      slug_available: { Args: { candidate: string }; Returns: boolean }
       topic_demographics: {
         Args: { target: string }
         Returns: {

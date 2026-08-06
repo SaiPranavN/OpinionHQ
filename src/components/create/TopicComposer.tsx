@@ -13,10 +13,17 @@
  * to an extraction agent that reads the topic's description and sources and
  * proposes aspects for a human to edit and approve. The rest of this flow —
  * shapes, validation, publish — does not change when that lands.
+ *
+ * IT DOES NOT KNOW WHERE THE TOPIC GOES. Given a `publisher` it writes to
+ * Postgres through the admin's session; without one it falls back to the
+ * prototype's `localStorage` store. Two callers, one set of rules — which
+ * matters because the rules are the valuable part of this file, and a second
+ * composer for the admin would have been a second place for "at least two
+ * aspects" to be enforced differently.
  */
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -81,11 +88,46 @@ function isComplete(aspect: DraftAspect): boolean {
   );
 }
 
-export function TopicComposer() {
+/**
+ * Where a finished topic goes.
+ *
+ * Absent means the prototype store. The admin passes one that writes to
+ * Postgres; nothing else about the flow changes.
+ */
+export interface TopicPublisher {
+  publish: (draft: {
+    slug: string;
+    name: string;
+    category: CategoryId;
+    place: PlaceId;
+    status: StatusId;
+    summary: string;
+    about: string;
+    tags: string[];
+    aspects: Facet[];
+    publish: boolean;
+  }) => Promise<{ ok: true; slug: string } | { ok: false; message: string }>;
+  isSlugFree: (slug: string) => Promise<boolean>;
+  /** Where to land afterwards. */
+  destination: (slug: string) => string;
+  /** Shown on the review step: publishing straight away, or saving a draft. */
+  allowDraft?: boolean;
+}
+
+export function TopicComposer({ publisher }: { publisher?: TopicPublisher } = {}) {
   const router = useRouter();
   const { signedIn, openAuth, createTopic, isIdAvailable, ready } = usePrototype();
 
   const [step, setStep] = useState(0);
+  const [busy, setBusy] = useState(false);
+  /**
+   * Whether the address is taken, when a publisher is answering.
+   *
+   * Held in state rather than checked inside `validateBasics`, because that call
+   * is synchronous and the real answer is a round trip. Starts `false` so a
+   * blank form does not open on an error.
+   */
+  const [slugTaken, setSlugTaken] = useState(false);
   const [name, setName] = useState("");
   const [cat, setCat] = useState<CategoryId>("entertainment");
   const [place, setPlace] = useState<PlaceId>("india");
@@ -110,6 +152,26 @@ export function TopicComposer() {
   const complete = aspects.filter(isComplete);
   const isReserved = CATEGORIES.find((c) => c.id === cat)?.reserved ?? false;
 
+  // Debounced, so typing a name is not one request per keystroke. The stale
+  // guard matters more than the delay: replies can arrive out of order, and the
+  // slow answer to an old name would otherwise overwrite the fast answer to the
+  // current one.
+  useEffect(() => {
+    if (!publisher || !id) {
+      setSlugTaken(false);
+      return;
+    }
+    let stale = false;
+    const timer = window.setTimeout(async () => {
+      const free = await publisher.isSlugFree(id);
+      if (!stale) setSlugTaken(!free);
+    }, 350);
+    return () => {
+      stale = true;
+      window.clearTimeout(timer);
+    };
+  }, [publisher, id]);
+
   /**
    * The seam an authoring agent will sit behind. Same signature, same output
    * shape — only the source of the suggestions changes.
@@ -132,7 +194,8 @@ export function TopicComposer() {
   const validateBasics = (): string | null => {
     if (name.trim().length < 4) return "Give the topic a name of at least four characters.";
     if (!id) return "That name does not produce a usable address. Add some letters or numbers.";
-    if (!isIdAvailable(id)) return "A topic with that name already exists. Try a more specific one.";
+    const taken = publisher ? slugTaken : !isIdAvailable(id);
+    if (taken) return "A topic with that name already exists. Try a more specific one.";
     if (summary.trim().length < 20) return "Write a one-line summary of at least twenty characters.";
     if (about.trim().length < 40) return "Add a little more context — at least forty characters.";
     return null;
@@ -153,12 +216,38 @@ export function TopicComposer() {
     if (!problem) setStep((s) => Math.min(s + 1, STEPS.length - 1));
   };
 
-  const publish = () => {
+  const publish = async (asDraft = false) => {
+    if (busy) return;
     const problem = validateBasics() ?? validateAspects();
     if (problem) {
       setError(problem);
       return;
     }
+
+    if (publisher) {
+      setBusy(true);
+      setError(null);
+      const result = await publisher.publish({
+        slug: id,
+        name: name.trim(),
+        category: cat,
+        place,
+        status,
+        summary: summary.trim(),
+        about: about.trim(),
+        tags: tags.length > 0 ? tags : [cat],
+        aspects: toFacets(complete),
+        publish: !asDraft,
+      });
+      setBusy(false);
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      router.push(publisher.destination(result.slug));
+      return;
+    }
+
     const draft: Omit<Topic, "createdBy" | "createdAt"> = {
       id,
       name: name.trim(),
@@ -184,7 +273,9 @@ export function TopicComposer() {
     router.push(`/topics/${id}`);
   };
 
-  if (ready && !signedIn) {
+  // The admin does its own gating in the route's layout, and its editors are
+  // signed in by definition. This panel is the prototype's door.
+  if (!publisher && ready && !signedIn) {
     return (
       <Shell>
         <div className="ohq-panel flex flex-col items-center gap-4 px-5 py-[clamp(48px,8vw,90px)] text-center">
@@ -602,13 +693,28 @@ export function TopicComposer() {
             Continue
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={publish}
-            className="cursor-pointer rounded-full bg-positive px-6 py-2.5 text-[13.5px] font-semibold text-positive-ink transition-colors duration-300 outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light"
-          >
-            Publish topic
-          </button>
+          <>
+            {/* Saving a draft is offered only where drafts are visible. In the
+                prototype store there is nowhere for one to be seen from. */}
+            {publisher?.allowDraft ? (
+              <button
+                type="button"
+                onClick={() => void publish(true)}
+                disabled={busy}
+                className="cursor-pointer rounded-full border border-veil/16 px-5 py-2.5 text-[13.5px] font-medium text-cream transition-colors duration-300 outline-none hover:border-veil/40 focus-visible:ring-2 focus-visible:ring-positive/60 disabled:cursor-not-allowed disabled:text-dim"
+              >
+                Save as draft
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => void publish(false)}
+              disabled={busy}
+              className="cursor-pointer rounded-full bg-positive px-6 py-2.5 text-[13.5px] font-semibold text-positive-ink transition-colors duration-300 outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light disabled:cursor-not-allowed disabled:bg-veil/10 disabled:text-dim"
+            >
+              {busy ? "Publishing…" : "Publish topic"}
+            </button>
+          </>
         )}
         <span className="ml-auto font-mono text-[10.5px] tracking-[0.1em] uppercase text-dim">
           Step {step + 1} of {STEPS.length}
