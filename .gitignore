@@ -1,5 +1,8 @@
 node_modules/
 .next/
+# Production builds, kept out of .next so `npm run build` cannot pull the rug
+# from under a running dev server. See `distDir` in next.config.ts.
+.next-build/
 out/
 build/
 dist/

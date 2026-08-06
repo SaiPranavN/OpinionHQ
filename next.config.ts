@@ -6,6 +6,21 @@ const nextConfig: NextConfig = {
   // Standalone output keeps deployment host-agnostic (see docs/OpinionHQ-Technical-Roadmap.md §4).
   output: "standalone",
   reactStrictMode: true,
+  /**
+   * Where the build lands. `.next` unless told otherwise.
+   *
+   * `npm run build` overrides it to `.next-build`, and the reason is a failure
+   * that looks like a broken app rather than what it is. A production build and
+   * a running dev server both write `.next`; the build replaces the dev server's
+   * chunks while it is still serving them, and the next page load dies on
+   * `ENOENT: .next/server/pages/_document.js`. Nothing in that message suggests
+   * "you ran a build", so the reflex is to go looking in the code that was last
+   * edited.
+   *
+   * Two directories means the two commands stop colliding. `npm start` reads the
+   * same override, so serving a production build locally still works.
+   */
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   // Pin the trace root to this repo; a lockfile further up the tree would
   // otherwise be inferred as the workspace root.
   outputFileTracingRoot: path.join(import.meta.dirname, "."),
