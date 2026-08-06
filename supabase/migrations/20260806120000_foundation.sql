@@ -195,7 +195,25 @@ comment on function public.age_band is
 -- a mutable search_path is the classic Postgres privilege-escalation hole: any
 -- role that can create a schema could shadow `profiles` and have the function
 -- read their table instead. Every reference below is schema-qualified.
+--
+-- THEY REFER FORWARD TO A TABLE THAT DOES NOT EXIST YET, and that is unavoidable
+-- rather than sloppy: the reference tables in the very next migration need
+-- `is_editor()` in their policies, and `profiles` needs the enums and `initials`
+-- from this one. Something has to be declared before the thing it names.
+--
+-- A `language sql` body is parsed and resolved when the function is created, so
+-- Postgres would reject these on sight. `check_function_bodies` is the switch
+-- Postgres provides for exactly this case — it is also what `pg_dump` emits, for
+-- the same reason. They stay `language sql` rather than becoming `plpgsql` (whose
+-- bodies are not resolved until first call) because a SQL function can be
+-- inlined into the query plan of the policy that calls it, and a plpgsql one
+-- cannot.
+--
+-- The setting is session-scoped and this file is applied in one session, so it
+-- does not leak into later migrations.
 -- =============================================================================
+
+set check_function_bodies = off;
 
 create or replace function public.current_role_is(target public.account_role)
 returns boolean

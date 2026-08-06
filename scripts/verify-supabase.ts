@@ -126,22 +126,29 @@ const checks: Check[] = [
   },
 ];
 
-let failed = 0;
+// Wrapped rather than run at the top level: the package has no `"type":
+// "module"`, so a .ts file here is transformed to CommonJS, where top-level
+// await is not available.
+async function main(): Promise<void> {
+  let failed = 0;
 
-for (const check of checks) {
-  try {
-    const detail = await check.run();
-    console.log(`  PASS  ${check.name}\n        ${detail}`);
-  } catch (error) {
-    failed += 1;
-    console.error(`  FAIL  ${check.name}\n        ${(error as Error).message}`);
+  for (const check of checks) {
+    try {
+      const detail = await check.run();
+      console.log(`  PASS  ${check.name}\n        ${detail}`);
+    } catch (error) {
+      failed += 1;
+      console.error(`  FAIL  ${check.name}\n        ${(error as Error).message}`);
+    }
   }
+
+  console.log(
+    failed === 0
+      ? `\nAll ${checks.length} checks passed against ${url}`
+      : `\n${failed} of ${checks.length} checks failed against ${url}`,
+  );
+
+  process.exit(failed === 0 ? 0 : 1);
 }
 
-console.log(
-  failed === 0
-    ? `\nAll ${checks.length} checks passed against ${url}`
-    : `\n${failed} of ${checks.length} checks failed against ${url}`,
-);
-
-process.exit(failed === 0 ? 0 : 1);
+void main();

@@ -70,14 +70,24 @@ npm run db:verify
 | `npm run db:link`          | Points the CLI at the project                                     |
 | `npm run db:push`          | Applies pending migrations                                        |
 | `npm run db:diff`          | Shows drift between the migrations and the live schema            |
+| `npm run db:lint`          | Type-checks every function body against the live schema           |
 | `npm run db:types`         | Regenerates `src/lib/supabase/database.types.ts` from live schema |
 | `npm run db:gen-reference` | Writes a new reference-data migration from the TypeScript         |
 | `npm run db:verify`        | Round-trips against the live project, including that RLS refuses  |
 
-`db:verify` is the one that matters. It does not check that a client constructs
-— that succeeds against a typo'd URL. It checks that the places tree nested
-correctly, that the read models resolve, and that an anonymous caller is
-*refused* when it reaches for `profile_private`, `topic_stats` and `ask_ratings`.
+Two of these are load-bearing rather than convenient.
+
+`db:verify` does not check that a client constructs — that succeeds against a
+typo'd URL. It checks that the places tree nested correctly, that the read models
+resolve, and that an anonymous caller is *refused* when it reaches for
+`profile_private`, `topic_stats` and `ask_ratings`.
+
+**`db:lint` is the only thing that type-checks a `plpgsql` body.** Postgres does
+not resolve the statements inside one until it is first called, so a migration
+containing a genuine type error applies perfectly and fails months later, on the
+first admin who tries the feature. That is not hypothetical here — it is exactly
+how `review_credential` shipped assigning a `text` literal to an enum column, and
+how the linter caught it. Run it after every push.
 
 ---
 

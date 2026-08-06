@@ -13,7 +13,8 @@
     "db:link": "npm run supabase -- link --project-ref vagxiakadfsfykspfqui",
     "db:push": "npm run supabase -- db push",
     "db:diff": "npm run supabase -- db diff --linked",
-    "db:types": "npm run supabase -- gen types typescript --linked --schema public > src/lib/supabase/database.types.ts",
+    "db:types": "node --env-file-if-exists=.env.local node_modules/supabase/dist/supabase.js gen types typescript --linked --schema public > src/lib/supabase/database.types.ts",
+    "db:lint": "npm run supabase -- db lint --linked --level warning",
     "db:gen-reference": "node --import tsx scripts/generate-reference-migration.ts",
     "db:verify": "node --env-file-if-exists=.env.local --import tsx scripts/verify-supabase.ts"
   },
