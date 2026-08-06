@@ -24,7 +24,7 @@ export function CategoriesSection() {
       <div className="mx-auto max-w-[1200px]">
         <div data-reveal className="ohq-reveal mx-auto max-w-[720px] text-center">
           <span className="ohq-eyebrow">What we measure</span>
-          <h2 className="mt-4 mb-5 font-serif text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.02] font-normal tracking-[-0.025em] text-balance text-cream-bright">
+          <h2 className="mt-4 mb-5 font-display text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.02] font-bold tracking-[-0.025em] text-balance text-cream-bright">
             Thirteen kinds of <em className="italic">argument.</em>
           </h2>
           <p className="m-0 text-[16px] leading-[1.6] font-light text-pretty text-muted">

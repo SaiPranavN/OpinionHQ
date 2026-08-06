@@ -128,7 +128,7 @@ export function ContributionCard({
         {pro ? (
           <>
             <h3
-              className="m-0 font-serif text-[clamp(1.25rem,2.2vw,1.65rem)] leading-[1.15] font-normal tracking-[-0.02em] text-balance text-cream-bright"
+              className="m-0 font-display text-[clamp(1.25rem,2.2vw,1.65rem)] leading-[1.15] font-semibold tracking-[-0.02em] text-balance text-cream-bright"
             >
               {headlineOf(contribution)}
             </h3>

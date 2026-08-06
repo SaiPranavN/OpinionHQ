@@ -188,7 +188,7 @@ export function TopicComposer() {
     return (
       <Shell>
         <div className="ohq-panel flex flex-col items-center gap-4 px-5 py-[clamp(48px,8vw,90px)] text-center">
-          <h1 className="m-0 font-serif text-[clamp(1.8rem,3.6vw,2.8rem)] leading-[1.05] text-cream-bright">
+          <h1 className="m-0 font-display font-bold text-[clamp(1.8rem,3.6vw,2.8rem)] tracking-[-0.02em] leading-[1.05] text-cream-bright">
             Sign in to <em className="italic">create a topic</em>
           </h1>
           <p className="m-0 max-w-[460px] text-[14px] leading-[1.6] font-light text-muted">
@@ -210,7 +210,7 @@ export function TopicComposer() {
   return (
     <Shell>
       <header className="flex flex-col gap-3">
-        <h1 className="m-0 font-serif text-[clamp(2rem,4vw,3.1rem)] leading-[1.02] tracking-[-0.025em] text-cream-bright">
+        <h1 className="m-0 font-display font-bold text-[clamp(2rem,4vw,3.1rem)] leading-[1.02] tracking-[-0.025em] text-cream-bright">
           Create an <em className="italic">topic</em>
         </h1>
         <p className="m-0 max-w-[600px] text-[14px] leading-[1.55] font-light text-muted">
@@ -368,7 +368,7 @@ export function TopicComposer() {
           <section className="flex flex-col gap-4">
             <div className="ohq-panel flex flex-wrap items-center justify-between gap-4 p-5">
               <div>
-                <h2 className="m-0 mb-1.5 text-[15px] font-semibold text-cream-bright">
+                <h2 className="font-display m-0 mb-1.5 text-[15px] font-semibold text-cream-bright">
                   Aspects — the sub-opinions under the vote
                 </h2>
                 <p className="m-0 max-w-[520px] text-[12.5px] leading-[1.55] text-dim">
@@ -518,7 +518,7 @@ export function TopicComposer() {
                   </span>
                   <StatusBadge status={status} size="sm" />
                 </div>
-                <h3 className="m-0 text-[16.5px] leading-[1.28] font-semibold text-cream-bright">
+                <h3 className="font-display m-0 text-[16.5px] leading-[1.28] font-semibold text-cream-bright">
                   {name || "Untitled topic"}
                 </h3>
                 <p className="m-0 line-clamp-2 text-[12.5px] leading-[1.5] font-light text-muted">

@@ -63,7 +63,7 @@ export function PollHeader({
         <span className="font-mono text-[11px] text-dim">{poll.closes}</span>
       </div>
 
-      <h1 className="m-0 max-w-[22ch] font-serif text-[clamp(2rem,4.4vw,3.6rem)] leading-[1.03] font-normal tracking-[-0.025em] text-balance text-cream-bright">
+      <h1 className="m-0 max-w-[22ch] font-display text-[clamp(2rem,4.4vw,3.6rem)] leading-[1.03] font-bold tracking-[-0.025em] text-balance text-cream-bright">
         {poll.question}
       </h1>
 

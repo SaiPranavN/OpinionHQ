@@ -68,8 +68,8 @@ export function CatalogView({
 
       <header className="mt-4 flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         <div className="min-w-0">
-          <h1 className="m-0 font-serif text-[clamp(2rem,4vw,3.1rem)] leading-[1.02] font-normal tracking-[-0.025em] text-cream-bright">
-            Explore <em className="italic">topics</em>
+          <h1 className="m-0 font-display text-[clamp(2rem,4vw,3.1rem)] leading-[1.02] font-bold tracking-[-0.025em] text-cream-bright">
+            Explore <em className="italic">opinions</em>
           </h1>
           <p className="mt-2 mb-0 max-w-[560px] text-[14px] leading-[1.5] font-light text-muted">
             Explore active topics and see how <Brand /> participants currently feel
@@ -134,7 +134,7 @@ export function CatalogView({
         </div>
       ) : (
         <div className="flex flex-col items-center gap-4 rounded-[18px] border border-dashed border-veil/10 px-5 py-[clamp(48px,8vw,96px)] text-center">
-          <p className="m-0 font-serif text-[clamp(1.5rem,3vw,2.2rem)] text-cream-bright">
+          <p className="m-0 font-display font-bold text-[clamp(1.5rem,3vw,2.2rem)] tracking-[-0.02em] text-cream-bright">
             No topics here <em className="italic">yet.</em>
           </p>
           <p className="m-0 max-w-[420px] text-[14px] font-light text-muted">

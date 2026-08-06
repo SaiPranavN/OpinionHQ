@@ -28,7 +28,7 @@ export function FacetPanel({ topic }: { topic: DecoratedTopic }) {
     >
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="m-0 mb-2 font-serif text-[clamp(1.6rem,3vw,2.2rem)] leading-[1.05] font-normal tracking-[-0.02em] text-cream-bright">
+          <h2 className="m-0 mb-2 font-display text-[clamp(1.6rem,3vw,2.2rem)] leading-[1.05] font-bold tracking-[-0.02em] text-cream-bright">
             The parts people actually <em className="italic">argue about</em>
           </h2>
           <p className="m-0 max-w-[560px] text-[13.5px] leading-[1.55] text-dim">
@@ -55,7 +55,7 @@ export function FacetPanel({ topic }: { topic: DecoratedTopic }) {
               className="flex flex-col gap-3 rounded-[14px] border border-veil/7 bg-surface p-4"
             >
               <div className="flex flex-col gap-1">
-                <h3 className="m-0 text-[14.5px] font-semibold tracking-[-0.01em] text-cream">
+                <h3 className="font-display m-0 text-[14.5px] font-semibold tracking-[-0.01em] text-cream">
                   {result.facet.label}
                 </h3>
                 <p className="m-0 text-[12.5px] leading-[1.45] text-dim">

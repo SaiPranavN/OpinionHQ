@@ -281,7 +281,7 @@ export function TopicTabs({ topicId, opinions, timeline, accent }: TopicTabsProp
                   <StatusBadge status={event.status} size="sm" />
                 </span>
               </header>
-              <h3 className="m-0 text-[17px] font-semibold tracking-[-0.015em] text-cream-bright">
+              <h3 className="font-display m-0 text-[17px] font-semibold tracking-[-0.015em] text-cream-bright">
                 {event.title}
               </h3>
               <p className="m-0 text-[14px] leading-[1.6] text-muted">{event.desc}</p>

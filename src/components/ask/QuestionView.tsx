@@ -209,7 +209,7 @@ export function QuestionView({ id }: { id: string }) {
             </span>
           </div>
 
-          <h1 className="m-0 font-serif text-[clamp(1.8rem,3.6vw,2.7rem)] leading-[1.08] tracking-[-0.024em] text-balance text-cream-bright">
+          <h1 className="m-0 font-display font-bold text-[clamp(1.8rem,3.6vw,2.7rem)] leading-[1.08] tracking-[-0.024em] text-balance text-cream-bright">
             {question.title}
           </h1>
 
@@ -295,7 +295,7 @@ export function QuestionView({ id }: { id: string }) {
 
             <section className="flex flex-col gap-4">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
-                <h2 className="m-0 text-[15px] font-semibold text-cream-bright">
+                <h2 className="font-display m-0 text-[15px] font-semibold text-cream-bright">
                   Answers
                   <span className="ml-2 font-mono text-[11px] text-dim">
                     {decorated.length}
@@ -413,7 +413,7 @@ function AnswerCard({
           <Monogram professional={professional} />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             <span className="flex flex-wrap items-center gap-2">
-              <h3 className="m-0 text-[16px] leading-[1.2] font-semibold text-cream-bright">
+              <h3 className="font-display m-0 text-[16px] leading-[1.2] font-semibold text-cream-bright">
                 {professional.name}
               </h3>
               {scope === "asker" ? (
@@ -883,7 +883,7 @@ function AnswerForm({ question }: { question: AskQuestion }) {
     <section className="ohq-panel flex flex-col gap-6 p-5 sm:p-7">
       <header className="flex flex-col gap-1.5">
         <span className="ohq-eyebrow">Your answer</span>
-        <h2 className="m-0 text-[17px] font-semibold tracking-[-0.01em] text-cream-bright">
+        <h2 className="font-display m-0 text-[17px] font-semibold tracking-[-0.01em] text-cream-bright">
           Score their options, then say why
         </h2>
         <p className="m-0 text-[12.5px] leading-[1.6] text-muted">
@@ -1077,7 +1077,7 @@ function Compare({
   return (
     <section className="ohq-panel flex flex-col gap-4 p-5 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 className="m-0 text-[15px] font-semibold text-cream-bright">Side by side</h2>
+        <h2 className="font-display m-0 text-[15px] font-semibold text-cream-bright">Side by side</h2>
         <span className="text-[12px] text-dim">Visible to you only.</span>
       </div>
       <div className="ohq-scroll-x -mx-1 overflow-x-auto px-1">

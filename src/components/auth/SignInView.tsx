@@ -280,7 +280,7 @@ export function SignInView() {
     return (
       <Shell>
         <div className="flex flex-col items-start gap-4">
-          <h1 className="m-0 font-serif text-[clamp(1.7rem,3.4vw,2.3rem)] leading-[1.08] text-cream-bright">
+          <h1 className="m-0 font-display font-bold text-[clamp(1.7rem,3.4vw,2.3rem)] tracking-[-0.02em] leading-[1.08] text-cream-bright">
             You are signed in as <em className="italic">{displayName || "you"}</em>.
           </h1>
           <p className="m-0 text-[14px] leading-[1.6] font-light text-muted">
@@ -297,7 +297,7 @@ export function SignInView() {
               href="/topics"
               className="rounded-full border border-veil/16 px-5 py-3 text-[14px] font-medium text-cream transition-colors duration-300 hover:border-veil/40"
             >
-              Explore topics
+              Explore opinions
             </Link>
           </div>
         </div>
@@ -582,7 +582,7 @@ export function SignInView() {
 function Heading({ title, blurb }: { title: React.ReactNode; blurb: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
-      <h1 className="m-0 font-serif text-[clamp(1.7rem,3.2vw,2.3rem)] leading-[1.08] tracking-[-0.02em] text-cream-bright">
+      <h1 className="m-0 font-display font-bold text-[clamp(1.7rem,3.2vw,2.3rem)] leading-[1.08] tracking-[-0.02em] text-cream-bright">
         {title}
       </h1>
       <p className="m-0 text-[13.5px] leading-[1.55] text-muted">{blurb}</p>
@@ -703,7 +703,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <section className="mx-auto grid w-full max-w-[1120px] grid-cols-1 items-start gap-10 px-4 py-[clamp(28px,5vw,64px)] sm:px-8 lg:grid-cols-[minmax(0,1fr)_468px] lg:gap-14">
       <aside className="hidden flex-col gap-6 lg:sticky lg:top-[calc(var(--ohq-nav-h)+56px)] lg:flex">
-        <h2 className="m-0 max-w-[13ch] font-serif text-[clamp(2rem,3.2vw,2.9rem)] leading-[1.04] font-normal tracking-[-0.025em] text-balance text-cream-bright">
+        <h2 className="m-0 max-w-[13ch] font-display text-[clamp(2rem,3.2vw,2.9rem)] leading-[1.04] font-bold tracking-[-0.025em] text-balance text-cream-bright">
           An account is <em className="italic">one vote</em>.
         </h2>
         <p className="m-0 max-w-[42ch] text-[14.5px] leading-[1.6] font-light text-muted">

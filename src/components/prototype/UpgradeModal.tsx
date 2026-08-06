@@ -69,7 +69,7 @@ export function UpgradeModal({
           </span>
           <h2
             id="ohq-upgrade-title"
-            className="m-0 font-serif text-[clamp(1.5rem,3vw,2rem)] leading-[1.1] tracking-[-0.02em] text-balance text-cream-bright"
+            className="m-0 font-display font-bold text-[clamp(1.5rem,3vw,2rem)] leading-[1.1] tracking-[-0.02em] text-balance text-cream-bright"
           >
             {copy.title}
           </h2>
@@ -77,7 +77,7 @@ export function UpgradeModal({
         </header>
 
         <div className="flex flex-wrap items-baseline gap-2 rounded-[14px] border border-private/28 bg-private/6 px-4 py-3.5">
-          <span className="font-serif text-[28px] leading-none text-cream-bright">
+          <span className="font-display font-semibold text-[28px] tracking-[-0.02em] leading-none text-cream-bright">
             {PRO_PLAN.price}
           </span>
           <span className="text-[13px] text-muted">{PRO_PLAN.period}</span>

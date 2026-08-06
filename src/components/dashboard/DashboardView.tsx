@@ -109,7 +109,7 @@ export function DashboardView() {
     return (
       <Shell>
         <div className="ohq-panel flex flex-col items-center gap-4 px-5 py-[clamp(48px,8vw,90px)] text-center">
-          <h1 className="m-0 font-serif text-[clamp(1.8rem,3.6vw,2.6rem)] leading-[1.05] text-cream-bright">
+          <h1 className="m-0 font-display font-bold text-[clamp(1.8rem,3.6vw,2.6rem)] tracking-[-0.02em] leading-[1.05] text-cream-bright">
             Sign in to see your <em className="italic">activity</em>
           </h1>
           <p className="m-0 max-w-[420px] text-[14px] leading-[1.6] font-light text-muted">
@@ -145,7 +145,7 @@ export function DashboardView() {
             {(displayName || "You").slice(0, 2).toUpperCase()}
           </span>
           <span className="flex min-w-0 flex-col gap-1">
-            <h1 className="m-0 font-serif text-[clamp(1.9rem,3.6vw,2.7rem)] leading-[1.05] tracking-[-0.022em] text-cream-bright">
+            <h1 className="m-0 font-display font-bold text-[clamp(1.9rem,3.6vw,2.7rem)] leading-[1.05] tracking-[-0.022em] text-cream-bright">
               {displayName || "Your account"}
             </h1>
             <span className="text-[13px] text-dim">{profile?.email}</span>
@@ -404,7 +404,7 @@ function Panel({
   return (
     <section className="ohq-panel flex flex-col gap-4 p-5 sm:p-6">
       <header className="flex flex-wrap items-baseline gap-3">
-        <h2 className="m-0 text-[15px] font-semibold text-cream-bright">
+        <h2 className="font-display m-0 text-[15px] font-semibold text-cream-bright">
           {title}
           <span className="ml-2 font-mono text-[11px] text-dim">{count}</span>
         </h2>
@@ -484,7 +484,7 @@ function Row({
 function Tally({ label, value }: { label: string; value: number }) {
   return (
     <div className="ohq-panel flex flex-col gap-1 p-4 sm:p-5">
-      <span className="font-serif text-[26px] leading-none text-cream-bright">
+      <span className="font-display font-semibold text-[26px] tracking-[-0.02em] leading-none text-cream-bright">
         {formatNumber(value)}
       </span>
       <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-dim">

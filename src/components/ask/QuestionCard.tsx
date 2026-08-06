@@ -101,7 +101,7 @@ export function QuestionCard({
           </span>
         </span>
 
-        <h3 className="m-0 text-[15.5px] leading-[1.32] font-semibold text-pretty text-cream-bright">
+        <h3 className="font-display m-0 text-[15.5px] leading-[1.32] font-semibold text-pretty text-cream-bright">
           {question.title}
         </h3>
 

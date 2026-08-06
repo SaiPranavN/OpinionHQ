@@ -34,7 +34,7 @@ export function PrivateGuidanceSection() {
       <div className="relative mx-auto max-w-[1200px]">
         <div data-reveal className="ohq-reveal mx-auto max-w-[760px] text-center">
           <span className="ohq-eyebrow">The third mode</span>
-          <h2 className="mt-4 mb-5 font-serif text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.02] font-normal tracking-[-0.025em] text-balance text-cream-bright">
+          <h2 className="mt-4 mb-5 font-display text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.02] font-bold tracking-[-0.025em] text-balance text-cream-bright">
             Some questions need an <em className="italic">expert,</em> not a crowd.
           </h2>
           <p className="m-0 text-[16px] leading-[1.6] font-light text-pretty text-muted">
@@ -68,7 +68,7 @@ export function PrivateGuidanceSection() {
                 <LockIcon size={13} />
                 Ask Verified
               </span>
-              <h3 className="m-0 font-serif text-[clamp(1.7rem,2.6vw,2.4rem)] leading-[1.06] font-normal tracking-[-0.02em] text-cream-bright">
+              <h3 className="m-0 font-display text-[clamp(1.7rem,2.6vw,2.4rem)] leading-[1.06] font-bold tracking-[-0.02em] text-cream-bright">
                 Answers from people with{" "}
                 <em className="italic">verified, relevant experience.</em>
               </h3>

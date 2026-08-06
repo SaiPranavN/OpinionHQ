@@ -73,7 +73,7 @@ export function VerifyForm() {
           <span style={{ color: PRIVATE_COLOR }}>
             <ShieldIcon size={26} />
           </span>
-          <h1 className="m-0 font-serif text-[clamp(1.8rem,3.6vw,2.8rem)] leading-[1.05] text-cream-bright">
+          <h1 className="m-0 font-display font-bold text-[clamp(1.8rem,3.6vw,2.8rem)] tracking-[-0.02em] leading-[1.05] text-cream-bright">
             Sign in first
           </h1>
           <p className="m-0 max-w-[440px] text-[14px] leading-[1.6] font-light text-muted">
@@ -95,7 +95,7 @@ export function VerifyForm() {
   return (
     <Shell>
       <header className="flex flex-col gap-3">
-        <h1 className="m-0 font-serif text-[clamp(2rem,4vw,3rem)] leading-[1.04] tracking-[-0.024em] text-cream-bright">
+        <h1 className="m-0 font-display font-bold text-[clamp(2rem,4vw,3rem)] leading-[1.04] tracking-[-0.024em] text-cream-bright">
           Show what you can <em className="italic">prove</em>
         </h1>
         <p className="m-0 max-w-[640px] text-[14px] leading-[1.6] font-light text-muted">

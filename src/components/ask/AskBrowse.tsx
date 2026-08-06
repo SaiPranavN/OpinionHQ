@@ -88,7 +88,7 @@ export function AskBrowse() {
       <Breadcrumb trail={[{ label: "Home", href: "/" }, { label: "Ask Verified" }]} />
 
       <header className="mt-4 flex flex-col gap-3">
-        <h1 className="m-0 font-serif text-[clamp(2rem,4vw,3.1rem)] leading-[1.02] tracking-[-0.025em] text-cream-bright">
+        <h1 className="m-0 font-display font-bold text-[clamp(2rem,4vw,3.1rem)] leading-[1.02] tracking-[-0.025em] text-cream-bright">
           Questions answered by people who <em className="italic">proved it</em>
         </h1>
         <p className="m-0 max-w-[640px] text-[14px] leading-[1.55] font-light text-muted">

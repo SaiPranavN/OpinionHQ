@@ -144,7 +144,7 @@ export function AuthModal({
         <div className="flex flex-col gap-2">
           <h2
             id="ohq-auth-title"
-            className="m-0 font-serif text-[clamp(1.45rem,3vw,1.9rem)] leading-[1.1] tracking-[-0.02em] text-cream-bright"
+            className="m-0 font-display font-semibold text-[clamp(1.45rem,3vw,1.9rem)] leading-[1.1] tracking-[-0.02em] text-cream-bright"
           >
             {heldVote ? (
               <>

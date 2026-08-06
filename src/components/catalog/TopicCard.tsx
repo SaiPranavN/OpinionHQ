@@ -41,7 +41,7 @@ export function TopicCard({ topic }: { topic: DecoratedTopic }) {
 
       {/* Title + summary */}
       <div className="flex flex-col gap-1.5">
-        <h3 className="m-0 text-[16.5px] leading-[1.28] font-semibold tracking-[-0.015em] text-pretty text-cream-bright">
+        <h3 className="font-display m-0 text-[16.5px] leading-[1.28] font-semibold tracking-[-0.015em] text-pretty text-cream-bright">
           {topic.name}
         </h3>
         <p className="m-0 line-clamp-2 text-[12.5px] leading-[1.5] font-light text-muted">

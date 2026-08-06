@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Instrument_Serif, JetBrains_Mono, Manrope } from "next/font/google";
+import { JetBrains_Mono, Manrope, Plus_Jakarta_Sans } from "next/font/google";
 
 import { AmbientBackground } from "@/components/ambient/AmbientBackground";
 import { CardSpotlight } from "@/components/ambient/CardSpotlight";
@@ -17,11 +17,30 @@ const manrope = Manrope({
   display: "swap",
 });
 
-const instrumentSerif = Instrument_Serif({
+/**
+ * The display face — every heading on every page.
+ *
+ * Chosen as the closest freely-licensed stand-in for Uber Move: geometric
+ * skeleton, tall x-height, low contrast, tight apertures. Uber Move itself is
+ * licensed to Uber and cannot be used here, and a paid clone would be a
+ * dependency the prototype does not need to prove the look.
+ *
+ * IT REPLACED A SERIF, and that is a bigger change than a font swap. The old
+ * Instrument Serif carried the emphasis in these headings through its italic —
+ * a genuinely different set of letterforms. A geometric sans has no such
+ * register: its italic is close to a slant. So the `<em>` runs still lean, but
+ * the weight below is what actually does the work now.
+ *
+ * Only the weights the headings use are downloaded. 500 and 600 are here for
+ * smaller headings, 700 and 800 for display sizes; 400 is deliberately absent,
+ * because a heading set at the body weight is what made the old sans headings
+ * look unfinished.
+ */
+const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: "400",
+  weight: ["500", "600", "700", "800"],
   style: ["normal", "italic"],
-  variable: "--font-instrument-serif",
+  variable: "--font-plus-jakarta",
   display: "swap",
 });
 
@@ -52,7 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       // pre-hydration DOM agree for anyone who has not chosen light.
       data-theme="dark"
       suppressHydrationWarning
-      className={`${manrope.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable}`}
+      className={`${manrope.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}
     >
       <head>
         {/* Blocking on purpose: it must win the race against first paint, or

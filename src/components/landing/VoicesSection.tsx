@@ -49,7 +49,7 @@ export function VoicesSection() {
       <div className="mx-auto max-w-[1200px]">
         <div data-reveal className="ohq-reveal mx-auto max-w-[760px] text-center">
           <span className="ohq-eyebrow">Opinions &amp; discussion</span>
-          <h2 className="mt-4 mb-5 font-serif text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.02] font-normal tracking-[-0.025em] text-balance text-cream-bright">
+          <h2 className="mt-4 mb-5 font-display text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.02] font-bold tracking-[-0.025em] text-balance text-cream-bright">
             Numbers tell you <em className="italic">what.</em> Words tell you{" "}
             <em className="italic">why.</em>
           </h2>
@@ -183,7 +183,7 @@ export function VoicesSection() {
               className="ohq-panel ohq-reveal flex flex-col gap-2.5 p-5"
               style={{ transitionDelay: `${60 + i * 80}ms` }}
             >
-              <h3 className="m-0 text-[15px] leading-[1.25] font-semibold tracking-[-0.015em] text-cream-bright">
+              <h3 className="font-display m-0 text-[15px] leading-[1.25] font-semibold tracking-[-0.015em] text-cream-bright">
                 {rule.title}
               </h3>
               <p className="m-0 text-[13px] leading-[1.6] font-light text-muted">

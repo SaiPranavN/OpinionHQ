@@ -28,7 +28,7 @@ export function TwoModesSection() {
       <div className="mx-auto max-w-[1200px]">
         <div data-reveal className="ohq-reveal mx-auto max-w-[760px] text-center">
           <span className="ohq-eyebrow">Two ways to ask in public</span>
-          <h2 className="mt-4 mb-5 font-serif text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.02] font-normal tracking-[-0.025em] text-balance text-cream-bright">
+          <h2 className="mt-4 mb-5 font-display text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.02] font-bold tracking-[-0.025em] text-balance text-cream-bright">
             Some questions need a <em className="italic">scale.</em> Others need a{" "}
             <em className="italic">winner.</em>
           </h2>
@@ -57,7 +57,7 @@ export function TwoModesSection() {
                 <span className="h-1.5 w-1.5 rounded-full bg-positive" />
                 Opinion intelligence
               </span>
-              <h3 className="m-0 font-serif text-[clamp(1.7rem,2.6vw,2.4rem)] leading-[1.06] font-normal tracking-[-0.02em] text-cream-bright">
+              <h3 className="m-0 font-display text-[clamp(1.7rem,2.6vw,2.4rem)] leading-[1.06] font-bold tracking-[-0.02em] text-cream-bright">
                 How does everyone feel about <em className="italic">this?</em>
               </h3>
               <p className="m-0 text-[14.5px] leading-[1.6] font-light text-muted">
@@ -108,7 +108,7 @@ export function TwoModesSection() {
                 <span className="h-1.5 w-1.5 rounded-full bg-poll" />
                 Polling
               </span>
-              <h3 className="m-0 font-serif text-[clamp(1.7rem,2.6vw,2.4rem)] leading-[1.06] font-normal tracking-[-0.02em] text-cream-bright">
+              <h3 className="m-0 font-display text-[clamp(1.7rem,2.6vw,2.4rem)] leading-[1.06] font-bold tracking-[-0.02em] text-cream-bright">
                 Up to four options. <em className="italic">Pick one.</em>
               </h3>
               <p className="m-0 text-[14.5px] leading-[1.6] font-light text-muted">

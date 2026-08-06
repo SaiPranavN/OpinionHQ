@@ -48,7 +48,7 @@ export function Hero() {
 
         <h1
           data-reveal
-          className="ohq-reveal m-0 font-serif text-[clamp(2.9rem,7.4vw,6.6rem)] leading-[0.96] font-normal tracking-[-0.026em] text-balance text-cream-bright delay-[80ms] duration-[1150ms]"
+          className="ohq-reveal m-0 font-display text-[clamp(2.9rem,7.4vw,6.6rem)] leading-[0.96] font-bold tracking-[-0.026em] text-balance text-cream-bright delay-[80ms] duration-[1150ms]"
         >
           What does everyone <em className="italic text-positive">really</em> think?
         </h1>
@@ -75,7 +75,7 @@ export function Hero() {
             a glance.
 
             The width is fixed rather than intrinsic. Sized to content, the
-            labels ("Explore topics" vs "Ask someone verified") produce three
+            labels ("Explore opinions" vs "Participate in a poll") produce three
             different pills, and no amount of matching padding fixes that —
             equal padding around unequal text is still unequal buttons. */}
         {/* A grid rather than a wrapping flex row. Wrapping put two buttons on
@@ -91,21 +91,21 @@ export function Hero() {
             icon={<TopicsIcon />}
             className="bg-positive text-positive-ink transition-[background,box-shadow] hover:bg-[#25CC61] hover:shadow-[0_12px_44px_-8px_rgba(29,185,84,0.55)]"
           >
-            Explore topics
+            Explore opinions
           </CTA>
           <CTA
             href="/polls"
             icon={<PollsIcon />}
             className="border border-poll/45 bg-poll/10 text-poll-soft transition-[background,border-color] hover:border-poll/70 hover:bg-poll/18"
           >
-            Pick a side in a poll
+            Participate in a poll
           </CTA>
           <CTA
             href="/ask"
             icon={<ShieldIcon size={17} />}
             className="border border-private/45 bg-private/10 text-private-soft transition-[background,border-color] hover:border-private/70 hover:bg-private/18"
           >
-            Ask someone verified
+            Ask expert opinions
           </CTA>
         </div>
 

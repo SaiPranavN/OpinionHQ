@@ -30,7 +30,7 @@ export function PollVotePanel({ poll }: { poll: DecoratedPoll }) {
 
   return (
     <section aria-label="Cast your vote" className="ohq-panel-raised p-5 sm:p-[34px]">
-      <h2 className="m-0 mb-2 font-serif text-[clamp(1.7rem,3vw,2.4rem)] leading-[1.05] font-normal tracking-[-0.02em] text-cream-bright">
+      <h2 className="m-0 mb-2 font-display text-[clamp(1.7rem,3vw,2.4rem)] leading-[1.05] font-bold tracking-[-0.02em] text-cream-bright">
         {cast ? (
           <>
             Your vote is <em className="italic">counted.</em>

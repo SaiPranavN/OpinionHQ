@@ -73,7 +73,30 @@
   --font-sans:
     var(--font-manrope), "Helvetica Neue", Helvetica, ui-sans-serif, system-ui,
     sans-serif;
-  --font-serif: var(--font-instrument-serif), Georgia, "Times New Roman", serif;
+  /* EVERY HEADING ON EVERY PAGE. `<h1>`–`<h6>` carries `font-display`, from the
+     6.6rem hero down to a 15px card title, and so do the display-scale numerals
+     that read as headings (the donut percentage, the dashboard tallies). Body
+     copy stays on --font-sans. If a new heading looks subtly wrong next to its
+     neighbours, this class is what it is missing.
+
+     Weight is not part of the token, deliberately: it is `font-bold` at display
+     sizes and `font-semibold` below, written at each site so it is visible in
+     the markup rather than inherited from somewhere unexpected. What the token
+     must never do is leave a heading at 400 — the body weight is what made
+     these look unfinished the moment the serif went.
+
+     The fallbacks are the geometric faces already on the machine, so the first
+     paint before the webfont lands is the same *shape* of type — the old serif
+     fell back to Georgia and every heading reflowed on load. */
+  --font-display:
+    var(--font-plus-jakarta), "SF Pro Display", "Segoe UI", "Helvetica Neue",
+    Helvetica, ui-sans-serif, system-ui, sans-serif;
+  /* Deleted rather than repointed. Tailwind ships a default `--font-serif`, so
+     leaving it alone would keep a working `font-serif` utility around and let a
+     stray one silently reintroduce a serif heading. With the key removed the
+     utility does not exist, and anything still asking for it just inherits the
+     body sans — visible in review, harmless in production. */
+  --font-serif: initial;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
 
   --ease-ohq: cubic-bezier(0.2, 0.7, 0.2, 1);

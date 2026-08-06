@@ -53,7 +53,7 @@ export default function LandingPage() {
           data-reveal
           className="ohq-reveal relative mx-auto flex max-w-[840px] flex-col items-center gap-7"
         >
-          <h2 className="m-0 font-serif text-[clamp(2.6rem,6vw,5.4rem)] leading-[0.98] font-normal tracking-[-0.028em] text-cream-bright">
+          <h2 className="m-0 font-display text-[clamp(2.6rem,6vw,5.4rem)] leading-[0.98] font-bold tracking-[-0.028em] text-cream-bright">
             {TOTAL_TOPICS} topics and {TOTAL_POLLS} polls are{" "}
             <em className="italic">already moving.</em>
           </h2>
@@ -66,7 +66,7 @@ export default function LandingPage() {
               href="/topics"
               className="rounded-full bg-positive px-[34px] py-[16px] text-[16px] font-semibold tracking-[-0.01em] text-positive-ink transition-[background,box-shadow] duration-500 ease-ohq hover:bg-[#25CC61] hover:shadow-[0_12px_44px_-8px_rgba(29,185,84,0.55)]"
             >
-              Explore topics
+              Explore opinions
             </Link>
             <Link
               href="/polls"

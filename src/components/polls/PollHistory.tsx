@@ -183,7 +183,7 @@ export function PollHistory({ poll }: { poll: DecoratedPoll }) {
               {s.name}
             </span>
             <span
-              className="font-serif text-[clamp(1.4rem,2.4vw,2rem)] leading-none"
+              className="font-display font-bold text-[clamp(1.4rem,2.4vw,2rem)] tracking-[-0.02em] leading-none"
               style={{ color: s.textColor }}
             >
               {s.last}%

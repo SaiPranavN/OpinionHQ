@@ -55,7 +55,7 @@ export function PollCard({ poll }: { poll: DecoratedPoll }) {
         </span>
       </div>
 
-      <h3 className="m-0 text-[16.5px] leading-[1.28] font-semibold tracking-[-0.015em] text-pretty text-cream-bright">
+      <h3 className="font-display m-0 text-[16.5px] leading-[1.28] font-semibold tracking-[-0.015em] text-pretty text-cream-bright">
         {poll.question}
       </h3>
 

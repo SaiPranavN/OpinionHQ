@@ -81,7 +81,7 @@ export function SentimentDonut({ topic }: { topic: DecoratedTopic }) {
             dominant view when nothing is. */}
         <div className="pointer-events-none absolute inset-[22%] flex flex-col items-center justify-center gap-0.5 text-center">
           <span
-            className="font-serif text-[clamp(2rem,4vw,2.7rem)] leading-none transition-colors duration-300"
+            className="font-display font-bold text-[clamp(2rem,4vw,2.7rem)] tracking-[-0.02em] leading-none transition-colors duration-300"
             style={{ color: focused ? focused.color : topic.dominantVar }}
           >
             {focused ? focused.pct : topic.dominantPct}%

@@ -366,7 +366,7 @@ export function EmptyState({
       <span style={{ color: PRIVATE_COLOR }}>
         <LockIcon size={22} />
       </span>
-      <h3 className="m-0 text-[15px] font-semibold text-cream-bright">{title}</h3>
+      <h3 className="font-display m-0 text-[15px] font-semibold text-cream-bright">{title}</h3>
       <p className="m-0 max-w-[420px] text-[13px] leading-[1.6] font-light text-muted">{body}</p>
       {action}
     </div>

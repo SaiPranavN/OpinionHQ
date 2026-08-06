@@ -21,7 +21,7 @@ export function StructureSection() {
           <div className="mb-[22px] font-mono text-[11px] tracking-[0.16em] uppercase text-positive">
             01 — Structure
           </div>
-          <h2 className="m-0 mb-5 font-serif text-[clamp(2.4rem,4.6vw,4.2rem)] leading-none font-normal tracking-[-0.025em] text-cream-bright">
+          <h2 className="m-0 mb-5 font-display text-[clamp(2.4rem,4.6vw,4.2rem)] leading-none font-bold tracking-[-0.025em] text-cream-bright">
             Opinion, <em className="italic">structured.</em>
           </h2>
           <p className="m-0 max-w-[440px] text-[16px] leading-[1.65] font-light text-pretty text-muted">
@@ -45,7 +45,7 @@ export function StructureSection() {
 
             <div className="mb-[18px] flex items-end gap-3">
               <span
-                className="font-serif text-[clamp(3rem,5.4vw,4.4rem)] leading-[0.85]"
+                className="font-display font-bold text-[clamp(3rem,5.4vw,4.4rem)] tracking-[-0.02em] leading-[0.85]"
                 style={{ color: topic.dominantVar }}
               >
                 {topic.neg}

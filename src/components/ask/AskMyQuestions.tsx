@@ -100,7 +100,7 @@ function Group({
   return (
     <section>
       <header className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line pb-2.5">
-        <h2 className="m-0 text-[15px] font-semibold tracking-[-0.01em] text-cream-bright">
+        <h2 className="font-display m-0 text-[15px] font-semibold tracking-[-0.01em] text-cream-bright">
           {title}
         </h2>
         <span className="font-mono text-[10.5px] text-dim">{rows.length}</span>
@@ -136,7 +136,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           { label: "My questions" },
         ]}
       />
-      <h1 className="mt-4 mb-6 font-serif text-[clamp(2rem,4vw,3rem)] leading-[1.02] tracking-[-0.025em] text-cream-bright">
+      <h1 className="mt-4 mb-6 font-display font-bold text-[clamp(2rem,4vw,3rem)] leading-[1.02] tracking-[-0.025em] text-cream-bright">
         My <em className="italic">questions</em>
       </h1>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
