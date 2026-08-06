@@ -23,7 +23,8 @@ import {
   type ReactNode,
 } from "react";
 
-import { AuthModal, type AccountDetails } from "@/components/prototype/AuthModal";
+import { useSession } from "@/components/auth/SessionProvider";
+import { AuthModal } from "@/components/prototype/AuthModal";
 import { Toast } from "@/components/prototype/Toast";
 import { UpgradeModal } from "@/components/prototype/UpgradeModal";
 import { isPublishable } from "@/lib/contributions";
@@ -103,9 +104,17 @@ interface PendingVote {
   note: string;
 }
 
+/**
+ * WHO IS SIGNED IN IS NO LONGER IN HERE.
+ *
+ * It moved to `SessionProvider`, which reads it from Supabase. It has to: a
+ * boolean in `localStorage` is a claim this browser makes about itself, and the
+ * moment votes are written to a database rather than to this object, the
+ * database is the only thing that can say whose they are. Everything below is
+ * still the prototype's own store, and stays that way until the read models are
+ * swapped over.
+ */
 interface PersistedState {
-  signedIn: boolean;
-  profile: Profile | null;
   votes: Record<string, CastVote>;
   pollVotes: Record<string, CastPollVote>;
   facetAnswers: FacetAnswers;
@@ -148,8 +157,6 @@ interface PersistedState {
 }
 
 const EMPTY: PersistedState = {
-  signedIn: false,
-  profile: null,
   votes: {},
   pollVotes: {},
   facetAnswers: {},
@@ -168,6 +175,10 @@ const EMPTY: PersistedState = {
 
 interface PrototypeValue extends PersistedState {
   ready: boolean;
+  /** From Supabase, via `SessionProvider`. Not from this store. */
+  signedIn: boolean;
+  /** The session account, in the shape the prototype's callers already read. */
+  profile: Profile | null;
   displayName: string;
   /** Records a vote, or opens the sign-in modal holding it if signed out. */
   submitVote: (topicId: string, vote: Sentiment, note: string) => void;
@@ -235,14 +246,16 @@ interface PrototypeValue extends PersistedState {
    */
   openAuth: (mode?: "signin" | "signup", redirectTo?: string) => void;
   /**
-   * Completes a sign-in from outside the sheet.
+   * Called once Supabase has already authenticated somebody.
    *
-   * The `/signin` page has its own form and does its own navigation, so it
-   * needs the same completion path the modal uses rather than a second one —
-   * this is that path, and it still resumes a held vote if one exists.
+   * Not "sign this person in" — that has happened by the time this runs, in the
+   * sheet or on `/signin`. This is the shared tail of both doors: write the vote
+   * that was held while the sheet was open, say something, and navigate. Two
+   * doors, one completion path, so the held vote cannot be resumed by one and
+   * dropped by the other.
    */
-  signInWith: (details: AccountDetails, created: boolean) => void;
-  signOut: () => void;
+  signInWith: (created: boolean) => void;
+  signOut: () => Promise<void>;
   toast: (message: string) => void;
 }
 
@@ -307,8 +320,6 @@ function readStored(): PersistedState {
     if (!raw) return EMPTY;
     const parsed = JSON.parse(raw) as Partial<PersistedState>;
     return {
-      signedIn: Boolean(parsed.signedIn),
-      profile: parsed.profile ?? null,
       votes: parsed.votes ?? {},
       pollVotes: parsed.pollVotes ?? {},
       facetAnswers: parsed.facetAnswers ?? {},
@@ -341,8 +352,14 @@ function readStored(): PersistedState {
 
 export function PrototypeProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const {
+    signedIn,
+    account,
+    ready: sessionReady,
+    signOut: endSession,
+  } = useSession();
   const [state, setState] = useState<PersistedState>(EMPTY);
-  const [ready, setReady] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const [pending, setPending] = useState<PendingVote | null>(null);
   const [authMode, setAuthMode] = useState<"signin" | "signup" | null>(null);
   const [redirectTo, setRedirectTo] = useState<string | null>(null);
@@ -352,21 +369,57 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
   // Hydrate after mount so server and first client render agree.
   useEffect(() => {
     setState(readStored());
-    setReady(true);
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!hydrated) return;
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
       // Private browsing or a full quota — the prototype still works in-memory.
     }
-  }, [state, ready]);
+  }, [state, hydrated]);
+
+  /**
+   * Both halves have to have answered.
+   *
+   * Consumers use `ready` to decide whether to render a signed-out state, and
+   * the local store settles a tick before Supabase does. Reporting ready on the
+   * store alone made every page flash "Sign in" on reload for somebody who was
+   * signed in the whole time.
+   */
+  const ready = hydrated && sessionReady;
 
   const toast = useCallback((next: string) => setMessage(next), []);
 
-  const displayName = state.profile?.name ?? "";
+  /**
+   * The session account in the shape this store's callers already read.
+   *
+   * Mapped rather than re-typed so `AskProvider` and the composers did not all
+   * have to change on the same day the session became real. `email` is not on
+   * `profiles` — it lives in `auth.users` and nothing in the app displays it —
+   * so it comes through empty rather than being invented.
+   */
+  const profile = useMemo<Profile | null>(
+    () =>
+      account
+        ? {
+            name: account.displayName,
+            email: "",
+            username: account.username ?? undefined,
+            dob: account.details.dob ?? undefined,
+            mobile: account.details.mobile ?? undefined,
+            occupation: account.details.occupation ?? undefined,
+            country: account.details.country ?? undefined,
+            state: account.details.state ?? undefined,
+            city: account.details.city ?? undefined,
+          }
+        : null,
+    [account],
+  );
+
+  const displayName = profile?.name ?? "";
 
   const openAuth = useCallback(
     (mode: "signin" | "signup" = "signin", to?: string) => {
@@ -378,7 +431,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
 
   const submitVote = useCallback(
     (topicId: string, vote: Sentiment, note: string) => {
-      if (!state.signedIn) {
+      if (!signedIn) {
         // Hold the selection and draft; the modal resumes it after sign-in.
         setPending({ topicId, vote, note });
         setAuthMode("signin");
@@ -398,21 +451,21 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       }));
       toast("Opinion recorded. Your vote is now part of the aggregate.");
     },
-    [state.signedIn, toast],
+    [signedIn, toast],
   );
 
   const createTopic = useCallback(
     (draft: Omit<Topic, "createdBy" | "createdAt">) => {
       const topic: Topic = {
         ...draft,
-        createdBy: state.profile?.name ?? "A participant",
+        createdBy: profile?.name ?? "A participant",
         createdAt: new Date().toISOString(),
       };
       setState((prev) => ({ ...prev, created: [topic, ...prev.created] }));
       toast(`“${topic.name}” is live. It is open for votes now.`);
       return topic.id;
     },
-    [state.profile, toast],
+    [profile, toast],
   );
 
   const createdTopic = useCallback(
@@ -473,23 +526,30 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
     [state.created],
   );
 
+  /**
+   * Called once authentication has already succeeded.
+   *
+   * IT NO LONGER SIGNS ANYBODY IN. Supabase did that before this runs, and
+   * `SessionProvider` has already seen it — the sole job left here is the one
+   * this callback always really had: not losing what somebody was in the middle
+   * of. A vote held while the sheet was open is written now, and the caller is
+   * sent back where they came from.
+   */
   const completeAuth = useCallback(
-    (details: AccountDetails, created: boolean) => {
-      const profile: Profile = { ...details };
-      setState((prev) => {
-        const next: PersistedState = { ...prev, signedIn: true, profile };
-        if (pending) {
-          next.votes = {
+    (created: boolean) => {
+      if (pending) {
+        setState((prev) => ({
+          ...prev,
+          votes: {
             ...prev.votes,
             [pending.topicId]: {
               vote: pending.vote,
               note: pending.note,
               updatedAt: new Date().toISOString(),
             },
-          };
-        }
-        return next;
-      });
+          },
+        }));
+      }
 
       const hadPending = pending !== null;
       const destination = redirectTo;
@@ -516,7 +576,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
 
   const submitPollVote = useCallback(
     (pollId: string, side: PollOptionId, reason: string) => {
-      if (!state.signedIn) {
+      if (!signedIn) {
         toast("Sign in to cast your vote in this poll.");
         setAuthMode("signin");
         return;
@@ -542,7 +602,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
           : "Vote recorded. You can add a reason any time.",
       );
     },
-    [state.signedIn, toast],
+    [signedIn, toast],
   );
 
   const clearPollVote = useCallback((pollId: string) => {
@@ -597,7 +657,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
 
   const toggleHelpful = useCallback(
     (opinionId: string) => {
-      if (!state.signedIn) {
+      if (!signedIn) {
         toast("Sign in to mark an opinion helpful.");
         setAuthMode("signin");
         return;
@@ -609,19 +669,19 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
           : [...prev.helpful, opinionId],
       }));
     },
-    [state.signedIn, toast],
+    [signedIn, toast],
   );
 
   const postReply = useCallback(
     (opinionId: string, text: string) => {
       const body = text.trim();
       if (!body) return false;
-      if (!state.signedIn) {
+      if (!signedIn) {
         toast("Sign in to reply to this opinion.");
         setAuthMode("signin");
         return false;
       }
-      const name = state.profile?.name || "You";
+      const name = profile?.name || "You";
       setState((prev) => ({
         ...prev,
         replies: [
@@ -639,7 +699,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       toast("Reply posted.");
       return true;
     },
-    [state.signedIn, state.profile, toast],
+    [signedIn, profile, toast],
   );
 
   /* ------------------------------------------------------------------ Pro */
@@ -653,13 +713,13 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
    */
   const openUpgrade = useCallback(
     (feature: ProFeature) => {
-      if (!state.signedIn) {
+      if (!signedIn) {
         setAuthMode("signin");
         return;
       }
       setUpgrade(feature);
     },
-    [state.signedIn],
+    [signedIn],
   );
 
   const subscribePro = useCallback(() => {
@@ -700,7 +760,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
    */
   const publishPro = useCallback<PrototypeValue["publishPro"]>(
     (topicId, sections, vote) => {
-      if (!state.signedIn) {
+      if (!signedIn) {
         toast("Sign in to publish a contribution.");
         setAuthMode("signin");
         return null;
@@ -713,7 +773,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
         toast("A contribution needs a headline before it can be published.");
         return null;
       }
-      const name = state.profile?.name || "You";
+      const name = profile?.name || "You";
       const id = `pro-${topicId}-${Date.now().toString(36)}`;
       const contribution: Opinion = {
         id,
@@ -727,7 +787,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
         replies: 0,
         format: "pro",
         sections: sections.map((section, i) => ({ ...section, position: i })),
-        authorLine: state.profile?.occupation || "Pro contributor",
+        authorLine: profile?.occupation || "Pro contributor",
         saves: 0,
       };
       setState((prev) => {
@@ -739,7 +799,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       toast("Published. It sits in the same conversation as every other opinion.");
       return id;
     },
-    [state.signedIn, state.pro, state.profile, toast],
+    [signedIn, state.pro, profile, toast],
   );
 
   const editPro = useCallback<PrototypeValue["editPro"]>(
@@ -788,7 +848,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
    */
   const chooseBlock = useCallback<PrototypeValue["chooseBlock"]>(
     (contributionId, blockId, optionId) => {
-      if (!state.signedIn) {
+      if (!signedIn) {
         toast("Sign in to answer this.");
         setAuthMode("signin");
         return;
@@ -801,7 +861,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
         return { ...prev, blockChoices: next };
       });
     },
-    [state.signedIn, toast],
+    [signedIn, toast],
   );
 
   const blockChoice = useCallback(
@@ -812,7 +872,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
 
   const toggleSave = useCallback(
     (contributionId: string) => {
-      if (!state.signedIn) {
+      if (!signedIn) {
         toast("Sign in to save this.");
         setAuthMode("signin");
         return;
@@ -824,7 +884,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
           : [...prev.saved, contributionId],
       }));
     },
-    [state.signedIn, toast],
+    [signedIn, toast],
   );
 
   /**
@@ -837,7 +897,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
    */
   const react = useCallback(
     (contributionId: string, reaction: ProReaction) => {
-      if (!state.signedIn) {
+      if (!signedIn) {
         toast("Sign in to react.");
         setAuthMode("signin");
         return;
@@ -849,7 +909,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
         return { ...prev, contributionReactions: next };
       });
     },
-    [state.signedIn, toast],
+    [signedIn, toast],
   );
 
   const repliesFor = useCallback(
@@ -857,15 +917,26 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
     [state.replies],
   );
 
-  const signOut = useCallback(() => {
-    setState((prev) => ({ ...prev, signedIn: false, profile: null }));
+  /**
+   * Ends the Supabase session, and leaves this store alone.
+   *
+   * The votes and drafts below are still keyed to a browser rather than to an
+   * account, so clearing them on sign-out would throw away work that signing
+   * back in would not restore. The wording says so, and stops being true the
+   * moment the read models move onto the database — at which point this should
+   * clear the local store instead.
+   */
+  const signOut = useCallback(async () => {
+    await endSession();
     toast("Signed out. Your votes stay recorded on this device.");
-  }, [toast]);
+  }, [endSession, toast]);
 
   const value = useMemo<PrototypeValue>(
     () => ({
       ...state,
       ready,
+      signedIn,
+      profile,
       displayName,
       submitVote,
       clearVote,
@@ -904,6 +975,8 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
     [
       state,
       ready,
+      signedIn,
+      profile,
       displayName,
       submitVote,
       clearVote,

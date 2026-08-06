@@ -24,12 +24,19 @@
  *
  * Google skips steps 2 and 3: an OAuth address arrives verified and there is no
  * password to set. It does not skip step 4, because nothing in an OAuth profile
- * says where somebody lives or what they do.
+ * says where somebody lives or what they do — so it comes back from
+ * `/auth/callback` at `?step=details` rather than at the catalog.
  *
- * NONE OF IT IS AUTHENTICATED YET. No mail service, no captcha provider, no
- * identity provider. Every one of those is labelled on the screen it appears
- * on, and the rules they gate are real: the code has to match, the passwords
- * have to agree, the fields have to be filled.
+ * IT IS REAL NOW, and the order above survived the change. The obvious mapping
+ * onto Supabase — `signUp({ email, password })` — would have forced the password
+ * a step earlier and reordered the screens. `signInWithOtp` does not: it creates
+ * the account from the address alone and leaves the password to `updateUser`
+ * afterwards, so the four steps map one to one. See `lib/auth/account.ts`.
+ *
+ * WHAT IS STILL A PLACEHOLDER, and only this: the bot check. It has no provider
+ * behind it and says so on screen. Everything else on this page now talks to a
+ * real auth service — the code is emailed and verified server-side, the password
+ * is set against a proved address, and the demographics land in Postgres.
  */
 
 import Link from "next/link";
@@ -44,25 +51,33 @@ import {
   authInput,
   AuthField,
   checkPassword,
-  nameFrom,
   readIdentifier,
 } from "@/components/auth/CredentialForm";
-import { GoogleButton, type GoogleAccount } from "@/components/auth/GoogleSignIn";
+import { GoogleButton } from "@/components/auth/GoogleSignIn";
 import { OtpInput } from "@/components/auth/OtpInput";
 import {
   ProfileFields,
   ProfilePrivacyNote,
   type ProfileDetails,
 } from "@/components/auth/ProfileFields";
+import { useSession } from "@/components/auth/SessionProvider";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Brand } from "@/components/ui/Brand";
+import {
+  confirmSignUpCode,
+  resendSignUpCode,
+  saveAccountDetails,
+  setPassword as setAccountPassword,
+  startGoogle,
+  startSignUp,
+} from "@/lib/auth/account";
+import { signInWithIdentifier } from "@/lib/auth/actions";
+import { safeNext } from "@/lib/auth/redirect";
 import {
   CODE_LENGTH,
   MIN_PASSWORD_LENGTH,
   RESEND_SECONDS,
-  checkCode,
   hasErrors,
-  newVerificationCode,
   passwordsMatch,
   scorePassword,
   stepPosition,
@@ -71,32 +86,23 @@ import {
   type SignupStep,
 } from "@/lib/auth/signup";
 
-/** Where to land afterwards. Constrained to this app — see `safeNext`. */
-const DEFAULT_NEXT = "/topics";
-
-/**
- * An open redirect is an open redirect even in a prototype.
- *
- * `?next=` comes from the URL, so it is attacker-controlled by definition. Only
- * a same-site absolute path is honoured; anything with a scheme, a host, or a
- * protocol-relative `//` prefix falls back to the catalog.
- */
-export function safeNext(raw: string | null): string {
-  if (!raw) return DEFAULT_NEXT;
-  if (!raw.startsWith("/") || raw.startsWith("//")) return DEFAULT_NEXT;
-  return raw;
-}
-
 export function SignInView() {
   const router = useRouter();
   const params = useSearchParams();
   const { signedIn, ready, signInWith, displayName } = usePrototype();
+  const { refresh, account, needsDetails } = useSession();
 
   const [mode, setMode] = useState<"signin" | "signup">(
     params.get("mode") === "signup" ? "signup" : "signin",
   );
-  const [step, setStep] = useState<SignupStep>("account");
-  const [viaGoogle, setViaGoogle] = useState(false);
+  // `?step=details` is how `/auth/callback` sends a first-time Google account
+  // here: verified address, no password to set, and none of the demographics
+  // the cross-tabs are built from.
+  const [step, setStep] = useState<SignupStep>(
+    params.get("step") === "details" ? "details" : "account",
+  );
+  const [viaGoogle, setViaGoogle] = useState(params.get("step") === "details");
+  const [busy, setBusy] = useState(false);
 
   const [name, setName] = useState("");
   const [identifier, setIdentifier] = useState("");
@@ -105,12 +111,10 @@ export function SignInView() {
   const [profile, setProfile] = useState<ProfileDetails>({ country: "India" });
 
   const [captcha, setCaptcha] = useState<CaptchaState>("idle");
-  const [sentCode, setSentCode] = useState("");
   const [code, setCode] = useState("");
-  const [attempts, setAttempts] = useState(0);
   const [cooldown, setCooldown] = useState(0);
 
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(params.get("error"));
   const [detailErrors, setDetailErrors] = useState<DetailErrors>({});
   const firstField = useRef<HTMLInputElement>(null);
 
@@ -121,6 +125,12 @@ export function SignInView() {
   useEffect(() => {
     firstField.current?.focus();
   }, [mode, step]);
+
+  // A Google account arriving at the details step already has a name; showing
+  // it back beats an empty field they have to retype.
+  useEffect(() => {
+    if (viaGoogle && account?.displayName && !name) setName(account.displayName);
+  }, [viaGoogle, account?.displayName, name]);
 
   // Resend cooldown. A code you can request forty times a second is a mail
   // provider's problem and an abuse vector; real deployments rate-limit this
@@ -137,24 +147,32 @@ export function SignInView() {
     setPassword("");
     setConfirm("");
     setCode("");
-    setSentCode("");
-    setAttempts(0);
     setCaptcha("idle");
     setError(null);
     setDetailErrors({});
   };
 
-  const finish = (details: Parameters<typeof signInWith>[0], created: boolean) => {
+  /**
+   * The one exit.
+   *
+   * `refresh` before navigating, so the session context has the finished profile
+   * by the time the destination renders — without it the nav shows "Sign in" for
+   * a beat on a page reached by signing in, which reads as the sign-in failing.
+   */
+  const finish = async (created: boolean) => {
     setPassword("");
     setConfirm("");
-    signInWith(details, created);
+    await refresh();
+    signInWith(created);
     router.push(next);
   };
 
   /* ------------------------------------------------------------ step one */
 
-  const submitAccount = (e: React.FormEvent) => {
+  const submitAccount = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
+
     const read = readIdentifier(identifier);
     if ("error" in read) {
       setError(read.error);
@@ -167,12 +185,15 @@ export function SignInView() {
         setError(bad);
         return;
       }
-      // The password stops here. It is checked for shape and then dropped —
-      // `AccountDetails` has no field it could travel in.
-      finish(
-        { name: nameFrom(read), email: read.email, username: read.username || undefined },
-        false,
-      );
+      setBusy(true);
+      setError(null);
+      const result = await signInWithIdentifier(identifier, password);
+      setBusy(false);
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      await finish(false);
       return;
     }
 
@@ -188,40 +209,78 @@ export function SignInView() {
       setError("Complete the bot check first.");
       return;
     }
+
+    setBusy(true);
     setError(null);
-    setSentCode(newVerificationCode());
+    const result = await startSignUp(read.email, name);
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+
     setCode("");
-    setAttempts(0);
     setCooldown(RESEND_SECONDS);
     setStep("verify");
   };
 
   /* ------------------------------------------------------------ step two */
 
-  const submitCode = (entered = code) => {
-    const verdict = checkCode(entered, sentCode, attempts);
-    if (!verdict.ok) {
-      if (verdict.reason === "mismatch") setAttempts((a) => a + 1);
-      setError(verdict.message);
+  /**
+   * The code is checked by the auth server, not here.
+   *
+   * Which is what makes it worth anything: the old local comparison could be
+   * read out of the page, and its attempt counter could be reset by reloading.
+   * Supabase rate-limits and expires the token server-side, so the only thing
+   * left to do here is show what it said.
+   */
+  const submitCode = async (entered = code) => {
+    if (busy) return;
+    if (entered.trim().length < CODE_LENGTH) {
+      setError(`Enter all ${CODE_LENGTH} digits.`);
       return;
     }
+
+    setBusy(true);
     setError(null);
+    const result = await confirmSignUpCode(identifier, entered);
+    setBusy(false);
+
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+
+    // Somebody who already had an account has just proved they still control the
+    // address, which is a password reset by another name. Legitimate, but not
+    // "account created" — saying that would be a lie about what happened.
+    if (result.alreadyHadAccount) {
+      setError(null);
+      setViaGoogle(false);
+    }
     setStep("password");
   };
 
-  const resend = () => {
-    if (cooldown > 0) return;
-    setSentCode(newVerificationCode());
+  const resend = async () => {
+    if (cooldown > 0 || busy) return;
+    setBusy(true);
+    const result = await resendSignUpCode(identifier);
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
     setCode("");
-    setAttempts(0);
     setCooldown(RESEND_SECONDS);
     setError(null);
   };
 
   /* ---------------------------------------------------------- step three */
 
-  const submitPassword = (e: React.FormEvent) => {
+  const submitPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
+
     if (!strength.ok) {
       setError(strength.hints[0] ?? `Passwords are at least ${MIN_PASSWORD_LENGTH} characters.`);
       return;
@@ -231,52 +290,68 @@ export function SignInView() {
       setError(mismatch);
       return;
     }
+
+    setBusy(true);
     setError(null);
+    const result = await setAccountPassword(password);
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
     setStep("details");
   };
 
   /* ----------------------------------------------------------- step four */
 
-  const submitDetails = (e: React.FormEvent) => {
+  const submitDetails = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
+
     const found = validateDetails(profile);
     setDetailErrors(found);
     if (hasErrors(found)) {
       setError("A few fields still need filling in.");
       return;
     }
-    const read = readIdentifier(identifier);
-    if ("error" in read) {
-      setStep("account");
+
+    setBusy(true);
+    setError(null);
+    const result = await saveAccountDetails({ ...profile, displayName: name.trim() });
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.message);
       return;
     }
-    finish(
-      {
-        ...profile,
-        name: name.trim() || nameFrom(read),
-        email: read.email,
-        username: read.username || undefined,
-      },
-      true,
-    );
+    await finish(true);
   };
 
-  const withGoogle = (account: GoogleAccount) => {
-    if (!signup) {
-      finish({ name: account.name, email: account.email }, false);
-      return;
-    }
-    // A Google address is already verified and there is no password to set.
-    setViaGoogle(true);
-    setName(account.name);
-    setIdentifier(account.email);
+  /** Leaves for Google and comes back at `/auth/callback`. */
+  const withGoogle = async () => {
+    if (busy) return;
+    setBusy(true);
     setError(null);
-    setStep("details");
+    const result = await startGoogle(next);
+    if (!result.ok) {
+      setError(result.message);
+      setBusy(false);
+    }
   };
 
   /* -------------------------------------------------------------- render */
 
-  if (ready && signedIn) {
+  /**
+   * Signed in, but not finished.
+   *
+   * An account can exist with no date of birth, occupation or country — abandon
+   * the flow at step four, or arrive through Google, and that is exactly where
+   * you are. Showing the "nothing to do here" panel to somebody in that state
+   * would be a dead end in front of the only screen that can fix it, so the
+   * details step wins over it.
+   */
+  const unfinished = ready && signedIn && needsDetails;
+
+  if (ready && signedIn && !unfinished) {
     return (
       <Shell>
         <div className="flex flex-col items-start gap-4">
@@ -305,14 +380,17 @@ export function SignInView() {
     );
   }
 
+  // An unfinished account has only one thing left to do, so the page shows only
+  // that — not a sign-in form it would be nonsense to fill in.
+  const onDetails = unfinished || (signup && step === "details");
   const position = stepPosition(step, viaGoogle);
 
   return (
     <Shell>
-      {signup ? <Progress index={position.index} total={position.total} /> : null}
+      {signup && !unfinished ? <Progress index={position.index} total={position.total} /> : null}
 
       {/* ---------------------------------------------------- verify email */}
-      {signup && step === "verify" ? (
+      {!unfinished && signup && step === "verify" ? (
         <div className="flex flex-col gap-5">
           <Heading
             title={
@@ -329,19 +407,6 @@ export function SignInView() {
             }
           />
 
-          {/* There is no mail service, so the code is shown rather than sent.
-              Saying so is the only honest option — and a reviewer who cannot
-              read the code cannot walk the flow at all. */}
-          <p className="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[12px] border border-dashed border-veil/18 bg-veil/3 px-3.5 py-3 text-[12px] text-dim">
-            <span>
-              <strong className="font-medium text-muted">Simulated.</strong> No email is sent —
-              your code is
-            </span>
-            <span className="font-mono text-[15px] tracking-[0.28em] text-cream-bright">
-              {sentCode}
-            </span>
-          </p>
-
           <OtpInput
             length={CODE_LENGTH}
             value={code}
@@ -356,7 +421,9 @@ export function SignInView() {
           {error ? <ErrorLine>{error}</ErrorLine> : null}
 
           <div className="flex flex-col gap-2.5">
-            <PrimaryButton onClick={() => submitCode()}>Verify email</PrimaryButton>
+            <PrimaryButton onClick={() => void submitCode()} disabled={busy}>
+              {busy ? "Checking…" : "Verify email"}
+            </PrimaryButton>
             <div className="flex items-center justify-between gap-3 text-[12.5px]">
               <button
                 type="button"
@@ -370,8 +437,8 @@ export function SignInView() {
               </button>
               <button
                 type="button"
-                onClick={resend}
-                disabled={cooldown > 0}
+                onClick={() => void resend()}
+                disabled={cooldown > 0 || busy}
                 className="cursor-pointer text-muted transition-colors hover:text-cream disabled:cursor-default disabled:text-dim/60"
               >
                 {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
@@ -382,7 +449,7 @@ export function SignInView() {
       ) : null}
 
       {/* -------------------------------------------------- set a password */}
-      {signup && step === "password" ? (
+      {!unfinished && signup && step === "password" ? (
         <form onSubmit={submitPassword} className="flex flex-col gap-5">
           <Heading
             title={
@@ -422,14 +489,18 @@ export function SignInView() {
           {error ? <ErrorLine>{error}</ErrorLine> : null}
 
           <div className="flex flex-col gap-2.5">
-            <PrimaryButton type="submit">Continue</PrimaryButton>
-            <BackLink onClick={() => setStep("verify")}>← Back to verification</BackLink>
+            <PrimaryButton type="submit" disabled={busy}>
+              {busy ? "Saving…" : "Continue"}
+            </PrimaryButton>
+            {/* No way back to the code step: it has been spent. Supabase
+                invalidates a token once it has opened a session, so returning
+                there would offer to re-enter something that cannot work. */}
           </div>
         </form>
       ) : null}
 
       {/* ------------------------------------------------------- about you */}
-      {signup && step === "details" ? (
+      {onDetails ? (
         <form onSubmit={submitDetails} className="flex flex-col gap-5">
           <Heading
             title={
@@ -455,16 +526,15 @@ export function SignInView() {
           {error ? <ErrorLine>{error}</ErrorLine> : null}
 
           <div className="flex flex-col gap-2.5">
-            <PrimaryButton type="submit">Create account</PrimaryButton>
-            <BackLink onClick={() => setStep(viaGoogle ? "account" : "password")}>
-              {viaGoogle ? "← Start over" : "← Back to password"}
-            </BackLink>
+            <PrimaryButton type="submit" disabled={busy}>
+              {busy ? "Creating…" : "Create account"}
+            </PrimaryButton>
           </div>
         </form>
       ) : null}
 
       {/* --------------------------------------- sign in, or step one of up */}
-      {!signup || step === "account" ? (
+      {!unfinished && (!signup || step === "account") ? (
         <form onSubmit={submitAccount} className="flex flex-col gap-5">
           <Heading
             title={
@@ -487,7 +557,8 @@ export function SignInView() {
 
           <GoogleButton
             label={signup ? "Sign up with Google" : "Continue with Google"}
-            onPick={withGoogle}
+            onClick={withGoogle}
+            disabled={busy}
           />
 
           <OrRule />
@@ -521,13 +592,18 @@ export function SignInView() {
                 onChange={setPassword}
                 signup={false}
                 forgotHref={
+                  // Resetting is the sign-up flow. Proving the address is what
+                  // both actually are, and a second screen that emailed a
+                  // second kind of code would be the same thing twice.
                   <button
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
+                      setMode("signup");
+                      reset();
                       setError(
-                        "There is no account store in this prototype, so there is nothing to reset. Any password of 8+ characters signs you in.",
-                      )
-                    }
+                        "Enter your address below and we will email a code. Verifying it lets you set a new password.",
+                      );
+                    }}
                     className="cursor-pointer text-[11.5px] text-dim underline decoration-veil/25 underline-offset-4 transition-colors hover:text-soft"
                   >
                     Forgot password?
@@ -547,8 +623,14 @@ export function SignInView() {
 
           {error ? <ErrorLine>{error}</ErrorLine> : null}
 
-          <PrimaryButton type="submit" disabled={signup && captcha !== "passed"}>
-            {signup ? "Send verification code" : "Sign in"}
+          <PrimaryButton type="submit" disabled={busy || (signup && captcha !== "passed")}>
+            {busy
+              ? signup
+                ? "Sending…"
+                : "Signing in…"
+              : signup
+                ? "Send verification code"
+                : "Sign in"}
           </PrimaryButton>
 
           <p className="m-0 text-center text-[13px] text-muted">
@@ -568,10 +650,9 @@ export function SignInView() {
       ) : null}
 
       <p className="m-0 border-t border-veil/8 pt-4 text-[11.5px] leading-[1.6] text-dim">
-        <strong className="font-medium text-muted">Prototype.</strong> There is no identity
-        provider, no mail service and no captcha provider behind this page — the code is generated
-        in your browser and the bot check is a placeholder. Passwords are checked for strength and
-        then discarded; nothing entered here leaves this browser.
+        <strong className="font-medium text-muted">The bot check is still a placeholder.</strong>{" "}
+        Everything else on this page is real: the code is emailed and verified server-side, and your
+        password is stored hashed by the auth service and never by this app.
       </p>
     </Shell>
   );
@@ -670,17 +751,6 @@ function PrimaryButton({
   );
 }
 
-function BackLink({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="m-0 cursor-pointer text-center text-[13px] text-muted transition-colors hover:text-cream"
-    >
-      {children}
-    </button>
-  );
-}
 
 function ErrorLine({ children }: { children: React.ReactNode }) {
   return (

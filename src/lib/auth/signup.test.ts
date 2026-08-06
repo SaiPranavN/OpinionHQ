@@ -2,13 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   CODE_LENGTH,
-  MAX_CODE_ATTEMPTS,
   MIN_AGE,
   MIN_PASSWORD_LENGTH,
   ageOn,
-  checkCode,
   hasErrors,
-  newVerificationCode,
   shouldAutoSubmit,
   passwordsMatch,
   scorePassword,
@@ -19,35 +16,14 @@ import {
 const TODAY = new Date("2026-08-04T12:00:00");
 
 describe("verification codes", () => {
-  it("is always the stated length, including when the number is small", () => {
-    for (let i = 0; i < 200; i += 1) {
-      const code = newVerificationCode();
-      expect(code).toHaveLength(CODE_LENGTH);
-      expect(code).toMatch(/^[0-9]+$/);
-    }
-  });
-
-  it("accepts the right code", () => {
-    expect(checkCode("483920", "483920", 0)).toEqual({ ok: true });
-  });
-
-  it("will not accept a partial code as correct", () => {
-    const verdict = checkCode("4839", "483920", 0);
-    expect(verdict.ok).toBe(false);
-    if (!verdict.ok) expect(verdict.reason).toBe("incomplete");
-  });
-
-  it("counts down the attempts left", () => {
-    const verdict = checkCode("000000", "483920", 0);
-    expect(verdict.ok).toBe(false);
-    if (!verdict.ok) expect(verdict.message).toContain(`${MAX_CODE_ATTEMPTS - 1}`);
-  });
-
-  it("stops accepting anything once the attempts are spent", () => {
-    // The rule that keeps a six-digit code from being brute-forced in a loop.
-    const verdict = checkCode("483920", "483920", MAX_CODE_ATTEMPTS);
-    expect(verdict.ok).toBe(false);
-    if (!verdict.ok) expect(verdict.reason).toBe("exhausted");
+  // The generating and checking that used to be tested here are gone: Supabase
+  // does both server-side now, and a browser-side copy of either would be a
+  // bypass rather than a stand-in. What is left is the one thing the client
+  // still owns — how many boxes it draws.
+  it("draws six boxes, matching the project's mailer_otp_length", () => {
+    // If this and the Supabase setting ever disagree, every code entered is
+    // rejected for a reason nothing on the screen explains.
+    expect(CODE_LENGTH).toBe(6);
   });
 });
 

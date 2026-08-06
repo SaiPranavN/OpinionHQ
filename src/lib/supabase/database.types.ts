@@ -2862,6 +2862,7 @@ export type Database = {
         Args: { reason?: string; target: string }
         Returns: undefined
       }
+      email_for_username: { Args: { handle: string }; Returns: string }
       initials: { Args: { full_name: string }; Returns: string }
       is_active: { Args: { uid?: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }

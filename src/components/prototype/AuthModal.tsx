@@ -15,9 +15,10 @@
  * `/signin?mode=signup` and carries a `next` back to where you were. The held
  * vote survives the trip because it lives in the provider, above the router.
  *
- * THE PASSWORD IS NEVER STORED. It is held in component state, checked for
- * shape, and dropped — `AccountDetails` has no field it could travel in, which
- * is the enforcement rather than a promise.
+ * THE PASSWORD IS NEVER STORED. It is held in component state for the length of
+ * one request, handed to the server action, and cleared — whether that request
+ * succeeded or failed. Nothing this component hands to `onComplete` has a field
+ * it could travel in, which is the enforcement rather than a promise.
  */
 
 import { usePathname } from "next/navigation";
@@ -25,36 +26,24 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   IdentifierField,
-  MIN_PASSWORD,
   OrRule,
   PasswordField,
   checkPassword,
-  nameFrom,
   readIdentifier,
 } from "@/components/auth/CredentialForm";
-import { GoogleButton, type GoogleAccount } from "@/components/auth/GoogleSignIn";
+import { GoogleButton } from "@/components/auth/GoogleSignIn";
 import { Brand } from "@/components/ui/Brand";
+import { startGoogle } from "@/lib/auth/account";
+import { signInWithIdentifier } from "@/lib/auth/actions";
 import type { Sentiment } from "@/lib/types";
-
-export interface AccountDetails {
-  name: string;
-  email: string;
-  /** Set when they signed in with a username rather than an address. */
-  username?: string;
-  dob?: string;
-  mobile?: string;
-  occupation?: string;
-  country?: string;
-  state?: string;
-  city?: string;
-}
 
 interface AuthModalProps {
   mode: "signin" | "signup" | null;
   heldVote: Sentiment | null;
   heldNote: string;
   onCancel: () => void;
-  onComplete: (details: AccountDetails, created: boolean) => void;
+  /** Called after Supabase has authenticated somebody, not to do it. */
+  onComplete: (created: boolean) => void;
 }
 
 export function AuthModal({
@@ -74,6 +63,7 @@ export function AuthModal({
    */
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const firstFieldRef = useRef<HTMLInputElement>(null);
 
   const open = mode !== null;
@@ -96,8 +86,19 @@ export function AuthModal({
 
   if (!open) return null;
 
-  const submit = (e: React.FormEvent) => {
+  /**
+   * Signs in through the server action, then hands off.
+   *
+   * THE SERVER, not the browser, because the field accepts a username and
+   * resolving one to an address is a question a browser must not be able to ask
+   * — see `lib/auth/actions.ts`. The password is cleared on the way out of this
+   * function whatever the outcome; it lives in this component's state for the
+   * length of one request and has nowhere else to go.
+   */
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
+
     const read = readIdentifier(identifier);
     if ("error" in read) {
       setError(read.error);
@@ -108,21 +109,35 @@ export function AuthModal({
       setError(bad);
       return;
     }
-    // The password stops here — checked for shape, then dropped.
+
+    setBusy(true);
+    setError(null);
+    const result = await signInWithIdentifier(identifier, password);
     setPassword("");
-    onComplete(
-      {
-        name: nameFrom(read),
-        email: read.email,
-        username: read.username || undefined,
-      },
-      false,
-    );
+    setBusy(false);
+
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+    onComplete(false);
   };
 
-  const withGoogle = (account: GoogleAccount) => {
-    setPassword("");
-    onComplete({ name: account.name, email: account.email }, false);
+  /**
+   * Leaves the page entirely, so nothing after the call runs.
+   *
+   * Which is why the held vote cannot survive this route the way it survives a
+   * password sign-in — the round trip through Google discards everything in
+   * memory. Saying so is better than silently losing somebody's draft.
+   */
+  const withGoogle = async () => {
+    setBusy(true);
+    setError(null);
+    const result = await startGoogle(pathname || "/topics");
+    if (!result.ok) {
+      setError(result.message);
+      setBusy(false);
+    }
   };
 
   const signupHref = `/signin?mode=signup&next=${encodeURIComponent(pathname || "/topics")}`;
@@ -175,7 +190,7 @@ export function AuthModal({
           </div>
         ) : null}
 
-        <GoogleButton label="Continue with Google" onPick={withGoogle} />
+        <GoogleButton label="Continue with Google" onClick={withGoogle} disabled={busy} />
 
         <OrRule />
 
@@ -198,9 +213,10 @@ export function AuthModal({
         <div className="flex flex-col gap-2.5">
           <button
             type="submit"
-            className="cursor-pointer rounded-full bg-positive px-6 py-3.5 text-[14.5px] font-semibold text-positive-ink transition-colors duration-300 outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            disabled={busy}
+            className="cursor-pointer rounded-full bg-positive px-6 py-3.5 text-[14.5px] font-semibold text-positive-ink transition-colors duration-300 outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:bg-veil/10 disabled:text-dim"
           >
-            Sign in
+            {busy ? "Signing in…" : "Sign in"}
           </button>
           {/* A link, not a mode switch. Creating an account is a verified,
               four-step flow and it lives on its own page — a second sign-up
@@ -212,12 +228,6 @@ export function AuthModal({
             Create an account
           </a>
         </div>
-
-        <p className="m-0 rounded-[10px] border border-veil/8 bg-veil/2 px-3 py-2 text-[11.5px] leading-[1.5] text-dim">
-          <strong className="font-medium text-muted">Simulated sign-in.</strong> Any username or
-          address and any password of {MIN_PASSWORD}+ characters is accepted — there is no identity
-          provider behind this. The password is checked for length and then discarded.
-        </p>
 
         <div className="flex items-center justify-between gap-4 border-t border-line pt-4">
           <span className="text-[11.5px] leading-[1.5] text-dim">

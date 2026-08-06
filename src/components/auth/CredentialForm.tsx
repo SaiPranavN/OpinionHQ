@@ -7,77 +7,28 @@
  * same account. Everything about *what a credential is* lives here; everything
  * about layout lives in the two callers.
  *
- * THE PASSWORD IS NEVER STORED, and the enforcement is structural rather than
- * a promise: it is held in state here, checked for length, and dropped.
- * `AccountDetails` has no field it could travel in, so no caller can persist it
- * by accident — anybody wiring a real backend has to add that field
- * deliberately, and will read this comment when they do.
+ * THE PASSWORD NEVER TOUCHES APPLICATION STATE. It is held here, handed
+ * straight to Supabase, and dropped. `AccountDetails` has no field it could
+ * travel in and neither does `profiles` — the only thing that stores it is
+ * `auth.users`, hashed, where this code cannot read it back.
+ *
+ * WHAT A CREDENTIAL IS now lives in `lib/auth/identifier.ts`, because the server
+ * action that resolves a username to an address needs the same parser and cannot
+ * import a `"use client"` module. Re-exported below so nothing else had to move.
  */
 
 import { useState } from "react";
 
-export interface Credentials {
-  /** What they typed to identify themselves: an address or a username. */
-  identifier: string;
-  /** Set only when the identifier was an address. */
-  email: string;
-  /** Set only when the identifier was not an address. */
-  username: string;
-}
+import {
+  MIN_PASSWORD,
+  checkPassword,
+  nameFrom,
+  readIdentifier,
+  type Credentials,
+} from "@/lib/auth/identifier";
 
-export const MIN_PASSWORD = 8;
-const MIN_USERNAME = 3;
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const USERNAME_RE = /^[a-zA-Z0-9._-]+$/;
-
-/**
- * Accepts an address or a username in one field.
- *
- * One field rather than two, because a person signing in knows which of theirs
- * they are typing and does not need to be asked. The `@` decides — a rule the
- * reader can predict, which is the only kind worth having in a login box.
- */
-export function readIdentifier(raw: string): Credentials | { error: string } {
-  const identifier = raw.trim();
-  if (!identifier) return { error: "Enter your username or email address." };
-
-  if (identifier.includes("@")) {
-    if (!EMAIL_RE.test(identifier)) return { error: "That does not look like a valid email address." };
-    return { identifier, email: identifier, username: "" };
-  }
-
-  if (identifier.length < MIN_USERNAME) {
-    return { error: `Usernames are at least ${MIN_USERNAME} characters.` };
-  }
-  if (!USERNAME_RE.test(identifier)) {
-    return { error: "Usernames use letters, numbers, dots, dashes and underscores." };
-  }
-  return { identifier, email: "", username: identifier };
-}
-
-export function checkPassword(password: string): string | null {
-  return password.length < MIN_PASSWORD
-    ? `Passwords are at least ${MIN_PASSWORD} characters.`
-    : null;
-}
-
-/**
- * A display name for somebody who has just signed in.
- *
- * There is no account record to look one up in, so it is derived from what
- * they typed and tidied. Editable later, and only ever a label on their own
- * opinions.
- */
-export function nameFrom(credentials: Credentials): string {
-  const source = credentials.username || credentials.email.split("@")[0] || "";
-  const cleaned = source.replace(/[._-]+/g, " ").trim();
-  if (!cleaned) return "You";
-  return cleaned
-    .split(/\s+/)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
+export { MIN_PASSWORD, checkPassword, nameFrom, readIdentifier };
+export type { Credentials };
 
 /* ------------------------------------------------------------------ fields */
 

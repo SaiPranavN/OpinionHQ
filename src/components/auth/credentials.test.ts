@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  MIN_PASSWORD,
-  checkPassword,
-  nameFrom,
-  readIdentifier,
-} from "@/components/auth/CredentialForm";
-import { safeNext } from "@/components/auth/SignInView";
+// Imported from `lib`, not from the components that render them. `SignInView`
+// now reaches a server action, and a test that pulls one in fails on
+// `server-only` before it asserts anything.
+import { MIN_PASSWORD, checkPassword, nameFrom, readIdentifier } from "@/lib/auth/identifier";
+import { safeNext } from "@/lib/auth/redirect";
 
 describe("readIdentifier", () => {
   it("reads an address as an address", () => {

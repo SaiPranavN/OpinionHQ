@@ -15,39 +15,46 @@
  * entire claim is "one account, one vote", an unverified account is a vote
  * somebody manufactured.
  *
- * NONE OF IT IS REAL YET. There is no mail service, so the code is generated
- * in the browser and shown on screen; there is no captcha provider, so the
- * challenge is a placeholder. Both are labelled as such wherever they appear.
- * The shapes are what a real implementation would keep.
+ * THESE ARE THE CLIENT-SIDE HALF, and that is all they were ever meant to be.
+ * The address is now proved by Supabase against a code it generated and never
+ * showed the browser; the password strength rule below runs here for the meter
+ * and again in the project's own policy. A rule that only exists in a form is a
+ * rule an attacker skips by not using the form.
+ *
+ * The bot check is the one thing still standing in for something real.
  */
 
 /* ------------------------------------------------------------ email codes */
 
+/**
+ * How many digits the code has.
+ *
+ * It has to agree with the project's `mailer_otp_length` setting, because
+ * Supabase generates the code and this only draws the boxes for it. Six is the
+ * convention and what the input is built around; a project left on the default
+ * of eight would render six boxes for an eight-digit code, and every submission
+ * would be rejected for a reason nothing on screen explains.
+ */
 export const CODE_LENGTH = 6;
 
 /** Seconds before a new code can be requested. */
 export const RESEND_SECONDS = 30;
 
-/**
- * Wrong codes allowed before the address has to be re-entered.
+/*
+ * WHAT USED TO BE HERE, and why its absence matters.
  *
- * Five, because a six-digit code has a million values and unlimited guesses
- * would make the verification decorative. Real implementations rate-limit
- * server-side; this is the same rule in the only place this build has.
- */
-export const MAX_CODE_ATTEMPTS = 5;
-
-/**
- * A six-digit code.
+ * A `newVerificationCode` that generated the code in the browser and a
+ * `checkCode` that compared it there, with an attempt counter beside them. All
+ * three were honest stand-ins while there was no mail service — the code was
+ * printed on screen next to a note saying so.
  *
- * `Math.random` is fine for a code that is printed on screen next to a note
- * saying it is simulated. A real one is generated server-side from a CSPRNG,
- * stored hashed with a short expiry, and never travels to the client — which is
- * the one thing this version cannot demonstrate and should not pretend to.
+ * They are gone rather than kept "just in case". Supabase now generates the
+ * code from a CSPRNG server-side, stores it hashed with an expiry, rate-limits
+ * the guesses and never sends it to the browser at all. Leaving a local
+ * generator and a local comparator next to that would be leaving a working
+ * bypass one import away — and a counter that a page reload resets is not a
+ * limit, which is exactly why it could never have stayed.
  */
-export function newVerificationCode(): string {
-  return String(Math.floor(Math.random() * 10 ** CODE_LENGTH)).padStart(CODE_LENGTH, "0");
-}
 
 /**
  * Whether filling the boxes should submit by itself.
@@ -60,35 +67,6 @@ export function newVerificationCode(): string {
  */
 export function shouldAutoSubmit(previous: string, next: string, length: number): boolean {
   return next.length === length && previous.length < length;
-}
-
-export type CodeVerdict =
-  | { ok: true }
-  | { ok: false; reason: "incomplete" | "mismatch" | "exhausted"; message: string };
-
-export function checkCode(entered: string, expected: string, attempts: number): CodeVerdict {
-  if (attempts >= MAX_CODE_ATTEMPTS) {
-    return {
-      ok: false,
-      reason: "exhausted",
-      message: "Too many attempts. Go back and request a new code.",
-    };
-  }
-  if (entered.length < CODE_LENGTH) {
-    return { ok: false, reason: "incomplete", message: `Enter all ${CODE_LENGTH} digits.` };
-  }
-  if (entered !== expected) {
-    const left = MAX_CODE_ATTEMPTS - attempts - 1;
-    return {
-      ok: false,
-      reason: "mismatch",
-      message:
-        left > 0
-          ? `That code is not right. ${left} ${left === 1 ? "attempt" : "attempts"} left.`
-          : "That code is not right. Go back and request a new one.",
-    };
-  }
-  return { ok: true };
 }
 
 /* --------------------------------------------------------------- password */
