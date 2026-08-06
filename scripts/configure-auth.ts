@@ -45,7 +45,37 @@ const OTP_EMAIL = `<h2>Your OpinionHQ code</h2>
 <hr>
 <p style="font-size:13px;color:#666">Or <a href="{{ .ConfirmationURL }}">open this link</a> instead.</p>`;
 
+/**
+ * Custom SMTP, when credentials are present.
+ *
+ * Left out entirely when they are not, rather than sent as empty strings —
+ * a half-configured sender is worse than the built-in one, because Supabase
+ * stops falling back to it and every email fails instead of merely being
+ * rate-limited.
+ *
+ * Enabling this is also what unlocks the email templates: a free-tier project
+ * on the built-in sender cannot change them, which is why no six-digit code
+ * reaches an inbox until this is set.
+ */
+const smtp = process.env.SMTP_PASSWORD
+  ? {
+      smtp_host: process.env.SMTP_HOST ?? "smtp.resend.com",
+      // 587 with STARTTLS rather than 465 with implicit TLS: some hosts block
+      // 465 outbound, and Supabase's sender negotiates the upgrade fine.
+      smtp_port: Number(process.env.SMTP_PORT ?? 587),
+      smtp_user: process.env.SMTP_USER ?? "resend",
+      smtp_pass: process.env.SMTP_PASSWORD,
+      smtp_sender_name: process.env.SMTP_SENDER_NAME ?? "OpinionHQ",
+      smtp_admin_email: process.env.SMTP_SENDER_EMAIL,
+      // Supabase drops to 30/hour when custom SMTP is switched on, to protect
+      // a new sender's reputation. Raised to something a real sign-up rate can
+      // live with, and still under Resend's free 100/day.
+      rate_limit_email_sent: Number(process.env.SMTP_HOURLY_LIMIT ?? 60),
+    }
+  : {};
+
 const desired: Record<string, unknown> = {
+  ...smtp,
   // Has to equal CODE_LENGTH. See the note at the top.
   mailer_otp_length: CODE_LENGTH,
   mailer_templates_magic_link_content: OTP_EMAIL,
@@ -140,8 +170,15 @@ async function main() {
   if (!current.external_google_enabled) {
     manual.push("Google is off. Enable it in Authentication → Sign In / Providers with a Google Cloud client ID and secret.");
   }
-  if (!current.smtp_host) {
-    manual.push("No SMTP. The built-in sender allows only a few emails an hour and is not for production.");
+  if (!smtp.smtp_host && !current.smtp_host) {
+    manual.push(
+      "No SMTP. The built-in sender allows a couple of emails an hour AND blocks template\n" +
+        "    changes, so no six-digit code is ever emailed. Set SMTP_PASSWORD and\n" +
+        "    SMTP_SENDER_EMAIL in .env.local and re-run this. See docs/database.md.",
+    );
+  }
+  if (smtp.smtp_host && templatesRefused) {
+    manual.push("SMTP is set but templates were still refused — re-run this script once Supabase has registered the sender.");
   }
   if (manual.length) {
     console.log("\nStill needs a person:");
