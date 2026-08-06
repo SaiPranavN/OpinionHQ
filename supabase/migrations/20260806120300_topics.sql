@@ -18,7 +18,7 @@ create table public.topics (
   id            uuid primary key default gen_random_uuid(),
   -- The routable identifier: /topics/[slug]. Stable across renames, which is why
   -- it is not derived from `name` on every write.
-  slug          citext unique not null,
+  slug          text unique not null,
   name          text not null,
   category_id   text not null references public.categories (id) on update cascade,
   -- Required, and `worldwide` is how you say "nowhere in particular".

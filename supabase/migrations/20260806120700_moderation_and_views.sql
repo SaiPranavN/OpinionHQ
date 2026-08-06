@@ -73,7 +73,9 @@ select
   p.headline,
   p.avatar_tone       as tone,
   p.expertise,
-  coalesce(array_agg(distinct c.category) filter (where c.id is not null), '{}') as areas,
+  -- Inner join to credentials, so every row already has at least one; no
+  -- coalesce needed, and none that would need its empty literal typed.
+  array_agg(distinct c.category) as areas,
   coalesce(s.answered, 0) as answered,
   s.helpful_pct
 from public.profiles p
@@ -162,18 +164,21 @@ stable
 security definer
 set search_path = ''
 as $$
-  select 'age', o.age_band::text, count(*)
+  -- The literals are cast because a bare 'age' is `unknown`, and `unknown` in a
+  -- UNION branch resolves against the other branches rather than against the
+  -- declared return type.
+  select 'age'::text, o.age_band::text, count(*)
     from public.opinions o
    where o.topic_id = target and o.age_band is not null
    group by o.age_band
   union all
-  select 'occupation', o.occupation, count(*)
+  select 'occupation'::text, o.occupation, count(*)
     from public.opinions o
     join public.occupations oc on oc.label = o.occupation and oc.counts_in_breakdowns
    where o.topic_id = target
    group by o.occupation
   union all
-  select 'place', pl.id, count(*)
+  select 'place'::text, pl.id, count(*)
     from public.opinions o
     join public.places pl on pl.id = o.place_id
    where o.topic_id = target
@@ -195,18 +200,18 @@ stable
 security definer
 set search_path = ''
 as $$
-  select 'age', v.age_band::text, v.option_id, count(*)
+  select 'age'::text, v.age_band::text, v.option_id, count(*)
     from public.poll_votes v
    where v.poll_id = target and v.age_band is not null
    group by v.age_band, v.option_id
   union all
-  select 'occupation', v.occupation, v.option_id, count(*)
+  select 'occupation'::text, v.occupation, v.option_id, count(*)
     from public.poll_votes v
     join public.occupations oc on oc.label = v.occupation and oc.counts_in_breakdowns
    where v.poll_id = target
    group by v.occupation, v.option_id
   union all
-  select 'place', pl.id, v.option_id, count(*)
+  select 'place'::text, pl.id, v.option_id, count(*)
     from public.poll_votes v
     join public.places pl on pl.id = v.place_id
    where v.poll_id = target

@@ -24,8 +24,9 @@
 create table public.profiles (
   id            uuid primary key references auth.users (id) on delete cascade,
   display_name  text not null,
-  -- Set when they signed in with a username rather than an address.
-  username      citext unique,
+  -- Set when they signed in with a username rather than an address. Lowercase
+  -- by constraint, so a plain unique index is already case-insensitive.
+  username      text unique,
   -- Monogram, derived rather than stored twice. A cached copy drifts the moment
   -- somebody edits their name.
   initials      text generated always as (public.initials(display_name)) stored,
@@ -197,7 +198,40 @@ create policy "admins manage profiles"
 
 -- A policy cannot restrict a column, so the privilege does. Without this, "own
 -- profile is editable" would let any account set its own role to admin.
-revoke update (id, role, initials, created_at) on public.profiles from authenticated, anon;
+--
+-- REVOKE THE TABLE PRIVILEGE FIRST, THEN GRANT THE COLUMNS BACK. Postgres does
+-- not decompose a table-level grant into column grants, so
+-- `revoke update (role) …` against a role holding table-level UPDATE revokes
+-- nothing at all and reads exactly like it worked. Supabase grants `all` on
+-- every new public table to `anon` and `authenticated`, so that is precisely
+-- the situation here.
+revoke update on public.profiles from authenticated, anon;
+grant update (display_name, username, headline, expertise, avatar_tone)
+  on public.profiles to authenticated;
+
+-- Role changes go through a function, so there is one place that decides who may
+-- make somebody an admin, and it is auditable.
+create or replace function public.set_account_role(target uuid, new_role public.account_role)
+returns public.profiles
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  result public.profiles;
+begin
+  if not public.is_admin() then
+    raise exception 'only admins change roles';
+  end if;
+  if target = (select auth.uid()) and new_role <> 'admin' then
+    -- Demoting yourself is how an organisation ends up with no admin at all.
+    raise exception 'an admin cannot demote themselves';
+  end if;
+
+  update public.profiles set role = new_role where id = target returning * into result;
+  return result;
+end;
+$$;
 
 -- Nobody reads somebody else's date of birth. Not another member, not an editor.
 -- Admins are included because account recovery and abuse handling need it, and

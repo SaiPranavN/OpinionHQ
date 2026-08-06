@@ -96,20 +96,33 @@ create trigger opinions_stamp_demographics
 before insert on public.opinions
 for each row execute function public.stamp_opinion_demographics();
 
--- Belt as well as braces: the trigger overwrites whatever arrives, and the
--- privilege means an attempt to set them is an error rather than a silent no-op.
-revoke insert (age_band, occupation, place_id, helpful_count, reply_count, save_count,
-               insightful_count, useful_count, well_explained_count)
-  on public.opinions from authenticated, anon;
-revoke update (topic_id, author_id, age_band, occupation, place_id, helpful_count,
-               reply_count, save_count, insightful_count, useful_count,
-               well_explained_count, created_at)
-  on public.opinions from authenticated, anon;
+-- Belt as well as braces: the trigger overwrites what arrives, and the privilege
+-- makes an attempt to set these an error rather than a silent no-op.
+--
+-- Table privilege revoked first, columns granted back. `revoke insert (col)`
+-- against a role that holds table-level INSERT revokes nothing — see the note in
+-- the identity migration. The counter triggers are SECURITY DEFINER and run as
+-- the owner, so they are unaffected by any of this.
+--
+-- `hidden_at` is grantable to everyone because the policies decide *which rows*:
+-- an author can hide their own, which they could already achieve by deleting it,
+-- and only an editor passes the policy for anybody else's.
+revoke insert, update on public.opinions from authenticated, anon;
+grant insert (topic_id, author_id, vote, body, format, author_line)
+  on public.opinions to authenticated;
+grant update (vote, body, format, author_line, edited_at, hidden_at, hidden_reason)
+  on public.opinions to authenticated;
 
 -- --------------------------------------------------------- topic aggregates
 --
 -- Incremental. Recomputing a topic's distribution on every vote would make the
 -- thousandth vote a thousand times more expensive than the first.
+--
+-- OLD AND NEW ARE READ INTO LOCALS FIRST, and that is not tidiness. PL/pgSQL
+-- raises "record new is not assigned yet" the moment a DELETE trigger so much
+-- as mentions `new.anything` — a `case` guard does not help, because the
+-- reference is resolved when the statement's parameters are built, not when the
+-- branch is taken. Every counter trigger in this schema is written this way.
 create or replace function public.apply_opinion_delta()
 returns trigger
 language plpgsql
@@ -117,23 +130,41 @@ security definer
 set search_path = ''
 as $$
 declare
-  target uuid := coalesce(new.topic_id, old.topic_id);
+  target    uuid;
+  old_vote  public.sentiment;
+  new_vote  public.sentiment;
+  old_written boolean := false;
+  new_written boolean := false;
+  head_delta  integer := 0;
 begin
+  if tg_op <> 'INSERT' then
+    old_vote := old.vote;
+    old_written := old.body <> '';
+  end if;
+
+  if tg_op = 'DELETE' then
+    target := old.topic_id;
+    head_delta := -1;
+  else
+    target := new.topic_id;
+    new_vote := new.vote;
+    new_written := new.body <> '';
+    if tg_op = 'INSERT' then head_delta := 1; end if;
+  end if;
+
   update public.topic_stats s set
     positive_count = s.positive_count
-      + (case when tg_op <> 'DELETE' and new.vote = 'Positive' then 1 else 0 end)
-      - (case when tg_op <> 'INSERT' and old.vote = 'Positive' then 1 else 0 end),
+      + (new_vote is not distinct from 'Positive')::int
+      - (old_vote is not distinct from 'Positive')::int,
     neutral_count = s.neutral_count
-      + (case when tg_op <> 'DELETE' and new.vote = 'Neutral' then 1 else 0 end)
-      - (case when tg_op <> 'INSERT' and old.vote = 'Neutral' then 1 else 0 end),
+      + (new_vote is not distinct from 'Neutral')::int
+      - (old_vote is not distinct from 'Neutral')::int,
     negative_count = s.negative_count
-      + (case when tg_op <> 'DELETE' and new.vote = 'Negative' then 1 else 0 end)
-      - (case when tg_op <> 'INSERT' and old.vote = 'Negative' then 1 else 0 end),
-    participants = s.participants
-      + (case when tg_op = 'INSERT' then 1 when tg_op = 'DELETE' then -1 else 0 end),
-    written_count = s.written_count
-      + (case when tg_op <> 'DELETE' and new.body <> '' then 1 else 0 end)
-      - (case when tg_op <> 'INSERT' and old.body <> '' then 1 else 0 end),
+      + (new_vote is not distinct from 'Negative')::int
+      - (old_vote is not distinct from 'Negative')::int,
+    participants = greatest(s.participants + head_delta, 0),
+    written_count = greatest(
+      s.written_count + new_written::int - old_written::int, 0),
     last_activity_at = now(),
     updated_at = now()
   where s.topic_id = target;
@@ -155,8 +186,13 @@ create table public.opinion_sections (
   opinion_id    uuid not null references public.opinions (id) on delete cascade,
   type          public.pro_section_type not null,
   position      integer not null default 0,
-  -- headline | quick_take | breakdown | final_verdict
-  text          text,
+  -- headline | quick_take | breakdown | final_verdict.
+  --
+  -- Named `body` rather than `text` on purpose: a column called `text` inside a
+  -- check constraint reads as the type of the same name, and while Postgres
+  -- resolves it to the column here, it is not a thing to leave for somebody to
+  -- discover during an outage.
+  body          text,
   -- key_points
   points        text[],
   created_at    timestamptz not null default now(),
@@ -165,9 +201,9 @@ create table public.opinion_sections (
   -- that forgets a kind gets an empty box instead of a compile error.
   constraint opinion_sections_shape check (
     case type
-      when 'key_points'  then points is not null and text is null
-      when 'interactive' then points is null and text is null
-      else text is not null and points is null
+      when 'key_points'  then points is not null and body is null
+      when 'interactive' then points is null and body is null
+      else body is not null and points is null
     end
   )
 );
@@ -328,40 +364,38 @@ as $$
 declare
   target uuid;
   step   integer := case when tg_op = 'INSERT' then 1 else -1 end;
-  row_id uuid;
 begin
+  -- Same rule as `apply_opinion_delta`: resolve the record before touching it.
+  -- All four tables this trigger serves key on `opinion_id`.
+  if tg_op = 'DELETE' then target := old.opinion_id; else target := new.opinion_id; end if;
+
   if tg_table_name = 'opinion_replies' then
-    target := coalesce(new.opinion_id, old.opinion_id);
     update public.opinions set reply_count = greatest(reply_count + step, 0) where id = target;
     update public.topic_stats s set reply_count = greatest(s.reply_count + step, 0),
            last_activity_at = now(), updated_at = now()
       from public.opinions o where o.id = target and s.topic_id = o.topic_id;
 
   elsif tg_table_name = 'opinion_helpful' then
-    target := coalesce(new.opinion_id, old.opinion_id);
     update public.opinions set helpful_count = greatest(helpful_count + step, 0) where id = target;
 
   elsif tg_table_name = 'opinion_saves' then
-    target := coalesce(new.opinion_id, old.opinion_id);
     update public.opinions set save_count = greatest(save_count + step, 0) where id = target;
 
   elsif tg_table_name = 'opinion_reactions' then
     -- An update swaps one reaction for another, so both sides move.
     if tg_op <> 'INSERT' then
-      row_id := old.opinion_id;
       update public.opinions set
         insightful_count     = greatest(insightful_count     - (old.reaction = 'insightful')::int, 0),
         useful_count         = greatest(useful_count         - (old.reaction = 'useful')::int, 0),
         well_explained_count = greatest(well_explained_count - (old.reaction = 'well_explained')::int, 0)
-      where id = row_id;
+      where id = old.opinion_id;
     end if;
     if tg_op <> 'DELETE' then
-      row_id := new.opinion_id;
       update public.opinions set
         insightful_count     = insightful_count     + (new.reaction = 'insightful')::int,
         useful_count         = useful_count         + (new.reaction = 'useful')::int,
         well_explained_count = well_explained_count + (new.reaction = 'well_explained')::int
-      where id = row_id;
+      where id = new.opinion_id;
     end if;
   end if;
 

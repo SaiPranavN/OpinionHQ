@@ -15,9 +15,16 @@
 -- rather than at 3am.
 -- =============================================================================
 
-create extension if not exists "pgcrypto" with schema extensions;
+-- `gen_random_uuid()` is core since Postgres 13, so pgcrypto is not needed for
+-- it. pg_trgm is, for the catalog search — and it is referenced as
+-- `extensions.gin_trgm_ops` everywhere, because an unqualified operator class
+-- resolves against whatever `search_path` happens to be at migration time.
+--
+-- Deliberately NOT citext. Slugs and usernames are already constrained to
+-- lowercase by check constraints, so a case-insensitive type would buy nothing
+-- and add an extension whose schema placement has to be reasoned about at every
+-- reference.
 create extension if not exists "pg_trgm" with schema extensions;
-create extension if not exists "citext" with schema extensions;
 
 -- =============================================================================
 -- Enums
@@ -152,10 +159,13 @@ $$;
 -- write time means a date of birth never has to be readable by the code that
 -- draws a chart — the exact date stays in `profiles`, behind RLS, and the
 -- aggregate query never joins to it.
+-- STABLE, not IMMUTABLE: the default argument is `now()`, so the same date of
+-- birth genuinely does return a different band on a different day. Claiming
+-- otherwise would let the planner fold a call to it into a cached constant.
 create or replace function public.age_band(dob date, at timestamptz default now())
 returns public.age_band
 language sql
-immutable
+stable
 as $$
   select case
     when dob is null then null

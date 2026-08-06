@@ -45,9 +45,59 @@ create index credentials_user_idx on public.credentials (user_id);
 create index credentials_live_idx on public.credentials (user_id, category)
   where status = 'verified';
 
-revoke insert (status, public_label, evidence_category, verified_at, reviewed_by)
-  on public.credentials from authenticated, anon;
-revoke update on public.credentials from authenticated, anon;
+-- An applicant says what they are claiming and offers evidence. Everything that
+-- decides whether the claim is *true* — the status, the public label, who
+-- approved it — is set by the reviewer through `public.review_credential`.
+revoke insert, update on public.credentials from authenticated, anon;
+grant insert (user_id, category, proof_type) on public.credentials to authenticated;
+
+-- Approval, in one place.
+--
+-- Copies the label out of the vocabulary rather than trusting a submitted one:
+-- an applicant who could write `public_label` could verify themselves as
+-- anything they liked, and the label is the only thing another user reads.
+create or replace function public.review_credential(
+  target uuid,
+  approve boolean,
+  note text default null,
+  expires timestamptz default null
+)
+returns public.credentials
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  result public.credentials;
+  kind   public.proof_kinds;
+begin
+  if not public.is_admin() then
+    raise exception 'only admins review proof';
+  end if;
+
+  select k.* into kind
+    from public.proof_kinds k
+    join public.credentials c on c.proof_type = k.id
+   where c.id = target;
+
+  if kind is null then
+    raise exception 'no such credential';
+  end if;
+
+  update public.credentials set
+    status            = case when approve then 'verified' else 'rejected' end,
+    public_label      = case when approve then kind.public_label else '' end,
+    evidence_category = kind.evidence_category,
+    verified_at       = case when approve then now() else null end,
+    reviewed_by       = (select auth.uid()),
+    review_note       = note,
+    expires_at        = expires
+  where id = target
+  returning * into result;
+
+  return result;
+end;
+$$;
 
 -- The evidence itself. Separate table, admin-only, and deleted when the review
 -- is done — `storage_path` points at a private Storage object, never at
@@ -253,8 +303,10 @@ create trigger ask_answers_set_updated_at
 before update on public.ask_answers
 for each row execute function public.set_updated_at();
 
-revoke insert (likes, dislikes) on public.ask_answers from authenticated, anon;
-revoke update (likes, dislikes, question_id, professional_id) on public.ask_answers from authenticated, anon;
+revoke insert, update on public.ask_answers from authenticated, anon;
+grant insert (question_id, professional_id, pick, summary, reasoning, next_steps)
+  on public.ask_answers to authenticated;
+grant update (pick, summary, reasoning, next_steps) on public.ask_answers to authenticated;
 
 -- One verdict per option. A table rather than an array aligned by index, so a
 -- reordered option list cannot silently reassign somebody's assessment.
@@ -315,6 +367,30 @@ $$;
 create trigger ask_matches_ensure_thread
 after insert on public.ask_matches
 for each row execute function public.ensure_thread();
+
+-- Answering advances the thread. The professional cannot write `ask_threads`
+-- directly — see the policy at the bottom of this file — so the status follows
+-- from the answer existing rather than from a second call somebody has to
+-- remember to make, and cannot be claimed without one.
+create or replace function public.mark_thread_answered()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  update public.ask_threads
+     set status = 'Answered', updated_at = now()
+   where question_id = new.question_id
+     and professional_id = new.professional_id
+     and status = 'Awaiting answer';
+  return null;
+end;
+$$;
+
+create trigger ask_answers_mark_thread
+after insert on public.ask_answers
+for each row execute function public.mark_thread_answered();
 
 create table public.ask_messages (
   id              uuid primary key default gen_random_uuid(),
@@ -414,8 +490,9 @@ create trigger ask_comments_set_updated_at
 before update on public.ask_comments
 for each row execute function public.set_updated_at();
 
-revoke insert (depth, likes, dislikes) on public.ask_comments from authenticated, anon;
-revoke update (depth, likes, dislikes, answer_id, parent_id, author_id) on public.ask_comments from authenticated, anon;
+revoke insert, update on public.ask_comments from authenticated, anon;
+grant insert (answer_id, parent_id, author_id, body) on public.ask_comments to authenticated;
+grant update (body, hidden_at) on public.ask_comments to authenticated;
 
 create or replace function public.set_comment_depth()
 returns trigger
@@ -484,8 +561,9 @@ security definer
 set search_path = ''
 as $$
 declare
-  up integer := 0;
-  down integer := 0;
+  up     integer := 0;
+  down   integer := 0;
+  target uuid;
 begin
   if tg_op <> 'INSERT' then
     up   := up   - (old.vote = 'like')::int;
@@ -496,14 +574,18 @@ begin
     down := down + (new.vote = 'dislike')::int;
   end if;
 
+  -- Resolved with a PL/pgSQL `if` rather than a coalesce over both records:
+  -- `new` is unassigned on DELETE and merely naming it raises.
   if tg_table_name = 'ask_answer_votes' then
+    if tg_op = 'DELETE' then target := old.answer_id; else target := new.answer_id; end if;
     update public.ask_answers set
       likes = greatest(likes + up, 0), dislikes = greatest(dislikes + down, 0)
-     where id = coalesce(new.answer_id, old.answer_id);
+     where id = target;
   else
+    if tg_op = 'DELETE' then target := old.comment_id; else target := new.comment_id; end if;
     update public.ask_comments set
       likes = greatest(likes + up, 0), dislikes = greatest(dislikes + down, 0)
-     where id = coalesce(new.comment_id, old.comment_id);
+     where id = target;
   end if;
 
   return null;
@@ -619,13 +701,21 @@ create policy "threads you are party to" on public.ask_threads for select
     or exists (select 1 from public.ask_questions q where q.id = question_id and q.asker_id = (select auth.uid()))
   );
 
--- The asker opens the door and closes the thread; the professional may move the
--- status but cannot open the private channel and cannot decide the outcome.
+-- ONLY THE ASKER WRITES HERE. Opening the private channel and deciding the
+-- outcome are theirs alone, and there is no second policy letting the
+-- professional "just update the status" — that update would carry
+-- `private_opened_at` with it, and a channel the asker never opened is exactly
+-- what this table exists to prevent.
+--
+-- The professional's side of the status moves on its own, below: answering sets
+-- it. Derived from the record rather than asserted by whoever happens to be
+-- posting, like every other count in this schema.
 create policy "asker manages the thread" on public.ask_threads for update
   using (exists (select 1 from public.ask_questions q where q.id = question_id and q.asker_id = (select auth.uid())))
   with check (exists (select 1 from public.ask_questions q where q.id = question_id and q.asker_id = (select auth.uid())));
 
-revoke update (private_opened_at, outcome) on public.ask_threads from anon;
+revoke update on public.ask_threads from authenticated, anon;
+grant update (private_opened_at, outcome, status) on public.ask_threads to authenticated;
 
 -- Messages are readable by the two people in the thread, and only once the
 -- asker has opened the channel. Before that there is nothing to read, and this

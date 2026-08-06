@@ -9,7 +9,7 @@
 
 create table public.polls (
   id           uuid primary key default gen_random_uuid(),
-  slug         citext unique not null,
+  slug         text unique not null,
   -- The choice itself, phrased as a question.
   question     text not null,
   category_id  text not null references public.categories (id) on update cascade,
@@ -62,8 +62,11 @@ create table public.poll_options (
 
 create index poll_options_poll_idx on public.poll_options (poll_id, slot);
 
-revoke insert (vote_count) on public.poll_options from authenticated, anon;
-revoke update (vote_count, poll_id) on public.poll_options from authenticated, anon;
+-- Table privilege revoked, then the writable columns granted back. A column-only
+-- revoke would be a no-op against Supabase's default table-level grant.
+revoke insert, update on public.poll_options from authenticated, anon;
+grant insert (poll_id, slot, name, blurb) on public.poll_options to authenticated;
+grant update (slot, name, blurb) on public.poll_options to authenticated;
 
 -- The upper bound, enforced as rows arrive. The lower bound is checked at
 -- publish, because a poll under construction legitimately has one option for as
@@ -133,8 +136,10 @@ create trigger poll_votes_set_updated_at
 before update on public.poll_votes
 for each row execute function public.set_updated_at();
 
-revoke insert (age_band, occupation, place_id) on public.poll_votes from authenticated, anon;
-revoke update (poll_id, user_id, age_band, occupation, place_id) on public.poll_votes from authenticated, anon;
+revoke insert, update on public.poll_votes from authenticated, anon;
+grant insert (poll_id, user_id, option_id) on public.poll_votes to authenticated;
+-- Changing your mind means changing the option, and nothing else about the row.
+grant update (option_id) on public.poll_votes to authenticated;
 
 create or replace function public.stamp_poll_vote()
 returns trigger
@@ -201,7 +206,20 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  target uuid;
+  step   integer := 0;
 begin
+  -- `new` is unassigned on DELETE, so it is resolved once, up front. See the
+  -- note on `public.apply_opinion_delta`.
+  if tg_op = 'DELETE' then
+    target := old.poll_id;
+    step := -1;
+  else
+    target := new.poll_id;
+    if tg_op = 'INSERT' then step := 1; end if;
+  end if;
+
   if tg_op <> 'INSERT' then
     update public.poll_options set vote_count = greatest(vote_count - 1, 0)
      where id = old.option_id;
@@ -212,11 +230,10 @@ begin
   end if;
 
   update public.poll_stats set
-    total_votes = total_votes
-      + (case when tg_op = 'INSERT' then 1 when tg_op = 'DELETE' then -1 else 0 end),
+    total_votes = greatest(total_votes + step, 0),
     last_activity_at = now(),
     updated_at = now()
-  where poll_id = coalesce(new.poll_id, old.poll_id);
+  where poll_id = target;
 
   return null;
 end;
@@ -283,8 +300,9 @@ create trigger poll_reasons_set_updated_at
 before update on public.poll_reasons
 for each row execute function public.set_updated_at();
 
-revoke insert (helpful_count) on public.poll_reasons from authenticated, anon;
-revoke update (helpful_count, poll_id, user_id) on public.poll_reasons from authenticated, anon;
+revoke insert, update on public.poll_reasons from authenticated, anon;
+grant insert (poll_id, user_id, option_id, body) on public.poll_reasons to authenticated;
+grant update (body, hidden_at, hidden_reason) on public.poll_reasons to authenticated;
 
 create table public.poll_reason_helpful (
   reason_id  uuid not null references public.poll_reasons (id) on delete cascade,
@@ -300,15 +318,22 @@ security definer
 set search_path = ''
 as $$
 declare
-  step integer := case when tg_op = 'INSERT' then 1 else -1 end;
+  step   integer := case when tg_op = 'INSERT' then 1 else -1 end;
+  target uuid;
 begin
+  -- The branch has to be a PL/pgSQL `if`, not a SQL `case`. A `case` inside the
+  -- statement still *mentions* `new.…`, and PL/pgSQL resolves every record
+  -- reference when it builds the statement's parameters — so a DELETE would
+  -- raise before the branch it never takes could protect it.
   if tg_table_name = 'poll_reasons' then
+    if tg_op = 'DELETE' then target := old.poll_id; else target := new.poll_id; end if;
     update public.poll_stats set reason_count = greatest(reason_count + step, 0),
            last_activity_at = now(), updated_at = now()
-     where poll_id = coalesce(new.poll_id, old.poll_id);
+     where poll_id = target;
   else
+    if tg_op = 'DELETE' then target := old.reason_id; else target := new.reason_id; end if;
     update public.poll_reasons set helpful_count = greatest(helpful_count + step, 0)
-     where id = coalesce(new.reason_id, old.reason_id);
+     where id = target;
   end if;
   return null;
 end;
