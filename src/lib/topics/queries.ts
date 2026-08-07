@@ -135,7 +135,7 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
         .limit(100),
       supabase
         .from("timeline_events")
-        .select("id, occurred_on, title, description, source_name, status")
+        .select("id, occurred_on, title, description, source_name, source_url, status")
         .eq("topic_id", topicId)
         .order("occurred_on", { ascending: false }),
       // `eq("author_id", "")` on a uuid column would error rather than return
@@ -172,6 +172,7 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
       title: e.title,
       desc: e.description,
       src: e.source_name,
+      srcUrl: e.source_url ?? undefined,
       status: e.status as TimelineEvent["status"],
     })),
     context: {
@@ -213,6 +214,7 @@ interface TimelineRow {
   title: string;
   description: string;
   source_name: string;
+  source_url: string | null;
   status: string;
 }
 

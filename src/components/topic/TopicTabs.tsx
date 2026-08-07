@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { ContributionCard } from "@/components/topic/ContributionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { safeExternalUrl } from "@/lib/safe-url";
 import {
   FILTERS,
   SORTS,
@@ -289,13 +290,25 @@ export function TopicTabs({ topicId, opinions, timeline, accent }: TopicTabsProp
                 <span className="font-mono text-[10px] tracking-[0.1em] uppercase text-dim">
                   Source
                 </span>
-                <button
-                  type="button"
-                  onClick={() => toast("Source links open the publisher in a new tab.")}
-                  className="cursor-pointer text-[13px] text-positive-light outline-none focus-visible:ring-2 focus-visible:ring-positive/60"
-                >
-                  {event.src} ↗
-                </button>
+                {/* A real link when there is one, and plain text when there is
+                    not. The URL is validated rather than trusted: it is typed by
+                    an editor and rendered as an href for every reader, which is
+                    exactly the shape of a stored-XSS hole. See `safeExternalUrl`.
+
+                    `noreferrer` as well as `noopener` — the publisher has no
+                    business being told which topic page sent the reader. */}
+                {safeExternalUrl(event.srcUrl) ? (
+                  <a
+                    href={safeExternalUrl(event.srcUrl) ?? undefined}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[13px] text-positive-light underline decoration-positive/30 underline-offset-4 outline-none transition-colors hover:decoration-positive/70 focus-visible:ring-2 focus-visible:ring-positive/60"
+                  >
+                    {event.src} ↗
+                  </a>
+                ) : (
+                  <span className="text-[13px] text-positive-light">{event.src}</span>
+                )}
               </footer>
             </article>
           ))}

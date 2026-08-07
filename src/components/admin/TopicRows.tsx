@@ -14,6 +14,7 @@
  * one that is not there.
  */
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -119,6 +120,15 @@ export function TopicRows({ topics, isAdmin }: { topics: AdminTopicRow[]; isAdmi
               </div>
 
               <div className="flex shrink-0 flex-wrap items-center gap-2">
+                {/* First, and a link rather than a button: editing is what an
+                    editor comes here to do, and publishing a sourced update
+                    lives behind it. */}
+                <Link
+                  href={`/admin/topics/${topic.slug}`}
+                  className="rounded-full border border-veil/16 px-4 py-1.5 text-[12px] font-medium text-cream transition-colors hover:border-veil/40"
+                >
+                  Edit
+                </Link>
                 {live ? (
                   <Button onClick={() => run(topic.id, () => archiveTopic(topic.id))} busy={working}>
                     Archive

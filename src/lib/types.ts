@@ -316,6 +316,16 @@ export interface TimelineEvent {
   desc: string;
   /** Human-readable publisher name for the source reference. */
   src: string;
+  /**
+   * Where the claim can be checked.
+   *
+   * Optional because a development can be sourced to a publisher that has no
+   * stable link — a broadcast, a printed notice. Absent renders the name
+   * without a link rather than a link that goes nowhere, which is the more
+   * honest of the two: "sourced to The Hindu" is a checkable claim even when
+   * this build cannot hand you the page.
+   */
+  srcUrl?: string;
   status: StatusId;
 }
 
