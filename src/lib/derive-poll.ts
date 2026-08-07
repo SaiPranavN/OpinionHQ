@@ -8,13 +8,19 @@
  *
  * The interesting output is not the headline split — it is how each slice of
  * the audience divided. "68% of 17–20s picked A, 41% of over-31s did" says
- * something a single bar cannot. In production those cross-tabs are computed
- * server-side; here they are derived deterministically from the poll's own
- * totals so the numbers reconcile with the headline instead of drifting.
+ * something a single bar cannot.
+ *
+ * THOSE CROSS-TABS ARE MEASURED, NOT DERIVED. They used to be generated here
+ * from the headline split with a seeded per-segment swing, re-centred so the
+ * segments always reconciled with the top-line number. That is the property
+ * that made it dangerous: it looked like data, it added up, and it described
+ * nobody. They now arrive on the poll from `public.poll_audience`, which counts
+ * the votes actually cast and withholds any segment too small to publish
+ * without identifying the people in it. When there is nothing to report the
+ * arrays are empty and the panels draw nothing.
  */
 
 import { isPlaceId, placeContext, placeLabel } from "@/lib/places";
-import { reasonsFor } from "@/lib/sample-data/poll-reasons";
 import { categoryOf } from "@/lib/taxonomy";
 import {
   MAX_POLL_OPTIONS,
@@ -23,8 +29,6 @@ import {
   type DecoratedPollOption,
   type Poll,
   type PollOption,
-  type PollOptionId,
-  type PollSplitRow,
 } from "@/lib/types";
 
 /**
@@ -72,16 +76,8 @@ export function pollInk(index: number): string {
   return POLL_INK[index % POLL_INK.length]!;
 }
 
-const DEFAULT_SPREAD = 12;
-
-/** Fewest votes before a split is described as a verdict or cross-tabbed. */
+/** Fewest votes before a split is described as a verdict. */
 const MIN_REPORTABLE = 10;
-
-function seedOf(id: string): number {
-  let hash = 7;
-  for (let i = 0; i < id.length; i++) hash = (hash * 33 + id.charCodeAt(i)) % 99_991;
-  return hash;
-}
 
 export function formatNumber(n: number): string {
   return n.toLocaleString("en-IN");
@@ -114,114 +110,6 @@ export function roundTo100(values: number[]): number[] {
     remainder -= 1;
   }
   return out;
-}
-
-/* ------------------------------------------------------------- audience mix */
-
-const REGIONS: readonly { label: string; share: number }[] = [
-  { label: "Maharashtra", share: 18 },
-  { label: "Uttar Pradesh", share: 16 },
-  { label: "Delhi NCR", share: 15 },
-  { label: "Karnataka", share: 14 },
-  { label: "Tamil Nadu", share: 12 },
-  { label: "West Bengal", share: 10 },
-  { label: "Other states", share: 15 },
-];
-
-const AGE_GROUPS: readonly { label: string; share: number }[] = [
-  { label: "17–20", share: 24 },
-  { label: "21–24", share: 31 },
-  { label: "25–30", share: 26 },
-  { label: "31 and over", share: 19 },
-];
-
-const OCCUPATIONS: readonly { label: string; share: number }[] = [
-  { label: "Student", share: 34 },
-  { label: "Working professional", share: 44 },
-  { label: "Parent or guardian", share: 14 },
-  { label: "Educator", share: 8 },
-];
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
-
-/**
- * Cross-tab for one set of segments across N options.
- *
- * Each segment gets a deterministic swing per option, then every option's
- * column is re-centred so its share-weighted average lands back on the headline
- * share. Without that step the segments would quietly contradict the top-line
- * number, and a breakdown that disagrees with the headline makes the whole page
- * untrustworthy. Re-centring runs twice because normalising each row to 100
- * reintroduces a little drift.
- */
-function splitRows(
-  segments: readonly { label: string; share: number }[],
-  headline: number[],
-  total: number,
-  seed: number,
-  spread: number,
-  salt: number,
-  optionIds: PollOptionId[],
-  overrides?: Record<string, number[]>,
-): PollSplitRow[] {
-  const n = headline.length;
-  const shareTotal = segments.reduce((sum, s) => sum + s.share, 0);
-
-  // Deterministic swing per (segment, option), in roughly [-spread, spread].
-  const swing = segments.map((_, i) =>
-    Array.from({ length: n }, (_, k) =>
-      Math.sin((seed % 977) + i * 2.399 + k * 1.731 + salt * 1.117) * spread,
-    ),
-  );
-
-  const recentre = () => {
-    for (let k = 0; k < n; k++) {
-      const mean =
-        swing.reduce((sum, row, i) => sum + row[k]! * segments[i]!.share, 0) / shareTotal;
-      for (let i = 0; i < segments.length; i++) swing[i]![k] = swing[i]![k]! - mean;
-    }
-  };
-  recentre();
-
-  const rows = segments.map((segment, i) => {
-    const pinned = overrides?.[segment.label];
-    const raw =
-      pinned && pinned.length === n
-        ? pinned.map((v) => clamp(v, 0, 100))
-        : headline.map((base, k) => clamp(base + swing[i]![k]!, 2, 96));
-    const sum = raw.reduce((a, b) => a + b, 0) || 1;
-    return raw.map((v) => (v / sum) * 100);
-  });
-
-  // Second pass: normalising rows shifted the column means, so correct once
-  // more against the actual normalised values.
-  for (let k = 0; k < n; k++) {
-    const mean =
-      rows.reduce((sum, row, i) => sum + row[k]! * segments[i]!.share, 0) / shareTotal;
-    const drift = headline[k]! - mean;
-    for (let i = 0; i < segments.length; i++) {
-      if (overrides?.[segments[i]!.label]) continue;
-      rows[i]![k] = clamp(rows[i]![k]! + drift, 1, 97);
-    }
-  }
-
-  return segments.map((segment, i) => {
-    const sum = rows[i]!.reduce((a, b) => a + b, 0) || 1;
-    const pcts = roundTo100(rows[i]!.map((v) => (v / sum) * 100));
-    const sorted = [...pcts].sort((a, b) => b - a);
-    const top = sorted[0]!;
-    const winners = pcts.filter((p) => p === top).length;
-    return {
-      label: segment.label,
-      share: segment.share,
-      voters: Math.round((total * segment.share) / 100),
-      pcts,
-      leans: winners > 1 ? "even" : optionIds[pcts.indexOf(top)]!,
-      margin: top - (sorted[1] ?? 0),
-    };
-  });
 }
 
 /* ------------------------------------------------------------------ verdict */
@@ -293,19 +181,14 @@ export function decoratePoll(poll: Poll): DecoratedPoll {
   // Below this, a poll has a result but nothing that can honestly be called a
   // verdict — and no audience worth breaking down.
   const smallSample = total > 0 && total < MIN_REPORTABLE;
-  const reasons = reasonsFor(poll.id);
+  const reasonCounts = poll.reasonCounts ?? {};
 
   const pcts = unvoted
     ? poll.options.map(() => Math.round(100 / poll.options.length))
     : roundTo100(poll.options.map((option) => (option.votes / total) * 100));
 
   const options = poll.options.map((option, i) =>
-    decorateOption(
-      option,
-      pcts[i]!,
-      i,
-      reasons.filter((r) => r.side === option.id).length,
-    ),
+    decorateOption(option, pcts[i]!, i, reasonCounts[option.id] ?? 0),
   );
 
   const ranked = [...options].sort((x, y) => y.pct - x.pct || y.votes - x.votes);
@@ -313,22 +196,16 @@ export function decoratePoll(poll: Poll): DecoratedPoll {
   const runnerUp = ranked[1] ?? leader;
   const margin = leader.pct - runnerUp.pct;
 
-  const seed = seedOf(poll.id);
-  const spread = poll.spread ?? DEFAULT_SPREAD;
-  const optionIds = poll.options.map((o) => o.id);
-  // Derived cross-tabs stand in for server aggregates on fixture polls. They
-  // must never be applied to a handful of real votes: a regional breakdown of
-  // one voter is invention, not a placeholder.
+  // Measured cross-tabs, or nothing. The client applies one more floor on top
+  // of the per-segment suppression the database already did: below
+  // MIN_REPORTABLE votes in total there is a result but nothing that can
+  // honestly be broken down, and a regional split of four voters is a story
+  // about four people told as though it were about a region.
   const reportable = !unvoted && !smallSample;
-  const regions = reportable
-    ? splitRows(REGIONS, pcts, total, seed, spread, 1, optionIds, poll.regionOverrides)
-    : [];
-  const ageGroups = reportable
-    ? splitRows(AGE_GROUPS, pcts, total, seed, spread * 0.85, 2, optionIds)
-    : [];
-  const occupations = reportable
-    ? splitRows(OCCUPATIONS, pcts, total, seed, spread * 0.7, 3, optionIds)
-    : [];
+  const measured = reportable ? poll.audience : undefined;
+  const regions = measured?.regions ?? [];
+  const ageGroups = measured?.ageGroups ?? [];
+  const occupations = measured?.occupations ?? [];
 
   // The segment that most disagrees with the overall winner is usually the
   // most interesting line in the whole poll, so it gets surfaced explicitly.
@@ -375,7 +252,9 @@ export function decoratePoll(poll: Poll): DecoratedPoll {
     ageGroups,
     occupations,
     contrarian,
-    reasonCount: reasons.length,
-    demographicOptIn: 52 + (seed % 13),
+    reasonCount: Object.values(reasonCounts).reduce((sum, n) => sum + (n ?? 0), 0),
+    // Counted, not guessed. Zero is the honest answer before anyone has voted,
+    // and the panel that quotes this figure is not drawn at all in that case.
+    demographicOptIn: poll.demographicOptIn ?? 0,
   };
 }

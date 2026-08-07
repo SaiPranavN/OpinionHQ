@@ -427,7 +427,15 @@ export interface PollHistoryPoint {
 }
 
 export interface Poll {
+  /** The slug — what every route and link in the app already carries. */
   id: string;
+  /**
+   * The database primary key, when this poll came from the database.
+   *
+   * `id` holds the slug so existing links keep working, so writes that have to
+   * name a row read this instead. Absent on a poll built in a test.
+   */
+  uuid?: string;
   /** The choice itself, phrased as a question. */
   question: string;
   cat: CategoryId;
@@ -445,20 +453,24 @@ export interface Poll {
   /** Editor-set close date, or "Open-ended". */
   closes: string;
   /**
-   * How far individual segments swing from the headline split, in percentage
-   * points. Some questions divide the country (chai vs coffee); others get the
-   * same answer from everyone. Defaults to a moderate spread.
-   */
-  spread?: number;
-  /**
-   * Pins a named region's split, as whole percentages in option order.
+   * How the audience actually divided, per segment.
    *
-   * Derived swings are fine when nobody knows the real pattern, but on some
-   * questions the geography is common knowledge — a South Indian reader seeing
-   * "Tamil Nadu: 94% chai" would rightly stop trusting every other number on
-   * the page. Editors override those rows explicitly.
+   * Absent until somebody has voted. This replaced a `spread` knob that fed a
+   * seeded swing: the knob controlled how divisive the *invented* cross-tabs
+   * looked, which is a dial for how convincing a fabrication is. There is no
+   * such dial on a measurement.
    */
-  regionOverrides?: Record<string, number[]>;
+  audience?: PollAudience;
+  /** Written reasons per option, counted. Options with none are absent. */
+  reasonCounts?: Partial<Record<PollOptionId, number>>;
+  /**
+   * Share of voters who supplied any demographics, as a whole percentage.
+   *
+   * The audience panel states this in its footnote, so it has to be counted.
+   * It was `54 + (participants % 11)` — a plausible-looking number that made
+   * the invention underneath it read as a methodology note.
+   */
+  demographicOptIn?: number;
   /**
    * How the split moved over time, oldest first.
    *
@@ -484,6 +496,25 @@ export interface PollReason {
   text: string;
   time: string;
   helpful: number;
+}
+
+/**
+ * Real cross-tabs, measured from the votes actually cast.
+ *
+ * Empty arrays are meaningful and common: a poll can be too young to break
+ * down, or every segment can fall under the suppression floor that
+ * `public.poll_audience` applies. The panels then draw nothing — which is the
+ * whole difference between "nobody has measured this" and a swing invented
+ * from the headline that reconciles perfectly and describes no one.
+ *
+ * Shares can total less than 100. A voter placed at a country rather than
+ * inside a state belongs to no region row, and saying so is more honest than
+ * scaling the rows up to hide it.
+ */
+export interface PollAudience {
+  regions: PollSplitRow[];
+  ageGroups: PollSplitRow[];
+  occupations: PollSplitRow[];
 }
 
 /** How one segment of the audience divided across the options. */

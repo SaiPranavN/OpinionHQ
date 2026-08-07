@@ -91,18 +91,6 @@ describe("poll fixtures", () => {
     }
   });
 
-  it("covers every option in a pinned region override", () => {
-    for (const poll of POLLS) {
-      for (const [region, pcts] of Object.entries(poll.regionOverrides ?? {})) {
-        expect(pcts.length, `${poll.id}/${region}`).toBe(poll.options.length);
-        expect(
-          pcts.reduce((a, b) => a + b, 0),
-          `${poll.id}/${region}`,
-        ).toBe(100);
-      }
-    }
-  });
-
   it("ships at least one poll with more than two options", () => {
     expect(POLLS.some((p) => p.options.length > 2)).toBe(true);
   });
@@ -116,13 +104,6 @@ describe("poll fixtures", () => {
     }
   });
 
-  it("gives every option of every poll at least one written reason", () => {
-    for (const poll of allPolls()) {
-      for (const option of poll.options) {
-        expect(option.reasonCount, `${poll.id}/${option.id}`).toBeGreaterThan(0);
-      }
-    }
-  });
 });
 
 describe("roundTo100", () => {
@@ -233,71 +214,81 @@ describe("decoratePoll", () => {
     expect(d.verdict).toBe("Too close to call");
   });
 
-  it("keeps every cross-tab row at exactly 100 percent across all options", () => {
-    for (const poll of [...POLLS, three, four]) {
-      const d = decoratePoll(poll);
-      for (const row of [...d.regions, ...d.ageGroups, ...d.occupations]) {
-        expect(
-          row.pcts.reduce((a, b) => a + b, 0),
-          `${poll.id}/${row.label}`,
-        ).toBe(100);
-        expect(row.pcts.length, `${poll.id}/${row.label}`).toBe(poll.options.length);
-      }
-    }
-  });
-
-  it("reconciles the cross-tabs with the headline split", () => {
-    // Segments that quietly contradicted the top-line number would make the
-    // whole breakdown untrustworthy.
-    for (const poll of [...POLLS, three, four]) {
-      const d = decoratePoll(poll);
-      for (const rows of [d.regions, d.ageGroups, d.occupations]) {
-        const shareTotal = rows.reduce((sum, r) => sum + r.share, 0);
-        d.options.forEach((option, k) => {
-          const weighted =
-            rows.reduce((sum, r) => sum + r.pcts[k]! * r.share, 0) / shareTotal;
-          expect(
-            Math.abs(weighted - option.pct),
-            `${poll.id}/${option.id}`,
-          ).toBeLessThan(4);
-        });
-      }
-    }
-  });
-
-  it("respects the poll's spread — a divisive question swings more by segment", () => {
-    const spreadOf = (spread: number) => {
-      const rows = decoratePoll({ ...base, spread }).regions.map((r) => r.pcts[0]!);
-      return Math.max(...rows) - Math.min(...rows);
-    };
-    expect(spreadOf(30)).toBeGreaterThan(spreadOf(6));
-  });
-
-  it("surfaces a segment that went against the overall winner", () => {
-    const chai = allPolls().find((p) => p.id === "chai-coffee")!;
-    expect(chai.contrarian).not.toBeNull();
-    expect(chai.contrarian!.leans).not.toBe(chai.leader.id);
-  });
-
-  it("honours pinned regional patterns over the derived swing", () => {
-    // Filter-coffee country must not be reported as overwhelmingly pro-chai;
-    // a reader who knows the geography would discount every other number.
-    const chai = allPolls().find((p) => p.id === "chai-coffee")!;
-    const tn = chai.regions.find((r) => r.label === "Tamil Nadu")!;
-    const ka = chai.regions.find((r) => r.label === "Karnataka")!;
-    const up = chai.regions.find((r) => r.label === "Uttar Pradesh")!;
-    expect(tn.pcts[0]).toBe(18);
-    expect(ka.leans).toBe("b");
-    expect(up.leans).toBe("a");
-    // Chai still wins overall, so the South is genuinely against the grain.
-    expect(chai.leader.name).toBe("Chai");
-  });
-
   it("names every option in the accessible split label", () => {
     const d = decoratePoll(four);
     for (const option of d.options) {
       expect(d.splitLabel).toContain(option.name);
     }
+  });
+});
+
+/**
+ * These replaced a set of tests that checked the *invented* cross-tabs were
+ * convincing — that every segment row totalled 100, that the segments
+ * reconciled with the headline, that a `spread` knob made a question look more
+ * divisive. All of that was true of the fabrication and none of it made it a
+ * measurement. What matters now is the opposite property: that nothing appears
+ * unless it was counted.
+ */
+describe("decoratePoll cross-tabs", () => {
+  const measured = {
+    regions: [
+      { label: "Karnataka", share: 60, voters: 60, pcts: [70, 30], leans: "a" as const, margin: 40 },
+      { label: "Kerala", share: 40, voters: 40, pcts: [45, 55], leans: "b" as const, margin: 10 },
+    ],
+    ageGroups: [],
+    occupations: [],
+  };
+
+  it("draws nothing when nothing was measured", () => {
+    const d = decoratePoll(base);
+    expect(d.regions).toEqual([]);
+    expect(d.ageGroups).toEqual([]);
+    expect(d.occupations).toEqual([]);
+    expect(d.contrarian).toBeNull();
+    // Not a plausible-looking share. The panel quoting this is not drawn.
+    expect(d.demographicOptIn).toBe(0);
+  });
+
+  it("passes measured segments through untouched", () => {
+    const d = decoratePoll({ ...base, audience: measured, demographicOptIn: 73 });
+    expect(d.regions).toEqual(measured.regions);
+    expect(d.demographicOptIn).toBe(73);
+  });
+
+  it("withholds measured segments on a poll too small to break down", () => {
+    // The database suppresses small *segments*; this is the second floor, on
+    // the poll as a whole. Four voters cross-tabbed is a story about four
+    // people told as though it were about a region.
+    const d = decoratePoll({
+      ...base,
+      options: [
+        { id: "a", name: "Option A", blurb: "First.", votes: 3 },
+        { id: "b", name: "Option B", blurb: "Second.", votes: 1 },
+      ],
+      audience: measured,
+    });
+    expect(d.smallSample).toBe(true);
+    expect(d.regions).toEqual([]);
+  });
+
+  it("finds the contrarian segment among measured rows only", () => {
+    const d = decoratePoll({ ...base, audience: measured });
+    // A leads overall; Kerala went to B.
+    expect(d.leader.id).toBe("a");
+    expect(d.contrarian?.label).toBe("Kerala");
+    expect(d.contrarian?.leans).toBe("b");
+  });
+
+  it("counts written reasons per option rather than assuming any", () => {
+    const d = decoratePoll({ ...base, reasonCounts: { a: 4, b: 2 } });
+    expect(d.options.find((o) => o.id === "a")?.reasonCount).toBe(4);
+    expect(d.options.find((o) => o.id === "b")?.reasonCount).toBe(2);
+    expect(d.reasonCount).toBe(6);
+
+    const none = decoratePoll(base);
+    expect(none.reasonCount).toBe(0);
+    expect(none.options.every((o) => o.reasonCount === 0)).toBe(true);
   });
 });
 

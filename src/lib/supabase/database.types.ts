@@ -2988,6 +2988,16 @@ export type Database = {
         Args: { filter_id: string; place_id: string }
         Returns: boolean
       }
+      poll_audience: {
+        Args: { target: string }
+        Returns: {
+          dimension: string
+          segment: string
+          slot: Database["public"]["Enums"]["option_slot"]
+          voters: number
+        }[]
+      }
+      poll_demographic_opt_in: { Args: { target: string }; Returns: number }
       poll_demographics: {
         Args: { target: string }
         Returns: {
@@ -2995,6 +3005,13 @@ export type Database = {
           label: string
           option_id: string
           responses: number
+        }[]
+      }
+      poll_reason_counts: {
+        Args: { target: string }
+        Returns: {
+          reasons: number
+          slot: Database["public"]["Enums"]["option_slot"]
         }[]
       }
       publish_poll: {
