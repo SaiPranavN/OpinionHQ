@@ -1,6 +1,6 @@
 import { Brand } from "@/components/ui/Brand";
 import { formatNumber } from "@/lib/derive";
-import { getTopic } from "@/lib/topics";
+import { sampleTopic } from "@/lib/sample-data/decorated";
 
 const AXIS_LABELS = ["4 May", "11 May", "18 May", "25 May", "2 Jun"];
 
@@ -9,7 +9,7 @@ const AXIS_LABELS = ["4 May", "11 May", "18 May", "25 May", "2 Jun"];
  * with the verified developments that bracket the movement.
  */
 export function MovementSection() {
-  const topic = getTopic("neet");
+  const topic = sampleTopic("neet");
   if (!topic) return null;
 
   const negStart = Math.max(topic.neg - 34, 6);

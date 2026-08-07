@@ -16,6 +16,7 @@
  */
 
 import { ASPECTS } from "@/lib/sample-data/aspects";
+import { opinionsFor } from "@/lib/sample-data/opinions";
 import type { Topic } from "@/lib/types";
 
 const RAW: Topic[] = [
@@ -1231,10 +1232,18 @@ const RAW: Topic[] = [
  * Topic-specific aspects are authored separately in `aspects.ts` and attached
  * here, so the topic records stay readable and a topic that has not been
  * given its own questions falls back to the category set.
+ *
+ * `written` is counted here too. It used to be counted inside `decorate`, which
+ * meant the presentation layer reached into this directory for it — so the pure
+ * derivation of a topic's display strings depended on a fixture module, and
+ * could not be pointed at Postgres without dragging the fixtures along. Counting
+ * it where the record is assembled leaves `decorate` a function of its argument
+ * and nothing else.
  */
 export const TOPICS: Topic[] = RAW.map((topic) => ({
   ...topic,
   aspects: ASPECTS[topic.id],
+  written: opinionsFor(topic.id).length,
 }));
 
 export const TOPICS_BY_ID: ReadonlyMap<string, Topic> = new Map(

@@ -11,18 +11,31 @@ import { TwoModesSection } from "@/components/landing/TwoModesSection";
 import { VoicesSection } from "@/components/landing/VoicesSection";
 import { RevealOnScroll } from "@/components/motion/RevealOnScroll";
 import { Footer } from "@/components/site/Footer";
-import { TOTAL_TOPICS } from "@/lib/topics";
+import { topicCountByCategory } from "@/lib/topics";
+import { listTopics } from "@/lib/topics/queries";
+import { catalogTotals } from "@/lib/topics/totals";
 import { TOTAL_POLLS } from "@/lib/polls";
 
-export default function LandingPage() {
+/**
+ * Rendered per request, because the figures on it are claims.
+ *
+ * "N topics, M votes cast" used to be constants over a fixture file. They are
+ * counted now, which means the page has to be able to say a small number — or
+ * none — rather than a flattering one.
+ */
+export const dynamic = "force-dynamic";
+
+export default async function LandingPage() {
+  const [totals, topics] = await Promise.all([catalogTotals(), listTopics()]);
+
   return (
     <>
       <RevealOnScroll />
-      <Hero />
+      <Hero topicCount={totals.topics} voteCount={totals.votes} />
 
       {/* What the product is, before how it works. The two public modes first,
           then the private one — the contrast is the explanation. */}
-      <TwoModesSection />
+      <TwoModesSection topicCount={totals.topics} voteCount={totals.votes} />
       <PrivateGuidanceSection />
       <HowItWorksSection />
 
@@ -35,7 +48,7 @@ export default function LandingPage() {
       <MovementSection />
 
       {/* Scope, then out. */}
-      <CategoriesSection />
+      <CategoriesSection topicCounts={topicCountByCategory(topics)} />
 
       <section
         id="catalog-preview"
@@ -53,9 +66,20 @@ export default function LandingPage() {
           data-reveal
           className="ohq-reveal relative mx-auto flex max-w-[840px] flex-col items-center gap-7"
         >
+          {/* The empty case gets its own sentence rather than "0 topics and 22
+              polls are already moving", which is both false and faintly sad.
+              A platform with nothing on it yet should say so. */}
           <h2 className="m-0 font-display text-[clamp(2.6rem,6vw,5.4rem)] leading-[0.98] font-bold tracking-[-0.028em] text-cream-bright">
-            {TOTAL_TOPICS} topics and {TOTAL_POLLS} polls are{" "}
-            <em className="italic">already moving.</em>
+            {totals.topics > 0 ? (
+              <>
+                {totals.topics} topics and {TOTAL_POLLS} polls are{" "}
+                <em className="italic">already moving.</em>
+              </>
+            ) : (
+              <>
+                The first topics are <em className="italic">going up now.</em>
+              </>
+            )}
           </h2>
           <p className="m-0 max-w-[560px] text-[16px] leading-[1.6] font-light text-muted">
             Exams, colleges, policies, films, brands, politics and career paths. No

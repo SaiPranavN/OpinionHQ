@@ -2829,6 +2829,23 @@ export type Database = {
         Args: { at?: string; dob: string }
         Returns: Database["public"]["Enums"]["age_band"]
       }
+      answer_aspect: {
+        Args: { aspect: string; choice: string }
+        Returns: {
+          aspect_id: string
+          created_at: string
+          option_id: string
+          topic_id: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "facet_responses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       apply_facet_set: {
         Args: { set_id: string; target_topic: string }
         Returns: number
@@ -2891,6 +2908,44 @@ export type Database = {
         Args: { qid: string; uid?: string }
         Returns: boolean
       }
+      cast_vote: {
+        Args: {
+          body?: string
+          topic_slug: string
+          vote: Database["public"]["Enums"]["sentiment"]
+        }
+        Returns: {
+          age_band: Database["public"]["Enums"]["age_band"] | null
+          author_id: string
+          author_line: string | null
+          body: string
+          created_at: string
+          edited_at: string | null
+          format: Database["public"]["Enums"]["contribution_format"]
+          helpful_count: number
+          hidden_at: string | null
+          hidden_reason: string | null
+          id: string
+          insightful_count: number
+          occupation: string | null
+          place_id: string | null
+          reply_count: number
+          save_count: number
+          topic_id: string
+          updated_at: string
+          useful_count: number
+          verified_label: string | null
+          vote: Database["public"]["Enums"]["sentiment"]
+          well_explained_count: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "opinions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      clear_aspect: { Args: { aspect: string }; Returns: boolean }
       current_role_is: {
         Args: { target: Database["public"]["Enums"]["account_role"] }
         Returns: boolean
@@ -2911,6 +2966,23 @@ export type Database = {
           uid?: string
         }
         Returns: boolean
+      }
+      my_facet_answers: {
+        Args: never
+        Returns: {
+          aspect_id: string
+          option_id: string
+          topic_slug: string
+        }[]
+      }
+      my_votes: {
+        Args: never
+        Returns: {
+          body: string
+          topic_slug: string
+          updated_at: string
+          vote: Database["public"]["Enums"]["sentiment"]
+        }[]
       }
       place_covers: {
         Args: { filter_id: string; place_id: string }
@@ -3045,6 +3117,7 @@ export type Database = {
           responses: number
         }[]
       }
+      withdraw_vote: { Args: { topic_slug: string }; Returns: boolean }
     }
     Enums: {
       account_role: "member" | "editor" | "admin"

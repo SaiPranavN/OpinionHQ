@@ -27,7 +27,7 @@ import {
 } from "@/lib/contributions";
 import { PRO_CONTRIBUTIONS } from "@/lib/sample-data/contributions";
 import { OPINIONS, opinionsFor } from "@/lib/sample-data/opinions";
-import { allTopics } from "@/lib/topics";
+import { sampleTopics } from "@/lib/sample-data/decorated";
 import { categoryAccent } from "@/lib/taxonomy";
 import type { InteractiveBlock, Opinion, ProSection } from "@/lib/types";
 
@@ -83,7 +83,7 @@ describe("one contribution model", () => {
   });
 
   it("attaches every seeded Pro contribution to a real topic", () => {
-    const topics = new Set(allTopics().map((t) => t.id));
+    const topics = new Set(sampleTopics().map((t) => t.id));
     for (const contribution of PRO_CONTRIBUTIONS) {
       expect(topics.has(contribution.topicId), contribution.id).toBe(true);
     }
@@ -343,7 +343,7 @@ describe("quality signals", () => {
 
 describe("category accents", () => {
   it("gives every category an accent", () => {
-    for (const topic of allTopics()) {
+    for (const topic of sampleTopics()) {
       expect(categoryAccent(topic.cat), topic.cat).toMatch(/^#[0-9A-Fa-f]{6}$/);
     }
   });

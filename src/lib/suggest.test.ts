@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { hintCycle, suggest, type SuggestItem } from "@/lib/suggest";
 import { allPolls, pollIndex } from "@/lib/polls";
-import { allTopics, topicIndex } from "@/lib/topics";
+import { topicIndex } from "@/lib/topics";
+import { sampleTopics } from "@/lib/sample-data/decorated";
 
 const INDEX: SuggestItem[] = [
   { id: "1", label: "Bengaluru Metro Yellow Line Delay", kind: "topic", href: "/topics/blrmetro" },
@@ -80,7 +81,7 @@ describe("hintCycle", () => {
 });
 
 describe("the real catalogs", () => {
-  const topics = topicIndex(allTopics());
+  const topics = topicIndex(sampleTopics());
   const polls = pollIndex(allPolls());
 
   it("suggests a topic by its place", () => {

@@ -9,7 +9,6 @@
 
 import { DEFAULT_FACET_SET, FACET_SETS } from "@/lib/facets";
 import { placeContext, placeLabel } from "@/lib/places";
-import { opinionsFor } from "@/lib/sample-data/opinions";
 import {
   categoryOf,
   SENTIMENT_COLOR,
@@ -384,7 +383,7 @@ export function decorate(topic: Topic): DecoratedTopic {
 
   // 2 × min(pos, neg): peaks at 100 when the two poles are equal and large.
   const polarization = topic.pos + topic.neg - Math.abs(topic.pos - topic.neg);
-  const writtenCount = opinionsFor(topic.id).length;
+  const writtenCount = topic.written ?? 0;
   const demo = demographics(topic);
 
   return {

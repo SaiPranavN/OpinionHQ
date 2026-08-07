@@ -3,7 +3,6 @@ import Link from "next/link";
 import { SectionPurpose } from "@/components/landing/SectionPurpose";
 import { Brand } from "@/components/ui/Brand";
 import { formatNumber } from "@/lib/derive";
-import { TOTAL_TOPICS, TOTAL_VOTES } from "@/lib/topics";
 import { TOTAL_POLL_VOTES, TOTAL_POLLS } from "@/lib/polls";
 
 /**
@@ -19,7 +18,7 @@ import { TOTAL_POLL_VOTES, TOTAL_POLLS } from "@/lib/polls";
  * measurement modes would imply it is another way of counting people. It gets
  * its own section immediately below.
  */
-export function TwoModesSection() {
+export function TwoModesSection({ topicCount, voteCount }: { topicCount: number; voteCount: number }) {
   return (
     <section
       id="modes"
@@ -90,10 +89,10 @@ export function TwoModesSection() {
                 href="/topics"
                 className="rounded-full bg-positive px-6 py-3 text-[14.5px] font-semibold text-positive-ink transition-[background,box-shadow] duration-500 ease-ohq hover:bg-[#25CC61] hover:shadow-[0_12px_36px_-10px_rgba(29,185,84,0.5)]"
               >
-                Explore {TOTAL_TOPICS} topics
+                Explore {topicCount} topics
               </Link>
               <span className="font-mono text-[10.5px] tracking-[0.1em] uppercase text-dim">
-                {formatNumber(TOTAL_VOTES)} votes
+                {formatNumber(voteCount)} votes
               </span>
             </footer>
           </article>

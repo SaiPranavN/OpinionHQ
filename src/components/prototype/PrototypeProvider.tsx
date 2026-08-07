@@ -24,6 +24,7 @@ import {
 } from "react";
 
 import { useSession } from "@/components/auth/SessionProvider";
+import { supabaseBrowser } from "@/lib/supabase/client";
 import { AuthModal } from "@/components/prototype/AuthModal";
 import { Toast } from "@/components/prototype/Toast";
 import { UpgradeModal } from "@/components/prototype/UpgradeModal";
@@ -382,6 +383,68 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
   }, [state, hydrated]);
 
   /**
+   * The visitor's own votes and aspect answers, from the database.
+   *
+   * ONE QUERY EACH, not one per topic. A card wants to know "did you vote on
+   * this" while rendering, and asking per card would put sixty requests on the
+   * wire for the catalog alone — so the whole set is fetched once when the
+   * session settles and held as a cache.
+   *
+   * `localStorage` is not consulted, and votes recorded there before this build
+   * are deliberately not migrated: they were cast against fixture topics that no
+   * longer exist, by a browser rather than by an account. Importing them would
+   * put unattributable votes into a real aggregate.
+   */
+  useEffect(() => {
+    if (!sessionReady || !signedIn) {
+      setState((prev) => ({ ...prev, votes: {}, facetAnswers: {} }));
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      const supabase = supabaseBrowser();
+      const [{ data: castVotes }, { data: answers }] = await Promise.all([
+        supabase.rpc("my_votes"),
+        supabase.rpc("my_facet_answers"),
+      ]);
+      if (cancelled) return;
+
+      const votes: Record<string, CastVote> = {};
+      for (const row of (castVotes ?? []) as {
+        topic_slug: string;
+        vote: Sentiment;
+        body: string;
+        updated_at: string;
+      }[]) {
+        votes[row.topic_slug] = {
+          vote: row.vote,
+          note: row.body,
+          updatedAt: row.updated_at,
+        };
+      }
+
+      const facetAnswers: FacetAnswers = {};
+      for (const row of (answers ?? []) as {
+        topic_slug: string;
+        aspect_id: string;
+        option_id: string;
+      }[]) {
+        // `topicSlug:aspectId` — the exact key the facet panel builds from the
+        // topic it is rendering. Storing it any other way would leave every
+        // question looking unanswered.
+        facetAnswers[`${row.topic_slug}:${row.aspect_id}`] = row.option_id;
+      }
+
+      setState((prev) => ({ ...prev, votes, facetAnswers }));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionReady, signedIn]);
+
+  /**
    * Both halves have to have answered.
    *
    * Consumers use `ready` to decide whether to render a signed-out state, and
@@ -429,29 +492,56 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  /**
+   * Records a vote in Postgres, then updates the local cache.
+   *
+   * WRITE FIRST, CACHE SECOND. The optimistic order — paint it, then send it —
+   * is tempting on a button this cheap, and wrong here: the row policies can
+   * refuse (signed out, suspended, topic archived), and a UI that has already
+   * said "recorded" cannot honestly take it back. So the database answers first
+   * and the screen follows.
+   *
+   * The signature has not changed, which is the point. Every caller still says
+   * `submitVote(slug, vote, note)`; only what happens inside did.
+   */
   const submitVote = useCallback(
-    (topicId: string, vote: Sentiment, note: string) => {
+    async (topicId: string, vote: Sentiment, note: string) => {
       if (!signedIn) {
         // Hold the selection and draft; the modal resumes it after sign-in.
         setPending({ topicId, vote, note });
         setAuthMode("signin");
         return;
       }
+
+      const { error } = await supabaseBrowser().rpc("cast_vote", {
+        topic_slug: topicId,
+        vote,
+        body: note.trim(),
+      });
+
+      if (error) {
+        toast(
+          error.message.toLowerCase().includes("row-level security")
+            ? "That topic is not open for voting."
+            : error.message,
+        );
+        return;
+      }
+
       setState((prev) => ({
         ...prev,
         votes: {
           ...prev.votes,
           [topicId]: { vote, note, updatedAt: new Date().toISOString() },
         },
-        // Topics created in-app have no seeded aggregate, so a vote on one is
-        // the whole sample. Fixture topics keep their authored numbers.
-        created: prev.created.map((e) =>
-          e.id === topicId ? applyLocalVote(e, vote) : e,
-        ),
       }));
+      // The aggregate on the page was rendered on the server and is now one
+      // vote out of date. Refreshing re-reads it rather than adding one here and
+      // hoping the two agree.
+      router.refresh();
       toast("Opinion recorded. Your vote is now part of the aggregate.");
     },
-    [signedIn, toast],
+    [signedIn, toast, router],
   );
 
   const createTopic = useCallback(
@@ -613,26 +703,62 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const clearVote = useCallback((topicId: string) => {
-    setState((prev) => {
-      const votes = { ...prev.votes };
-      delete votes[topicId];
-      return { ...prev, votes };
-    });
-  }, []);
-
-  const answerFacet = useCallback(
-    (topicId: string, facetId: string, optionId: string) => {
+  const clearVote = useCallback(
+    async (topicId: string) => {
+      const { error } = await supabaseBrowser().rpc("withdraw_vote", { topic_slug: topicId });
+      if (error) {
+        toast(error.message);
+        return;
+      }
       setState((prev) => {
-        const key = `${topicId}:${facetId}`;
+        const votes = { ...prev.votes };
+        delete votes[topicId];
+        return { ...prev, votes };
+      });
+      router.refresh();
+    },
+    [toast, router],
+  );
+
+  /**
+   * Answers one aspect, or clears it by choosing the same option again.
+   *
+   * `facetId` is the aspect's database id — `Facet.id` carries it, mapped in
+   * `lib/topics/rows.ts` — so nothing has to resolve a label here. The stored
+   * key stays `topicId:facetId` because that is what the facet panel reads, and
+   * changing it would have been a change to a component this rewrite otherwise
+   * did not touch.
+   */
+  const answerFacet = useCallback(
+    async (topicId: string, facetId: string, optionId: string) => {
+      if (!signedIn) {
+        toast("Sign in to answer the questions under this topic.");
+        setAuthMode("signin");
+        return;
+      }
+
+      const supabase = supabaseBrowser();
+      const key = `${topicId}:${facetId}`;
+      const clearing = state.facetAnswers[key] === optionId;
+
+      const { error } = clearing
+        ? await supabase.rpc("clear_aspect", { aspect: facetId })
+        : await supabase.rpc("answer_aspect", { aspect: facetId, choice: optionId });
+
+      if (error) {
+        toast(error.message);
+        return;
+      }
+
+      setState((prev) => {
         const facetAnswers = { ...prev.facetAnswers };
-        // Clicking the selected answer again clears it.
-        if (facetAnswers[key] === optionId) delete facetAnswers[key];
+        if (clearing) delete facetAnswers[key];
         else facetAnswers[key] = optionId;
         return { ...prev, facetAnswers };
       });
+      router.refresh();
     },
-    [],
+    [signedIn, state.facetAnswers, toast, router],
   );
 
   const toggleFollow = useCallback(

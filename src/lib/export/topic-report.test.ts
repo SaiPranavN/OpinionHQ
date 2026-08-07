@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { decorate } from "@/lib/derive";
-import { getTopic } from "@/lib/topics";
+import { sampleTopic } from "@/lib/sample-data/decorated";
 import { buildTopicReport, reportFilename } from "@/lib/export/topic-report";
 import { TOPICS } from "@/lib/sample-data/topics";
 import { DEFAULT_CONTEXT, contextFor, timelineFor } from "@/lib/sample-data/timeline";
 import type { Topic } from "@/lib/types";
 
 function inputFor(id: string) {
-  const topic = getTopic(id)!;
+  const topic = sampleTopic(id)!;
   return { topic, context: contextFor(id), timeline: timelineFor(id) };
 }
 
@@ -27,14 +27,14 @@ describe("PDF export", () => {
   });
 
   it("names the file after the topic and the day it was generated", () => {
-    const name = reportFilename(getTopic("neet")!);
+    const name = reportFilename(sampleTopic("neet")!);
     expect(name).toMatch(/^opinionhq-neet-\d{4}-\d{2}-\d{2}\.pdf$/);
   });
 
   it("builds for every fixture topic without throwing", async () => {
     for (const topic of TOPICS) {
       const doc = await buildTopicReport({
-        topic: getTopic(topic.id)!,
+        topic: sampleTopic(topic.id)!,
         context: contextFor(topic.id),
         timeline: timelineFor(topic.id),
       });

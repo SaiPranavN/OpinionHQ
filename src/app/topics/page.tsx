@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { CatalogView } from "@/components/catalog/CatalogView";
 import { TrendingTicker } from "@/components/catalog/TrendingTicker";
 import { Footer } from "@/components/site/Footer";
-import { allTopics, topicCountByCategory, hotTopics } from "@/lib/topics";
+import { hotTopics, topicCountByCategory } from "@/lib/topics";
+import { listTopics } from "@/lib/topics/queries";
 
 export const metadata: Metadata = {
   // Matches the h1 on the page. A tab reading "Explore topics" over a heading
@@ -14,11 +15,24 @@ export const metadata: Metadata = {
     "Explore active topics and see how OpinionHQ participants currently feel about them. Percentages describe OpinionHQ participants only.",
 };
 
-export default function CatalogPage() {
+/**
+ * Rendered per request, not built once.
+ *
+ * A vote changes the numbers on every card that shows the topic, and a cached
+ * catalog would keep serving a distribution that has already moved — which on a
+ * product whose whole claim is measurement is worse than being slow.
+ */
+export const dynamic = "force-dynamic";
+
+export default async function CatalogPage() {
+  const topics = await listTopics();
+
   return (
     <div style={{ paddingTop: "var(--ohq-nav-h)" }}>
-      <TrendingTicker topics={hotTopics()} />
-      <CatalogView topics={allTopics()} counts={topicCountByCategory()} />
+      {/* Nothing to tick through before anything is published. The strip draws
+          nothing rather than an empty rail. */}
+      {topics.length > 0 ? <TrendingTicker topics={hotTopics(topics)} /> : null}
+      <CatalogView topics={topics} counts={topicCountByCategory(topics)} />
       <Footer />
     </div>
   );

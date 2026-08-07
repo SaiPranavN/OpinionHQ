@@ -70,7 +70,7 @@ import {
   verify,
 } from "@/lib/ask/verification";
 import { allPolls } from "@/lib/polls";
-import { allTopics } from "@/lib/topics";
+import { sampleTopics } from "@/lib/sample-data/decorated";
 import type { Viewer } from "@/lib/ask/types";
 
 const offer = SELF_QUESTIONS.find((q) => q.id === "q-offer")!;
@@ -256,7 +256,7 @@ describe("nothing reaches a public surface", () => {
 
   it("shares no id with a topic or a poll", () => {
     const publicIds = new Set([
-      ...allTopics().map((t) => t.id),
+      ...sampleTopics().map((t) => t.id),
       ...allPolls().map((p) => p.id),
     ]);
     for (const question of all) {
@@ -266,7 +266,7 @@ describe("nothing reaches a public surface", () => {
 
   it("puts no question title or context into the public catalogs", () => {
     const publicText = [
-      ...allTopics().map((t) => `${t.name} ${t.summary} ${t.about}`),
+      ...sampleTopics().map((t) => `${t.name} ${t.summary} ${t.about}`),
       ...allPolls().map((p) => `${p.question} ${p.summary} ${p.about}`),
     ]
       .join(" ")

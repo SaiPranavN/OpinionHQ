@@ -124,7 +124,17 @@ export type FacetSetId =
  * Never mixes with participant-generated content (brief §5.4).
  */
 export interface Topic {
+  /**
+   * The routable identifier — what `/topics/[slug]` carries.
+   *
+   * In Postgres this is `topics.slug`, not the primary key. Every link, export
+   * and breadcrumb in the app already reads this field, so mapping the slug onto
+   * it is what let the database land without rewriting them; `uuid` below is the
+   * row identity, and only code that writes needs it.
+   */
   id: string;
+  /** The database primary key. Absent on fixtures, which have no row. */
+  uuid?: string;
   name: string;
   cat: CategoryId;
   /**
@@ -156,6 +166,16 @@ export interface Topic {
   neu: number;
   neg: number;
   participants: number;
+  /**
+   * Of those participants, how many wrote something.
+   *
+   * Carried on the record rather than counted from the opinions themselves,
+   * because `decorate` is a pure function of one topic and counting would mean
+   * it had to reach for a table. In Postgres this is `topic_stats.written_count`,
+   * maintained by trigger; in the fixtures it is filled in where the topic is
+   * assembled. Absent means none.
+   */
+  written?: number;
   /** Server-computed trending score, 0–100 (brief §31). */
   trend: number;
   /** Lower is more recently updated; used by the "Recently updated" sort. */

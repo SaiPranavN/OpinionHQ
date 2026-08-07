@@ -1,6 +1,6 @@
 import { Brand } from "@/components/ui/Brand";
 import { formatNumber } from "@/lib/derive";
-import { getTopic } from "@/lib/topics";
+import { sampleTopic } from "@/lib/sample-data/decorated";
 
 /**
  * Section 01 — explains the single-measurement model, using a real topic from
@@ -8,7 +8,7 @@ import { getTopic } from "@/lib/topics";
  * matches the dashboard it links to.
  */
 export function StructureSection() {
-  const topic = getTopic("iima");
+  const topic = sampleTopic("iima");
   if (!topic) return null;
 
   return (

@@ -8,7 +8,8 @@ import {
   trendPoints,
   trendValues,
 } from "@/lib/derive";
-import { allTopics, filterAndSort } from "@/lib/topics";
+import { filterAndSort } from "@/lib/topics";
+import { sampleTopics } from "@/lib/sample-data/decorated";
 import { DEFAULT_FACET_SET, FACET_SETS } from "@/lib/facets";
 import { TOPICS } from "@/lib/sample-data/topics";
 import { OPINIONS } from "@/lib/sample-data/opinions";
@@ -445,7 +446,7 @@ describe("trend series", () => {
   });
 
   it("stays inside the plot area for every fixture topic", () => {
-    for (const topic of allTopics()) {
+    for (const topic of sampleTopics()) {
       if (topic.unrated) continue;
       const series = [
         ...trendPoints(topic.neg - topic.change.value, topic.neg),
@@ -474,7 +475,7 @@ describe("trend series", () => {
   });
 
   it("ends every fixture topic's line on its stated share", () => {
-    for (const topic of allTopics()) {
+    for (const topic of sampleTopics()) {
       if (topic.unrated) continue;
       expect(
         trendValues(topic.neg - topic.change.value, topic.neg).at(-1),

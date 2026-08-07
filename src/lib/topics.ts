@@ -1,28 +1,22 @@
 /**
- * Read model for topics. The prototype resolves these from fixtures; the
- * production build swaps the bodies for Prisma queries without changing the
- * signatures the UI depends on.
+ * How a catalog of topics is filtered, sorted and indexed.
+ *
+ * PURE, AND NO LONGER A READ MODEL. It used to hold the fixtures and hand them
+ * out; the rows now come from Postgres through `lib/topics/queries.ts`, and
+ * everything here takes the list as an argument instead of owning it. That is
+ * what let the database land without touching the catalog UI: these functions
+ * are the definition of what the catalog *means* by "trending" or "most
+ * discussed", they are tested as such, and they will keep that job when the
+ * filters eventually move into SQL for scale.
  */
 
-import { decorate } from "@/lib/derive";
 import { matchesPlaceFilter, type PlaceFilterId } from "@/lib/places";
-import { TOPICS } from "@/lib/sample-data/topics";
 import type { SuggestItem } from "@/lib/suggest";
 import type { CategoryFilterId, DecoratedTopic, SortId } from "@/lib/types";
 
-const DECORATED: DecoratedTopic[] = TOPICS.map(decorate);
-
-export function allTopics(): DecoratedTopic[] {
-  return DECORATED;
-}
-
-export function getTopic(id: string): DecoratedTopic | undefined {
-  return DECORATED.find((e) => e.id === id);
-}
-
 /** Top topics by trending score, used by the "Hot right now" strip. */
-export function hotTopics(limit = 6): DecoratedTopic[] {
-  return [...DECORATED].sort((a, b) => b.trend - a.trend).slice(0, limit);
+export function hotTopics(topics: readonly DecoratedTopic[], limit = 6): DecoratedTopic[] {
+  return [...topics].sort((a, b) => b.trend - a.trend).slice(0, limit);
 }
 
 export interface CatalogFilters {
@@ -79,16 +73,32 @@ export function filterAndSort(
   });
 }
 
-export const TOTAL_TOPICS = DECORATED.length;
-
-export const TOTAL_VOTES = DECORATED.reduce((sum, e) => sum + e.participants, 0);
-
-export function topicCountByCategory(): Map<string, number> {
+export function topicCountByCategory(
+  topics: readonly DecoratedTopic[],
+): Map<string, number> {
   const counts = new Map<string, number>();
-  for (const topic of DECORATED) {
+  for (const topic of topics) {
     counts.set(topic.cat, (counts.get(topic.cat) ?? 0) + 1);
   }
   return counts;
+}
+
+/**
+ * The two figures the landing page puts its name to.
+ *
+ * They were constants derived from the fixture array — which meant the home
+ * page told every visitor how many topics and votes the platform had, and the
+ * numbers described a file. Counted from whatever list is passed now, so an
+ * empty database says nothing rather than something untrue.
+ */
+export function catalogTotals(topics: readonly DecoratedTopic[]): {
+  topics: number;
+  votes: number;
+} {
+  return {
+    topics: topics.length,
+    votes: topics.reduce((sum, t) => sum + t.participants, 0),
+  };
 }
 
 /**

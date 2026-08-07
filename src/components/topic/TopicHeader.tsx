@@ -6,7 +6,6 @@ import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { MetricChange } from "@/components/ui/MetricChange";
 import { formatNumber } from "@/lib/derive";
-import { PrototypeDataBadge } from "@/components/ui/PrototypeDataBadge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { DecoratedTopic, TopicContext, TimelineEvent } from "@/lib/types";
 
@@ -40,7 +39,6 @@ export function TopicHeader({ topic, context, timeline }: TopicHeaderProps) {
             { label: topic.category.short },
           ]}
         />
-        <PrototypeDataBadge />
       </div>
 
       <div className="flex flex-wrap items-center gap-2.5">

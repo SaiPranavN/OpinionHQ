@@ -38,8 +38,7 @@ import { questionStatus, relativeTime, shortDate } from "@/lib/ask/derive";
 import { formatNumber, sentimentColor, sentimentIcon } from "@/lib/derive";
 import { askAllowanceLine, FREE_ASKS, PRO_PLAN } from "@/lib/entitlements";
 import { getPoll } from "@/lib/polls";
-import { getTopic } from "@/lib/topics";
-import type { Sentiment } from "@/lib/types";
+import type { DecoratedTopic, Sentiment } from "@/lib/types";
 
 type SectionId = "opinions" | "polls" | "ask";
 
@@ -49,7 +48,7 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "ask", label: "Ask Verified" },
 ];
 
-export function DashboardView() {
+export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
   const {
     ready,
     signedIn,
@@ -82,12 +81,25 @@ export function DashboardView() {
 
   const [section, setSection] = useState<SectionId>("opinions");
 
+  /**
+   * Slug to topic, from the list the server handed down.
+   *
+   * The votes themselves arrive from Postgres keyed by slug, and this resolves
+   * each one to a name and a link. A topic that has since been archived is
+   * simply absent — the row then renders its slug, which is honest, rather than
+   * disappearing and leaving somebody wondering where their opinion went.
+   */
+  const bySlug = useMemo(
+    () => new Map(topics.map((topic) => [topic.id, topic])),
+    [topics],
+  );
+
   const voteRows = useMemo(
     () =>
       Object.entries(votes)
-        .map(([topicId, cast]) => ({ topicId, cast, topic: getTopic(topicId) }))
+        .map(([topicId, cast]) => ({ topicId, cast, topic: bySlug.get(topicId) }))
         .sort((a, b) => b.cast.updatedAt.localeCompare(a.cast.updatedAt)),
-    [votes],
+    [votes, bySlug],
   );
 
   const pollRows = useMemo(
@@ -254,7 +266,7 @@ export function DashboardView() {
                 key={contribution.id}
                 href={`/topics/${contribution.topicId}#${contribution.id}`}
                 title={isPro(contribution) ? headlineOf(contribution) : contribution.text}
-                meta={`${getTopic(contribution.topicId)?.name ?? contribution.topicId} · ${
+                meta={`${bySlug.get(contribution.topicId)?.name ?? contribution.topicId} · ${
                   contribution.sections?.length ?? 0
                 } sections · ${formatNumber(contribution.helpful)} helpful`}
                 tone={contribution.vote}
