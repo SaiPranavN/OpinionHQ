@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
-import { LocalPollRoute } from "@/components/polls/LocalPollRoute";
 import { RevealOnScroll } from "@/components/motion/RevealOnScroll";
 import { PollAudience } from "@/components/polls/PollAudience";
 import { ApprovalNotice } from "@/components/polls/ApprovalNotice";
@@ -9,12 +9,18 @@ import { PollHistory } from "@/components/polls/PollHistory";
 import { PollReasons } from "@/components/polls/PollReasons";
 import { PollVotePanel } from "@/components/polls/PollVotePanel";
 import { Footer } from "@/components/site/Footer";
-import { allPolls, getPoll } from "@/lib/polls";
-import { reasonsFor } from "@/lib/sample-data/poll-reasons";
+import { getPollPage } from "@/lib/polls/queries";
 
-export function generateStaticParams() {
-  return allPolls().map((poll) => ({ slug: poll.id }));
-}
+/**
+ * No `generateStaticParams` any more.
+ *
+ * It used to enumerate the fixtures at build time — 22 poll pages baked into
+ * the bundle as static HTML, which was possible only because the whole catalog
+ * was a file. A poll can now be published a minute after a deploy, and its
+ * split changes with every vote; a prerendered page would serve a stale
+ * result until the next build.
+ */
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -22,8 +28,9 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const poll = getPoll(slug);
-  if (!poll) return { title: "Poll" };
+  const page = await getPollPage(slug);
+  if (!page) return { title: "Poll" };
+  const { poll } = page;
   return {
     title: poll.question,
     description: `${poll.marginLabel}. ${poll.splitLabel}. ${poll.summary}`,
@@ -36,18 +43,17 @@ export default async function PollPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const poll = getPoll(slug);
+  const page = await getPollPage(slug);
 
-  // Unknown slugs are not necessarily missing: the composer publishes polls
-  // into browser storage, so hand off to the client before deciding.
-  if (!poll) {
-    return (
-      <>
-        <LocalPollRoute slug={slug} />
-        <Footer />
-      </>
-    );
-  }
+  // A real 404. The old route fell through to a client component because a poll
+  // could exist only in the visitor's own browser storage; there is one place a
+  // poll can be now, and either it is there or it is not.
+  //
+  // An unpublished draft lands here for everyone but an editor, whose session
+  // the query ran under — the row policy decides that, not this file.
+  if (!page) notFound();
+
+  const { poll, reasons } = page;
 
   return (
     <>
@@ -59,14 +65,14 @@ export default async function PollPage({
         {/* Named-individual approval polls carry their own warning above the
             fold. See ApprovalNotice for why a badge is not enough here. */}
         {poll.cat === "politicians" ? <ApprovalNotice /> : null}
-        <PollHeader poll={poll} reasons={reasonsFor(poll.id)} />
+        <PollHeader poll={poll} reasons={reasons} />
         {/* History before the cross-tabs: "how did we get here" is the question
             a reader has immediately after seeing the split, and it is a worse
             answer once they have been through three breakdowns. */}
         <PollHistory poll={poll} />
         <PollAudience poll={poll} />
         <PollVotePanel poll={poll} />
-        <PollReasons poll={poll} reasons={reasonsFor(poll.id)} />
+        <PollReasons poll={poll} reasons={reasons} />
       </div>
       <Footer />
     </>

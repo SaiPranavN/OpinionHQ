@@ -3,7 +3,6 @@ import Link from "next/link";
 import { SectionPurpose } from "@/components/landing/SectionPurpose";
 
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
-import { pollCountByCategory } from "@/lib/polls";
 import { CATEGORIES } from "@/lib/taxonomy";
 
 /**
@@ -11,9 +10,15 @@ import { CATEGORIES } from "@/lib/taxonomy";
  * so showing every type with live counts answers "is my thing on here?" faster
  * than any amount of prose.
  */
-export function CategoriesSection({ topicCounts }: { topicCounts: Map<string, number> }) {
+export function CategoriesSection({
+  topicCounts,
+  pollCounts,
+}: {
+  topicCounts: Map<string, number>;
+  pollCounts: Map<string, number>;
+}) {
   const topics = topicCounts;
-  const polls = pollCountByCategory();
+  const polls = pollCounts;
 
   return (
     <section

@@ -2,9 +2,16 @@ import Link from "next/link";
 
 import { ShieldIcon } from "@/components/ask/primitives";
 import { formatNumber } from "@/lib/derive";
-import { TOTAL_POLLS } from "@/lib/polls";
 
-export function Hero({ topicCount, voteCount }: { topicCount: number; voteCount: number }) {
+export function Hero({
+  topicCount,
+  voteCount,
+  pollCount,
+}: {
+  topicCount: number;
+  voteCount: number;
+  pollCount: number;
+}) {
   return (
     <section
       id="top"
@@ -134,7 +141,7 @@ export function Hero({ topicCount, voteCount }: { topicCount: number; voteCount:
         >
           <span>{topicCount} live topics</span>
           <span className="text-[#3A3A3A]">/</span>
-          <span>{TOTAL_POLLS} open polls</span>
+          <span>{pollCount} open polls</span>
           <span className="text-[#3A3A3A]">/</span>
           <span>{formatNumber(voteCount)} votes cast</span>
         </div>

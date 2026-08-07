@@ -14,7 +14,7 @@ import { Footer } from "@/components/site/Footer";
 import { topicCountByCategory } from "@/lib/topics";
 import { listTopics } from "@/lib/topics/queries";
 import { catalogTotals } from "@/lib/topics/totals";
-import { TOTAL_POLLS } from "@/lib/polls";
+import { listPolls } from "@/lib/polls/queries";
 
 /**
  * Rendered per request, because the figures on it are claims.
@@ -26,16 +26,39 @@ import { TOTAL_POLLS } from "@/lib/polls";
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
-  const [totals, topics] = await Promise.all([catalogTotals(), listTopics()]);
+  const [totals, topics, polls] = await Promise.all([
+    catalogTotals(),
+    listTopics(),
+    listPolls(),
+  ]);
+
+  const pollTotals = {
+    count: polls.length,
+    votes: polls.reduce((sum, poll) => sum + poll.total, 0),
+  };
+
+  const pollCounts = new Map<string, number>();
+  for (const poll of polls) {
+    pollCounts.set(poll.cat, (pollCounts.get(poll.cat) ?? 0) + 1);
+  }
 
   return (
     <>
       <RevealOnScroll />
-      <Hero topicCount={totals.topics} voteCount={totals.votes} />
+      <Hero
+        topicCount={totals.topics}
+        voteCount={totals.votes}
+        pollCount={pollTotals.count}
+      />
 
       {/* What the product is, before how it works. The two public modes first,
           then the private one — the contrast is the explanation. */}
-      <TwoModesSection topicCount={totals.topics} voteCount={totals.votes} />
+      <TwoModesSection
+        topicCount={totals.topics}
+        voteCount={totals.votes}
+        pollCount={pollTotals.count}
+        pollVotes={pollTotals.votes}
+      />
       <PrivateGuidanceSection />
       <HowItWorksSection />
 
@@ -48,7 +71,10 @@ export default async function LandingPage() {
       <MovementSection />
 
       {/* Scope, then out. */}
-      <CategoriesSection topicCounts={topicCountByCategory(topics)} />
+      <CategoriesSection
+        topicCounts={topicCountByCategory(topics)}
+        pollCounts={pollCounts}
+      />
 
       <section
         id="catalog-preview"
@@ -72,7 +98,7 @@ export default async function LandingPage() {
           <h2 className="m-0 font-display text-[clamp(2.6rem,6vw,5.4rem)] leading-[0.98] font-bold tracking-[-0.028em] text-cream-bright">
             {totals.topics > 0 ? (
               <>
-                {totals.topics} topics and {TOTAL_POLLS} polls are{" "}
+                {totals.topics} topics and {pollTotals.count} polls are{" "}
                 <em className="italic">already moving.</em>
               </>
             ) : (

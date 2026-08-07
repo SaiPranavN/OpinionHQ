@@ -2908,6 +2908,29 @@ export type Database = {
         Args: { qid: string; uid?: string }
         Returns: boolean
       }
+      cast_poll_vote: {
+        Args: {
+          option_slot: Database["public"]["Enums"]["option_slot"]
+          poll_slug: string
+        }
+        Returns: {
+          age_band: Database["public"]["Enums"]["age_band"] | null
+          created_at: string
+          id: string
+          occupation: string | null
+          option_id: string
+          place_id: string | null
+          poll_id: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "poll_votes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       cast_vote: {
         Args: {
           body?: string
@@ -2955,6 +2978,27 @@ export type Database = {
         Returns: undefined
       }
       email_for_username: { Args: { handle: string }; Returns: string }
+      explain_poll_vote: {
+        Args: { poll_slug: string; reason: string }
+        Returns: {
+          body: string
+          created_at: string
+          helpful_count: number
+          hidden_at: string | null
+          hidden_reason: string | null
+          id: string
+          option_id: string
+          poll_id: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "poll_reasons"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       initials: { Args: { full_name: string }; Returns: string }
       is_active: { Args: { uid?: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
@@ -2973,6 +3017,14 @@ export type Database = {
           aspect_id: string
           option_id: string
           topic_slug: string
+        }[]
+      }
+      my_poll_votes: {
+        Args: never
+        Returns: {
+          option_slot: Database["public"]["Enums"]["option_slot"]
+          poll_slug: string
+          updated_at: string
         }[]
       }
       my_votes: {
@@ -2998,15 +3050,6 @@ export type Database = {
         }[]
       }
       poll_demographic_opt_in: { Args: { target: string }; Returns: number }
-      poll_demographics: {
-        Args: { target: string }
-        Returns: {
-          dimension: string
-          label: string
-          option_id: string
-          responses: number
-        }[]
-      }
       poll_reason_counts: {
         Args: { target: string }
         Returns: {
@@ -3050,6 +3093,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      retract_poll_reason: { Args: { poll_slug: string }; Returns: boolean }
       review_credential: {
         Args: {
           approve: boolean
@@ -3126,6 +3170,7 @@ export type Database = {
         }
       }
       slug_available: { Args: { candidate: string }; Returns: boolean }
+      toggle_reason_helpful: { Args: { reason: string }; Returns: boolean }
       topic_demographics: {
         Args: { target: string }
         Returns: {
@@ -3134,6 +3179,7 @@ export type Database = {
           responses: number
         }[]
       }
+      withdraw_poll_vote: { Args: { poll_slug: string }; Returns: boolean }
       withdraw_vote: { Args: { topic_slug: string }; Returns: boolean }
     }
     Enums: {

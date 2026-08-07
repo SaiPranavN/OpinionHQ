@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 
 import { CategoryFilter } from "@/components/catalog/CategoryFilter";
 import { PollCard } from "@/components/polls/PollCard";
-import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { PlaceFilter } from "@/components/ui/PlaceFilter";
 import { PrototypeDataBadge } from "@/components/ui/PrototypeDataBadge";
@@ -31,42 +30,30 @@ export function PollsCatalog({
   counts: Map<string, number>;
   totalVotes: number;
 }) {
-  const { createdPolls } = usePrototype();
   const [category, setCategory] = useState<CategoryFilterId>("All");
   const [sort, setSort] = useState<PollSortId>("trending");
   const [query, setQuery] = useState("");
   const [place, setPlace] = useState<PlaceFilterId>("any");
 
-  // Polls published from the composer sit alongside the editor-published ones,
-  // newest first, so a just-created poll is immediately visible.
-  const all = useMemo(
-    () => [...createdPolls.map(decoratePoll), ...polls],
-    [createdPolls, polls],
-  );
-
-  const liveCounts = useMemo(() => {
-    const next = new Map(counts);
-    for (const poll of createdPolls) {
-      next.set(poll.cat, (next.get(poll.cat) ?? 0) + 1);
-    }
-    return next;
-  }, [counts, createdPolls]);
-
+  // `polls` is the catalog, whole, from the server. It used to be the fixture
+  // list with this browser's own localStorage polls concatenated on top —
+  // which meant two visitors on the same page saw two different catalogs, and
+  // the counts beside the filters described neither.
   const results = useMemo(
-    () => filterAndSortPolls(all, { category, sort, query, place }),
-    [all, category, sort, query, place],
+    () => filterAndSortPolls(polls, { category, sort, query, place }),
+    [polls, category, sort, query, place],
   );
 
-  const index = useMemo(() => pollIndex(all), [all]);
+  const index = useMemo(() => pollIndex(polls), [polls]);
 
   const scope = [
     category === "All" ? "" : ` in ${categoryOf(category).label}`,
     place === "any" ? "" : ` for ${placeLabel(place)}`,
   ].join("");
   const summary =
-    results.length === all.length
+    results.length === polls.length
       ? `${results.length} polls sorted by ${pollSortLabel(sort)}`
-      : `${results.length} of ${all.length} polls${scope} sorted by ${pollSortLabel(sort)}`;
+      : `${results.length} of ${polls.length} polls${scope} sorted by ${pollSortLabel(sort)}`;
 
   return (
     <section className="mx-auto max-w-[1440px] px-4 pt-7 pb-[clamp(64px,8vw,110px)] sm:px-8 lg:px-14">
@@ -105,7 +92,7 @@ export function PollsCatalog({
         />
         <PlaceFilter
           value={place}
-          places={all.map((poll) => poll.place)}
+          places={polls.map((poll) => poll.place)}
           onChange={setPlace}
           accent="poll"
         />
@@ -127,7 +114,7 @@ export function PollsCatalog({
       </div>
 
       <div className="mt-4">
-        <CategoryFilter value={category} counts={liveCounts} onChange={setCategory} />
+        <CategoryFilter value={category} counts={counts} onChange={setCategory} />
       </div>
 
       <div className="mt-4 mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-veil/8 pb-3">

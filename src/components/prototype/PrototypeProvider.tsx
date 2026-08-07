@@ -185,8 +185,8 @@ interface PrototypeValue extends PersistedState {
   submitVote: (topicId: string, vote: Sentiment, note: string) => void;
   clearVote: (topicId: string) => void;
   /** Records a poll pick, opening the auth sheet first if signed out. */
-  submitPollVote: (pollId: string, side: PollOptionId, reason: string) => void;
-  clearPollVote: (pollId: string) => void;
+  submitPollVote: (pollId: string, side: PollOptionId, reason: string) => Promise<void>;
+  clearPollVote: (pollId: string) => Promise<void>;
   answerFacet: (topicId: string, facetId: string, optionId: string) => void;
   toggleFollow: (topicId: string) => void;
   toggleHelpful: (opinionId: string) => void;
@@ -273,47 +273,6 @@ function initialsOf(name: string): string {
 const FIXTURE_IDS = new Set(FIXTURE_TOPICS.map((e) => e.id));
 const FIXTURE_POLL_IDS = new Set(FIXTURE_POLLS.map((p) => p.id));
 
-/**
- * A vote on a participant-created topic is, for now, the entire sample —
- * there is no server tallying anyone else's. One vote means 100% of one tone.
- */
-function applyLocalVote(topic: Topic, vote: Sentiment): Topic {
-  return {
-    ...topic,
-    participants: 1,
-    pos: vote === "Positive" ? 100 : 0,
-    neu: vote === "Neutral" ? 100 : 0,
-    neg: vote === "Negative" ? 100 : 0,
-    updated: "just now",
-    // A single vote is not a weekly trend. Zero here makes `decorate` say so
-    // rather than reporting a meaningless "up 100%".
-    change: { metric: "participation", value: 0, direction: "up" },
-  };
-}
-
-/**
- * Moves one vote onto `side` in a participant-created poll, taking it off the
- * previous pick if the vote is being changed rather than cast for the first
- * time — otherwise updating a vote would inflate the total.
- */
-function applyLocalPollVote(
-  poll: Poll,
-  side: PollOptionId,
-  previous?: PollOptionId,
-): Poll {
-  if (previous === side) return poll;
-  return {
-    ...poll,
-    options: poll.options.map((option) => {
-      const shift = (side === option.id ? 1 : 0) - (previous === option.id ? 1 : 0);
-      return shift === 0
-        ? option
-        : { ...option, votes: Math.max(option.votes + shift, 0) };
-    }),
-    updated: "just now",
-  };
-}
-
 function readStored(): PersistedState {
   if (typeof window === "undefined") return EMPTY;
   try {
@@ -397,16 +356,17 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
    */
   useEffect(() => {
     if (!sessionReady || !signedIn) {
-      setState((prev) => ({ ...prev, votes: {}, facetAnswers: {} }));
+      setState((prev) => ({ ...prev, votes: {}, facetAnswers: {}, pollVotes: {} }));
       return;
     }
 
     let cancelled = false;
     void (async () => {
       const supabase = supabaseBrowser();
-      const [{ data: castVotes }, { data: answers }] = await Promise.all([
+      const [{ data: castVotes }, { data: answers }, { data: picks }] = await Promise.all([
         supabase.rpc("my_votes"),
         supabase.rpc("my_facet_answers"),
+        supabase.rpc("my_poll_votes"),
       ]);
       if (cancelled) return;
 
@@ -436,7 +396,24 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
         facetAnswers[`${row.topic_slug}:${row.aspect_id}`] = row.option_id;
       }
 
-      setState((prev) => ({ ...prev, votes, facetAnswers }));
+      // The reason is not fetched here. It lives on the poll page, which reads
+      // it server-side along with everyone else's, so caching a second copy in
+      // the client would give the panel and the list below it two sources for
+      // the same sentence.
+      const pollVotes: Record<string, CastPollVote> = {};
+      for (const row of (picks ?? []) as {
+        poll_slug: string;
+        option_slot: PollOptionId;
+        updated_at: string;
+      }[]) {
+        pollVotes[row.poll_slug] = {
+          side: row.option_slot,
+          reason: "",
+          updatedAt: row.updated_at,
+        };
+      }
+
+      setState((prev) => ({ ...prev, votes, facetAnswers, pollVotes }));
     })();
 
     return () => {
@@ -664,44 +641,104 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
     [pending, redirectTo, toast, router],
   );
 
+  /**
+   * Records a pick in Postgres, then updates the local cache.
+   *
+   * Write first, cache second — see `submitVote` for why. A poll adds one
+   * refusal topics do not have: `closes_at`. The insert policy on `poll_votes`
+   * checks it, so a poll that closed while the page was open refuses the vote
+   * rather than accepting one after the deadline.
+   *
+   * The reason is a second call because it is a second row with its own policy
+   * ("you may only explain a pick you actually made"), and that policy can only
+   * pass once the vote exists.
+   */
   const submitPollVote = useCallback(
-    (pollId: string, side: PollOptionId, reason: string) => {
+    async (pollId: string, side: PollOptionId, reason: string) => {
       if (!signedIn) {
         toast("Sign in to cast your vote in this poll.");
         setAuthMode("signin");
         return;
       }
-      setState((prev) => {
-        const already = prev.pollVotes[pollId];
-        return {
-          ...prev,
-          pollVotes: {
-            ...prev.pollVotes,
-            [pollId]: { side, reason, updatedAt: new Date().toISOString() },
-          },
-          // Polls created in-app have no seeded tally, so a vote on one is the
-          // whole sample. Fixture polls keep their authored counts.
-          createdPolls: prev.createdPolls.map((poll) =>
-            poll.id === pollId ? applyLocalPollVote(poll, side, already?.side) : poll,
-          ),
-        };
+
+      const supabase = supabaseBrowser();
+      const { error } = await supabase.rpc("cast_poll_vote", {
+        poll_slug: pollId,
+        option_slot: side,
       });
+
+      if (error) {
+        const message = error.message.toLowerCase();
+        toast(
+          message.includes("row-level security")
+            ? "This poll is closed, or not open for voting."
+            : error.message,
+        );
+        return;
+      }
+
+      const text = reason.trim();
+      if (text) {
+        const { error: reasonError } = await supabase.rpc("explain_poll_vote", {
+          poll_slug: pollId,
+          reason: text,
+        });
+        // The vote landed even if the reason did not, so this says which half
+        // failed rather than implying the whole thing was lost.
+        if (reasonError) {
+          toast("Vote recorded, but your reason could not be saved.");
+          setState((prev) => ({
+            ...prev,
+            pollVotes: {
+              ...prev.pollVotes,
+              [pollId]: { side, reason: "", updatedAt: new Date().toISOString() },
+            },
+          }));
+          router.refresh();
+          return;
+        }
+      } else {
+        // Clearing the box withdraws the reason, rather than leaving the old
+        // text sitting under a pick it may no longer explain.
+        await supabase.rpc("retract_poll_reason", { poll_slug: pollId });
+      }
+
+      setState((prev) => ({
+        ...prev,
+        pollVotes: {
+          ...prev.pollVotes,
+          [pollId]: { side, reason: text, updatedAt: new Date().toISOString() },
+        },
+      }));
+      router.refresh();
       toast(
-        reason.trim()
+        text
           ? "Vote recorded, and your reason is now next to it."
           : "Vote recorded. You can add a reason any time.",
       );
     },
-    [signedIn, toast],
+    [signedIn, toast, router],
   );
 
-  const clearPollVote = useCallback((pollId: string) => {
-    setState((prev) => {
-      const pollVotes = { ...prev.pollVotes };
-      delete pollVotes[pollId];
-      return { ...prev, pollVotes };
-    });
-  }, []);
+  const clearPollVote = useCallback(
+    async (pollId: string) => {
+      const { error } = await supabaseBrowser().rpc("withdraw_poll_vote", {
+        poll_slug: pollId,
+      });
+      if (error) {
+        toast(error.message);
+        return;
+      }
+      setState((prev) => {
+        const pollVotes = { ...prev.pollVotes };
+        delete pollVotes[pollId];
+        return { ...prev, pollVotes };
+      });
+      router.refresh();
+      toast("Vote withdrawn.");
+    },
+    [toast, router],
+  );
 
   const clearVote = useCallback(
     async (topicId: string) => {
