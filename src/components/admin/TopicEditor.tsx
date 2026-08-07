@@ -30,7 +30,7 @@ import {
 import { safeExternalUrl, urlHost } from "@/lib/safe-url";
 import type { PlaceId } from "@/lib/places";
 import { CATEGORIES, STATUS_STYLES } from "@/lib/taxonomy";
-import type { CategoryId, StatusId } from "@/lib/types";
+import type { StatusId } from "@/lib/types";
 
 export interface EditableTopic {
   id: string;

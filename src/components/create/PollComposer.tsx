@@ -23,7 +23,7 @@ import { decoratePoll, pollColor } from "@/lib/derive-poll";
 import { placeLabel, type PlaceId } from "@/lib/places";
 import { similarityLabel } from "@/lib/signature";
 import { CATEGORIES } from "@/lib/taxonomy";
-import type { CategoryId, Poll, PollOption, PollOptionId } from "@/lib/types";
+import type { CategoryId, Poll, PollOption, PollOptionId, StatusId } from "@/lib/types";
 import { MAX_POLL_OPTIONS, MIN_POLL_OPTIONS } from "@/lib/types";
 
 const MAX_QUESTION = 90;
@@ -40,7 +40,51 @@ function slugify(name: string): string {
     .slice(0, 48);
 }
 
-export function PollComposer() {
+/**
+ * The composer's closing field is prose, and a deadline is a timestamp.
+ *
+ * Only something `Date` can actually read becomes one; "Open-ended" and
+ * anything unparseable mean no deadline. Guessing a date out of free text is
+ * how a poll ends up closing on a day nobody chose.
+ */
+function parseCloses(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed || /open[- ]ended/i.test(trimmed)) return "";
+  const cleaned = trimmed.replace(/^open until\s+/i, "");
+  const parsed = new Date(cleaned);
+  if (Number.isNaN(parsed.getTime()) || parsed.getTime() <= Date.now()) return "";
+  return parsed.toISOString();
+}
+
+/**
+ * Where a finished poll goes.
+ *
+ * The same arrangement `TopicComposer` uses: this component owns the flow, the
+ * validation and the duplicate check, and knows nothing about who stores the
+ * result. `/admin/polls/new` hands it one that writes to Postgres; without one
+ * it falls back to the prototype's browser storage.
+ */
+export interface PollPublisher {
+  publish: (draft: {
+    slug: string;
+    question: string;
+    category: CategoryId;
+    place: PlaceId;
+    status: StatusId;
+    summary: string;
+    about: string;
+    tags: string[];
+    options: { name: string; blurb: string }[];
+    closesAt: string;
+    publish: boolean;
+  }) => Promise<{ ok: true; slug: string } | { ok: false; message: string }>;
+  isSlugFree: (slug: string) => Promise<boolean>;
+  destination: (slug: string) => string;
+  /** Whether "save as draft" is offered at all. */
+  allowDraft?: boolean;
+}
+
+export function PollComposer({ publisher }: { publisher?: PollPublisher } = {}) {
   const router = useRouter();
   const { signedIn, ready, openAuth, createPoll, isPollIdAvailable, pollDuplicate } =
     usePrototype();
@@ -57,6 +101,7 @@ export function PollComposer() {
     { name: "", blurb: "" },
   ]);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const setDraft = (i: number, patch: Partial<{ name: string; blurb: string }>) =>
     setDrafts((prev) => prev.map((d, k) => (k === i ? { ...d, ...patch } : d)));
@@ -135,12 +180,45 @@ export function PollComposer() {
     return null;
   };
 
-  const publish = () => {
+  const publish = async (asDraft = false) => {
     const problem = validate();
     if (problem) {
       setError(problem);
       return;
     }
+
+    if (publisher) {
+      setSaving(true);
+      setError(null);
+      const result = await publisher.publish({
+        slug: id,
+        question: question.trim(),
+        category: cat,
+        place,
+        status: "Live",
+        summary: summary.trim(),
+        about: about.trim() || summary.trim(),
+        tags: tags.length > 0 ? tags : [cat],
+        options: drafts.map((d, i) => ({
+          name: d.name.trim() || `Option ${i + 1}`,
+          blurb: d.blurb.trim(),
+        })),
+        // The composer's `closes` field is prose ("Open-ended", "Open until
+        // 15 Aug"). A real deadline is a timestamp, so only a parseable date is
+        // sent — anything else means open-ended, which is a state rather than a
+        // missing value.
+        closesAt: parseCloses(closes),
+        publish: !asDraft,
+      });
+      setSaving(false);
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      router.push(publisher.destination(result.slug));
+      return;
+    }
+
     const draft: Poll = {
       id,
       question: question.trim(),
@@ -430,13 +508,30 @@ export function PollComposer() {
               Open the poll that exists
             </Link>
           ) : (
-            <button
-              type="button"
-              onClick={publish}
-              className="cursor-pointer rounded-full bg-poll px-6 py-3 text-[14.5px] font-semibold text-poll-ink transition-colors duration-300 outline-none hover:bg-[#B9A2FC] focus-visible:ring-2 focus-visible:ring-poll-soft"
-            >
-              {verdict.kind === "near" ? "Publish anyway" : "Publish poll"}
-            </button>
+            <div className="flex flex-col gap-2.5">
+              <button
+                type="button"
+                onClick={() => void publish()}
+                disabled={saving}
+                className="cursor-pointer rounded-full bg-poll px-6 py-3 text-[14.5px] font-semibold text-poll-ink transition-colors duration-300 outline-none hover:bg-[#B9A2FC] focus-visible:ring-2 focus-visible:ring-poll-soft disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving
+                  ? "Publishing…"
+                  : verdict.kind === "near"
+                    ? "Publish anyway"
+                    : "Publish poll"}
+              </button>
+              {publisher?.allowDraft ? (
+                <button
+                  type="button"
+                  onClick={() => void publish(true)}
+                  disabled={saving}
+                  className="cursor-pointer rounded-full border border-veil/16 px-6 py-2.5 text-[13px] font-medium text-soft transition-colors duration-300 hover:border-veil/40 hover:text-cream disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Save as draft
+                </button>
+              ) : null}
+            </div>
           )}
         </aside>
       </div>

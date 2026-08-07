@@ -9,7 +9,7 @@ import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { PlaceFilter } from "@/components/ui/PlaceFilter";
 import { PrototypeDataBadge } from "@/components/ui/PrototypeDataBadge";
 import { SearchField } from "@/components/ui/SearchField";
-import { decoratePoll, formatNumber } from "@/lib/derive-poll";
+import { formatNumber } from "@/lib/derive-poll";
 import { placeLabel, type PlaceFilterId } from "@/lib/places";
 import {
   filterAndSortPolls,

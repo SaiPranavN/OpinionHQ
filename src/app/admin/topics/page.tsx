@@ -86,9 +86,9 @@ export default async function AdminTopics() {
       {topics.length === 0 ? (
         <div className="ohq-panel flex flex-col items-start gap-3 p-6">
           <p className="m-0 max-w-[62ch] text-[13.5px] leading-[1.6] text-muted">
-            No topics yet. The catalog on the public site is still reading the
-            prototype fixtures — nothing here reaches it until the read models are
-            switched over, but what you publish now is the real record.
+            No topics yet. The public catalog reads this table directly, so it is
+            currently empty for everyone — which is the honest state of a platform
+            that has not published one.
           </p>
         </div>
       ) : (

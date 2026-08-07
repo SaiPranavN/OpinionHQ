@@ -2850,6 +2850,33 @@ export type Database = {
         Args: { set_id: string; target_topic: string }
         Returns: number
       }
+      archive_poll: {
+        Args: { target: string }
+        Returns: {
+          about: string
+          archived_at: string | null
+          category_id: string
+          closes_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          place_id: string
+          published_at: string | null
+          question: string
+          slug: string
+          spread: number | null
+          status: Database["public"]["Enums"]["artifact_status"]
+          summary: string
+          tags: string[]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "polls"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       asks_used: { Args: { uid?: string }; Returns: number }
       aspect_tallies: {
         Args: { target: string }
@@ -2858,6 +2885,45 @@ export type Database = {
           option_id: string
           responses: number
         }[]
+      }
+      author_poll: {
+        Args: {
+          about: string
+          category_id: string
+          closes_at?: string
+          options: Json
+          place_id: string
+          publish?: boolean
+          question: string
+          slug: string
+          status: Database["public"]["Enums"]["artifact_status"]
+          summary: string
+          tags: string[]
+        }
+        Returns: {
+          about: string
+          archived_at: string | null
+          category_id: string
+          closes_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          place_id: string
+          published_at: string | null
+          question: string
+          slug: string
+          spread: number | null
+          status: Database["public"]["Enums"]["artifact_status"]
+          summary: string
+          tags: string[]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "polls"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       author_topic: {
         Args: {
@@ -3092,6 +3158,33 @@ export type Database = {
           subject_label?: string
         }
         Returns: undefined
+      }
+      restore_poll: {
+        Args: { target: string }
+        Returns: {
+          about: string
+          archived_at: string | null
+          category_id: string
+          closes_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          place_id: string
+          published_at: string | null
+          question: string
+          slug: string
+          spread: number | null
+          status: Database["public"]["Enums"]["artifact_status"]
+          summary: string
+          tags: string[]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "polls"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       retract_poll_reason: { Args: { poll_slug: string }; Returns: boolean }
       review_credential: {

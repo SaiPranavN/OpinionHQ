@@ -37,7 +37,7 @@ interface TopicTabsProps {
 }
 
 export function TopicTabs({ topicId, opinions, timeline, accent }: TopicTabsProps) {
-  const { votes, displayName, toast, contributionsFor } = usePrototype();
+  const { votes, displayName, contributionsFor } = usePrototype();
   const [tab, setTab] = useState<TabId>("overview");
   const [filter, setFilter] = useState<ContributionFilter>("All");
   const [sort, setSort] = useState<ContributionSort>("relevant");
