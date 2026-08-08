@@ -18,7 +18,8 @@ import {
   type ContributionSort,
 } from "@/lib/contributions";
 import { formatNumber, sentimentColor, sentimentIcon } from "@/lib/derive";
-import type { Opinion, TimelineEvent } from "@/lib/types";
+import type { Opinion,
+  OpinionReply, TimelineEvent } from "@/lib/types";
 
 type TabId = "overview" | "opinions" | "discussion" | "timeline";
 
@@ -32,11 +33,20 @@ const TABS: { id: TabId; label: string }[] = [
 interface TopicTabsProps {
   topicId: string;
   opinions: Opinion[];
+  replies: Record<string, OpinionReply[]>;
+  myReplyVotes: Record<string, "like" | "dislike">;
   timeline: TimelineEvent[];
   accent: string;
 }
 
-export function TopicTabs({ topicId, opinions, timeline, accent }: TopicTabsProps) {
+export function TopicTabs({
+  topicId,
+  opinions,
+  timeline,
+  accent,
+  replies,
+  myReplyVotes,
+}: TopicTabsProps) {
   const { votes, displayName, contributionsFor } = usePrototype();
   const [tab, setTab] = useState<TabId>("overview");
   const [filter, setFilter] = useState<ContributionFilter>("All");
@@ -224,6 +234,8 @@ export function TopicTabs({ topicId, opinions, timeline, accent }: TopicTabsProp
             <ContributionCard
               key={contribution.id}
               contribution={contribution}
+              replies={replies[contribution.id] ?? []}
+              myReplyVotes={myReplyVotes}
               view="opinions"
               accent={accent}
             />
@@ -250,6 +262,8 @@ export function TopicTabs({ topicId, opinions, timeline, accent }: TopicTabsProp
             <ContributionCard
               key={contribution.id}
               contribution={contribution}
+              replies={replies[contribution.id] ?? []}
+              myReplyVotes={myReplyVotes}
               view="discussion"
               accent={accent}
             />

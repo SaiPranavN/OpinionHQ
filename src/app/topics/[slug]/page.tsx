@@ -54,6 +54,8 @@ export default async function TopicPage({
         topic={page.topic}
         context={page.context}
         opinions={page.opinions}
+        replies={page.replies}
+        myReplyVotes={page.myReplyVotes}
         timeline={page.timeline}
       />
       <Footer />

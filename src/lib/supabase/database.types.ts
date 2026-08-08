@@ -1124,30 +1124,42 @@ export type Database = {
           author_id: string
           body: string
           created_at: string
+          depth: number
+          dislikes: number
           hidden_at: string | null
           hidden_reason: string | null
           id: string
+          likes: number
           opinion_id: string
+          parent_id: string | null
           updated_at: string
         }
         Insert: {
           author_id: string
           body: string
           created_at?: string
+          depth?: number
+          dislikes?: number
           hidden_at?: string | null
           hidden_reason?: string | null
           id?: string
+          likes?: number
           opinion_id: string
+          parent_id?: string | null
           updated_at?: string
         }
         Update: {
           author_id?: string
           body?: string
           created_at?: string
+          depth?: number
+          dislikes?: number
           hidden_at?: string | null
           hidden_reason?: string | null
           id?: string
+          likes?: number
           opinion_id?: string
+          parent_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1170,6 +1182,56 @@ export type Database = {
             columns: ["opinion_id"]
             isOneToOne: false
             referencedRelation: "opinions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinion_replies_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "opinion_replies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opinion_reply_votes: {
+        Row: {
+          created_at: string
+          reply_id: string
+          user_id: string
+          vote: Database["public"]["Enums"]["reader_vote"]
+        }
+        Insert: {
+          created_at?: string
+          reply_id: string
+          user_id: string
+          vote: Database["public"]["Enums"]["reader_vote"]
+        }
+        Update: {
+          created_at?: string
+          reply_id?: string
+          user_id?: string
+          vote?: Database["public"]["Enums"]["reader_vote"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opinion_reply_votes_reply_id_fkey"
+            columns: ["reply_id"]
+            isOneToOne: false
+            referencedRelation: "opinion_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinion_reply_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "opinion_reply_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3093,6 +3155,13 @@ export type Database = {
           updated_at: string
         }[]
       }
+      my_reply_votes: {
+        Args: { opinion: string }
+        Returns: {
+          reply_id: string
+          vote: Database["public"]["Enums"]["reader_vote"]
+        }[]
+      }
       my_votes: {
         Args: never
         Returns: {
@@ -3158,6 +3227,29 @@ export type Database = {
           subject_label?: string
         }
         Returns: undefined
+      }
+      reply_to_opinion: {
+        Args: { body: string; opinion: string; parent?: string }
+        Returns: {
+          author_id: string
+          body: string
+          created_at: string
+          depth: number
+          dislikes: number
+          hidden_at: string | null
+          hidden_reason: string | null
+          id: string
+          likes: number
+          opinion_id: string
+          parent_id: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "opinion_replies"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       restore_poll: {
         Args: { target: string }
@@ -3271,6 +3363,13 @@ export type Database = {
           label: string
           responses: number
         }[]
+      }
+      vote_on_reply: {
+        Args: {
+          kind: Database["public"]["Enums"]["reader_vote"]
+          reply: string
+        }
+        Returns: Database["public"]["Enums"]["reader_vote"]
       }
       withdraw_poll_vote: { Args: { poll_slug: string }; Returns: boolean }
       withdraw_vote: { Args: { topic_slug: string }; Returns: boolean }

@@ -27,6 +27,7 @@ import {
 import type {
   DecoratedTopic,
   Opinion,
+  OpinionReply,
   Sentiment,
   TimelineEvent,
   TopicContext,
@@ -50,9 +51,25 @@ export async function listTopics(): Promise<DecoratedTopic[]> {
   return (data as unknown as TopicCardRow[]).map((row) => decorate(rowToTopic(row)));
 }
 
+interface ReplyRow {
+  id: string;
+  opinion_id: string;
+  parent_id: string | null;
+  author_id: string;
+  body: string;
+  likes: number;
+  dislikes: number;
+  created_at: string;
+  profiles: unknown;
+}
+
 export interface TopicPage {
   topic: DecoratedTopic;
   opinions: Opinion[];
+  /** Threaded replies, keyed by the opinion they hang under. */
+  replies: Record<string, OpinionReply[]>;
+  /** The viewer's own like/dislike on each reply. Empty when signed out. */
+  myReplyVotes: Record<string, "like" | "dislike">;
   timeline: TimelineEvent[];
   context: TopicContext;
   /** The viewer's own vote, when they have one. */
@@ -125,8 +142,8 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
       supabase
         .from("opinions")
         .select(
-          "id, vote, body, format, author_line, verified_label, helpful_count, reply_count, " +
-            "created_at, profiles!author_id(display_name, initials)",
+          "id, author_id, vote, body, format, author_line, verified_label, helpful_count, " +
+            "reply_count, created_at, profiles!author_id(display_name, initials)",
         )
         .eq("topic_id", topicId)
         .neq("body", "")
@@ -162,9 +179,61 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
     answers[answer.aspect_id] = answer.option_id;
   }
 
+  const opinions = ((written as OpinionRow[] | null) ?? []).map((o) => toOpinion(o, card.slug));
+
+  // Replies, for every opinion on the page in one query rather than one per
+  // card. A topic with forty written opinions would otherwise open forty
+  // requests, and the discussion tab renders all of them at once.
+  //
+  // Fetched after the opinions because it needs their ids. The viewer's own
+  // votes come with it: `opinion_reply_votes` is own-row-only by policy, so a
+  // plain select returns theirs and nobody else's, and signed out it returns
+  // nothing without this file testing for a session.
+  const opinionIds = opinions.map((o) => o.id);
+  const [{ data: replyRows }, { data: voteRows }] = await Promise.all([
+    opinionIds.length > 0
+      ? supabase
+          .from("opinion_replies")
+          .select(
+            "id, opinion_id, parent_id, author_id, body, likes, dislikes, created_at, " +
+              "profiles!author_id(display_name, initials)",
+          )
+          .in("opinion_id", opinionIds)
+          .is("hidden_at", null)
+          .order("created_at", { ascending: true })
+      : Promise.resolve({ data: null }),
+    uid && opinionIds.length > 0
+      ? supabase.from("opinion_reply_votes").select("reply_id, vote")
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const replies: Record<string, OpinionReply[]> = {};
+  for (const r of (replyRows as ReplyRow[] | null) ?? []) {
+    const author = one<{ display_name: string; initials: string }>(r.profiles);
+    (replies[r.opinion_id] ??= []).push({
+      id: r.id,
+      parentId: r.parent_id,
+      authorId: r.author_id,
+      authorName: author?.display_name ?? "A participant",
+      authorInitials: author?.initials ?? "··",
+      body: r.body,
+      createdAt: r.created_at,
+      time: relativeTime(r.created_at),
+      likes: r.likes,
+      dislikes: r.dislikes,
+    });
+  }
+
+  const myReplyVotes: Record<string, "like" | "dislike"> = {};
+  for (const v of (voteRows as { reply_id: string; vote: string }[] | null) ?? []) {
+    myReplyVotes[v.reply_id] = v.vote === "dislike" ? "dislike" : "like";
+  }
+
   return {
     topic: decorate(rowToTopic(card, { about: (row.about as string) ?? "", aspects })),
-    opinions: ((written as OpinionRow[] | null) ?? []).map((o) => toOpinion(o, card.slug)),
+    opinions,
+    replies,
+    myReplyVotes,
     timeline: ((events as TimelineRow[] | null) ?? []).map((e) => ({
       id: e.id,
       topicId: card.slug,
@@ -197,6 +266,7 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
 
 interface OpinionRow {
   id: string;
+  author_id: string;
   vote: string;
   body: string;
   format: string;
@@ -222,6 +292,7 @@ function toOpinion(row: OpinionRow, topicSlug: string): Opinion {
   const author = one<{ display_name: string; initials: string }>(row.profiles);
   return {
     id: row.id,
+    authorId: row.author_id,
     topicId: topicSlug,
     name: author?.display_name ?? "A participant",
     initials: author?.initials ?? "?",

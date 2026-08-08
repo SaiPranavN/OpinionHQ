@@ -9,6 +9,7 @@ import { SentimentTrend } from "@/components/topic/SentimentTrend";
 import { VotePanel } from "@/components/topic/VotePanel";
 import { categoryAccent } from "@/lib/taxonomy";
 import type {
+  OpinionReply,
   DecoratedTopic,
   TopicContext,
   Opinion,
@@ -25,11 +26,15 @@ export function TopicDashboard({
   context,
   opinions,
   timeline,
+  replies,
+  myReplyVotes,
 }: {
   topic: DecoratedTopic;
   context: TopicContext;
   opinions: Opinion[];
   timeline: TimelineEvent[];
+  replies: Record<string, OpinionReply[]>;
+  myReplyVotes: Record<string, "like" | "dislike">;
 }) {
   // One accent for the whole topic, resolved once and handed down. Richer
   // contributions tint with it so a card reads as belonging to *this* subject
@@ -64,6 +69,8 @@ export function TopicDashboard({
 
       {/* 3 — What everyone else said. */}
       <TopicTabs
+        replies={replies}
+        myReplyVotes={myReplyVotes}
         topicId={topic.id}
         opinions={opinions}
         timeline={timeline}

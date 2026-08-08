@@ -202,7 +202,15 @@ export function ProComposer({
       {preview ? (
         <div className="flex flex-col gap-3">
           {ready ? (
-            <ContributionCard contribution={draftPreview} view="opinions" accent={accent} />
+            // A preview of something not yet published, so it has no thread and
+            // nobody has voted in one.
+            <ContributionCard
+              contribution={draftPreview}
+              view="opinions"
+              accent={accent}
+              replies={[]}
+              myReplyVotes={{}}
+            />
           ) : (
             <p className="m-0 rounded-[12px] border border-dashed border-veil/12 px-4 py-8 text-center text-[13px] text-dim">
               Write a headline to see the card.

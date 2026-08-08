@@ -11,13 +11,15 @@
  * `view` prop on this component, not two component trees.
  *
  * What that buys, concretely: a reply posted in Discussion appears in the
- * Opinions reply count, because both read `repliesFor(contribution.id)`. There
- * is nothing to keep in sync, because there is nothing duplicated.
+ * Opinions reply count, because both render the same thread off the same rows.
+ * There is nothing to keep in sync, because there is nothing duplicated.
  */
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
+import { ReplyThread } from "@/components/topic/ReplyThread";
 import { InteractiveBlockView } from "@/components/topic/InteractiveBlockView";
 import {
   collapsedSections,
@@ -26,8 +28,10 @@ import {
   isPro,
   orderedSections,
 } from "@/lib/contributions";
+import { buildThread } from "@/lib/comments/tree";
 import { formatNumber, sentimentColor, sentimentIcon } from "@/lib/derive";
-import type { Opinion, ProReaction, ProSection } from "@/lib/types";
+import { postReply } from "@/lib/topics/replies";
+import type { Opinion, OpinionReply, ProReaction, ProSection } from "@/lib/types";
 
 const MAX_REPLY = 400;
 
@@ -41,16 +45,20 @@ export function ContributionCard({
   contribution,
   view,
   accent,
+  replies: replyRows,
+  myReplyVotes,
 }: {
   contribution: Opinion;
   view: "opinions" | "discussion";
   accent: string;
+  /** Flat, from the server. Threaded here so the tree is built once per card. */
+  replies: OpinionReply[];
+  myReplyVotes: Record<string, "like" | "dislike">;
 }) {
+  const router = useRouter();
   const {
     helpful,
     toggleHelpful,
-    repliesFor,
-    postReply,
     signedIn,
     openAuth,
     toast,
@@ -67,27 +75,47 @@ export function ContributionCard({
   const [showReplies, setShowReplies] = useState(view === "discussion");
   const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
 
   const marked = helpful.includes(contribution.id);
   const isSaved = saved.includes(contribution.id);
   const myReaction = contributionReactions[contribution.id];
 
-  const posted = repliesFor(contribution.id);
-  const seeded = contribution.thread ?? [];
-  const replyCount = seeded.length + posted.length;
+  // Built once per card rather than per render of every node, and from the
+  // server's flat list rather than from anything held in this browser — a reply
+  // somebody else posted has to appear for everyone, which is the whole reason
+  // this moved off localStorage.
+  const nodes = useMemo(() => buildThread(replyRows), [replyRows]);
+  const replyCount = replyRows.length;
 
   const sections = orderedSections(contribution);
   const collapsible = pro && hasMoreToRead(sections);
   const { shown, hiddenSections, hiddenPoints } = collapsedSections(sections);
   const bodySections = pro && !expanded && collapsible ? shown : sections;
 
-  const send = (e: React.FormEvent) => {
+  const send = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (postReply(contribution.id, draft)) {
-      setDraft("");
-      setComposing(false);
-      setShowReplies(true);
+    if (!signedIn) {
+      openAuth("signin");
+      return;
     }
+    setSending(true);
+    setReplyError(null);
+    // No `parent` — the box under the card starts a new top-level thread.
+    // Answering one specific reply is the Reply button inside the thread.
+    const result = await postReply(contribution.id, draft);
+    setSending(false);
+    if (!result.ok) {
+      setReplyError(result.message);
+      return;
+    }
+    setDraft("");
+    setComposing(false);
+    setShowReplies(true);
+    // Re-reads the page rather than splicing a copy in here, which would drift
+    // from what the database now holds the moment two people reply at once.
+    router.refresh();
   };
 
   const share = () => {
@@ -289,30 +317,19 @@ export function ContributionCard({
           the conversation. */}
       {showReplies ? (
         <div className="flex flex-col gap-3 border-t border-line bg-veil/2 px-[18px] py-4 sm:px-6">
-          {replyCount === 0 ? (
-            <p className="m-0 text-[12.5px] text-dim">No replies yet.</p>
+          <ReplyThread
+            opinionId={contribution.id}
+            opinionAuthorId={contribution.authorId ?? ""}
+            nodes={nodes}
+            myVotes={myReplyVotes}
+            onChanged={() => router.refresh()}
+          />
+
+          {replyError ? (
+            <p role="alert" className="m-0 text-[12.5px] text-negative-light">
+              {replyError}
+            </p>
           ) : null}
-
-          {seeded.map((reply, i) => (
-            <ReplyRow
-              key={`seed-${i}`}
-              name={reply.name}
-              initials={reply.initials}
-              time={reply.time}
-              text={reply.text}
-            />
-          ))}
-
-          {posted.map((reply) => (
-            <ReplyRow
-              key={reply.id}
-              name={`${reply.name} (you)`}
-              initials={reply.initials}
-              time="Just now"
-              text={reply.text}
-              mine
-            />
-          ))}
 
           {composing ? (
             <form onSubmit={send} className="flex flex-col gap-2">
@@ -335,10 +352,10 @@ export function ContributionCard({
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="submit"
-                  disabled={!draft.trim()}
+                  disabled={!draft.trim() || sending}
                   className="cursor-pointer rounded-full bg-positive px-4 py-2 text-[12.5px] font-semibold text-positive-ink transition-opacity duration-300 outline-none disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-positive-light"
                 >
-                  Post reply
+                  {sending ? "Posting…" : "Post reply"}
                 </button>
                 <button
                   type="button"
@@ -543,34 +560,3 @@ function SectionView({
 
 /* ---------------------------------------------------------------- reply */
 
-function ReplyRow({
-  name,
-  initials,
-  time,
-  text,
-  mine,
-}: {
-  name: string;
-  initials: string;
-  time: string;
-  text: string;
-  mine?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <span className="flex flex-wrap items-center gap-2.5">
-        <span
-          aria-hidden
-          className={`grid h-[26px] w-[26px] place-items-center rounded-full text-[10px] font-semibold ${
-            mine ? "bg-positive/20 text-positive-light" : "bg-avatar-deep text-muted"
-          }`}
-        >
-          {initials}
-        </span>
-        <span className="text-[13px] font-semibold text-soft">{name}</span>
-        <span className="font-mono text-[10px] text-dim">{time}</span>
-      </span>
-      <p className="m-0 text-[13.5px] leading-[1.6] text-muted">{text}</p>
-    </div>
-  );
-}

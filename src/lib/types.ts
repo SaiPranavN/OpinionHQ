@@ -273,6 +273,8 @@ export type ProReaction = "insightful" | "useful" | "well_explained";
 export interface Opinion {
   id: string;
   topicId: string;
+  /** The author's account id, for badging them inside their own reply thread. */
+  authorId?: string;
   name: string;
   initials: string;
   vote: Sentiment;
@@ -484,6 +486,26 @@ export interface Poll {
   trend: number;
   recency: number;
   updated: string;
+}
+
+/**
+ * One reply in an opinion's threaded discussion.
+ *
+ * Flat on the wire; `buildThread` in lib/comments/tree.ts turns a list of
+ * these into the tree the rail is drawn against.
+ */
+export interface OpinionReply {
+  id: string;
+  parentId: string | null;
+  authorId: string;
+  authorName: string;
+  authorInitials: string;
+  body: string;
+  /** ISO, for ordering. `time` is the same instant for reading. */
+  createdAt: string;
+  time: string;
+  likes: number;
+  dislikes: number;
 }
 
 /** A participant's written reason for their pick. Polls have no threads. */

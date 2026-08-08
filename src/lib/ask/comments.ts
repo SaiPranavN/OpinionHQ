@@ -9,6 +9,7 @@
  * nesting can be tested without rendering anything.
  */
 
+import { buildThread, MAX_COMMENT_DEPTH as SHARED_DEPTH, type ThreadNode } from "@/lib/comments/tree";
 import type { AnswerComment, CommentNode } from "@/lib/ask/types";
 
 /**
@@ -21,7 +22,7 @@ import type { AnswerComment, CommentNode } from "@/lib/ask/types";
  * hidden or flattened — the parentage is intact and the rail still connects
  * it — it simply stops marching across the page.
  */
-export const MAX_COMMENT_DEPTH = 4;
+export const MAX_COMMENT_DEPTH = SHARED_DEPTH;
 
 /**
  * Builds the tree.
@@ -38,50 +39,25 @@ export const MAX_COMMENT_DEPTH = 4;
  * nothing to do with them.
  */
 export function commentTree(comments: AnswerComment[]): CommentNode[] {
-  const sorted = [...comments].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  const present = new Set(sorted.map((c) => c.id));
-
-  const nodes = new Map<string, CommentNode>();
-  for (const comment of sorted) {
-    nodes.set(comment.id, { comment, depth: 0, replies: [], total: 0 });
-  }
-
-  const roots: CommentNode[] = [];
-  for (const comment of sorted) {
-    const node = nodes.get(comment.id)!;
-    const parentId = comment.parentId;
-    // A comment cannot be its own parent, and a parent that is not here is not
-    // a parent. Both guards exist so a bad record cannot build a cycle and
-    // hang the renderer.
-    if (!parentId || parentId === comment.id || !present.has(parentId)) {
-      roots.push(node);
-      continue;
-    }
-    const parent = nodes.get(parentId);
-    if (!parent) {
-      roots.push(node);
-      continue;
-    }
-    parent.replies.push(node);
-  }
-
-  for (const root of roots) assignDepth(root, 0);
-  for (const root of roots) root.total = countDescendants(root);
-  return roots;
+  return buildThread(comments).map(rename);
 }
 
-function assignDepth(node: CommentNode, depth: number): void {
-  node.depth = Math.min(depth, MAX_COMMENT_DEPTH);
-  for (const reply of node.replies) assignDepth(reply, depth + 1);
-}
-
-function countDescendants(node: CommentNode): number {
-  let total = 0;
-  for (const reply of node.replies) {
-    reply.total = countDescendants(reply);
-    total += 1 + reply.total;
-  }
-  return total;
+/**
+ * `ThreadNode.entry` back to `CommentNode.comment`.
+ *
+ * The recursion — ordering, the depth cap, the cycle guards, the descendant
+ * count — lives in `lib/comments/tree.ts` and is shared with the reply threads
+ * under opinions. Only the field name differs, and renaming `comment` across
+ * `QuestionView` to remove an eight-line adapter would be a worse trade than
+ * keeping it.
+ */
+function rename(node: ThreadNode<AnswerComment>): CommentNode {
+  return {
+    comment: node.entry,
+    depth: node.depth,
+    replies: node.replies.map(rename),
+    total: node.total,
+  };
 }
 
 /** Every comment in a tree, at any depth. */
