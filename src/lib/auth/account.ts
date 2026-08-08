@@ -135,6 +135,28 @@ export async function setPassword(password: string): Promise<AuthResult> {
   return error ? fail(readable(error.message)) : ok;
 }
 
+/**
+ * Whether the profile has the fields the cross-tabs are built from.
+ *
+ * The same three the callback checks, asked from the client so the password
+ * step knows whether there is a details step still to do after it.
+ */
+export async function detailsAreComplete(): Promise<boolean> {
+  const supabase = supabaseBrowser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data } = await supabase
+    .from("profile_private")
+    .select("dob, occupation, country")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  return Boolean(data?.dob && data?.occupation && data?.country);
+}
+
 /* --------------------------------------------------------------- the profile */
 
 export interface AccountDetailsInput {

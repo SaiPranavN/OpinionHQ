@@ -45,10 +45,27 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/signin?error=${encodeURIComponent(error.message)}`);
   }
 
-  // A Google address arrives verified and there is no password to set, but
-  // nothing in an OAuth profile says where somebody lives or what they do — and
-  // those are the only inputs the cross-tabs have. So a first-time Google
-  // account goes to the details step rather than straight to the catalog.
+  // Where an unfinished account is sent next.
+  //
+  // THIS ROUTE IS NOT ONLY FOR GOOGLE, which is what the original version
+  // assumed. Two other things land here with a live session:
+  //
+  //   the code email's "or open this link instead" — somebody mid-sign-up who
+  //     clicked rather than typing the six digits. Sending them onward skipped
+  //     the password screen entirely, leaving a working, signed-in account with
+  //     no password anybody had chosen. That is the bug this fixes.
+  //
+  // NOTE ON WHAT IS *NOT* CHECKED. There is no "does this account have a
+  // password" test, because the question cannot be asked: Supabase writes a
+  // bcrypt hash of a generated secret for every account whether or not anyone
+  // chose one, so `encrypted_password` is never null and every such check
+  // returns true. An earlier version of this file relied on exactly that and
+  // was silently a no-op. Sign-up completeness is used instead, because it is a
+  // fact about our own tables rather than a guess about the auth schema.
+  //
+  // Resetting a forgotten password is not handled here. It runs through the
+  // code flow on /signin, which proves the address and lands on the same
+  // password screen — see the note on the "Forgot password?" button.
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -60,10 +77,16 @@ export async function GET(request: NextRequest) {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    const incomplete = !details?.dob || !details?.occupation || !details?.country;
-    if (incomplete) {
+    const unfinished = !details?.dob || !details?.occupation || !details?.country;
+
+    if (unfinished) {
+      // A Google account has no password to set and never will — asking would
+      // be asking for a password to an account that does not use one. Everyone
+      // else resumes at the password step, which flows into details after it.
+      const viaGoogle = (user.app_metadata?.providers ?? []).includes("google");
+      const step = viaGoogle ? "details" : "password";
       return NextResponse.redirect(
-        `${origin}/signin?mode=signup&step=details&next=${encodeURIComponent(next)}`,
+        `${origin}/signin?mode=signup&step=${step}&next=${encodeURIComponent(next)}`,
       );
     }
   }

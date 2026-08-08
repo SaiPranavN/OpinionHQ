@@ -65,6 +65,7 @@ import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Brand } from "@/components/ui/Brand";
 import {
   confirmSignUpCode,
+  detailsAreComplete,
   resendSignUpCode,
   saveAccountDetails,
   setPassword as setAccountPassword,
@@ -95,13 +96,26 @@ export function SignInView() {
   const [mode, setMode] = useState<"signin" | "signup">(
     params.get("mode") === "signup" ? "signup" : "signin",
   );
-  // `?step=details` is how `/auth/callback` sends a first-time Google account
-  // here: verified address, no password to set, and none of the demographics
-  // the cross-tabs are built from.
+  // `?step=…` is how `/auth/callback` resumes a sign-up that opened a session
+  // before it finished.
+  //
+  //   details  — a first-time Google account: verified address, no password to
+  //              set, and none of the demographics the cross-tabs need.
+  //   password — somebody who opened the "or use this link instead" link in the
+  //              code email. They are signed in and have no password, which is
+  //              an account they cannot sign into again without a reset.
+  //
+  // Only these two resume. Anything else starts at the beginning rather than
+  // trusting a step name off a query string to skip verification.
+  const resumeStep = params.get("step");
   const [step, setStep] = useState<SignupStep>(
-    params.get("step") === "details" ? "details" : "account",
+    resumeStep === "details" || resumeStep === "password"
+      ? (resumeStep as SignupStep)
+      : "account",
   );
-  const [viaGoogle, setViaGoogle] = useState(params.get("step") === "details");
+  // Only the details resume implies Google. Arriving at the password step means
+  // the opposite — a Google account has no password to set.
+  const [viaGoogle, setViaGoogle] = useState(resumeStep === "details");
   const [busy, setBusy] = useState(false);
 
   const [name, setName] = useState("");
@@ -294,11 +308,22 @@ export function SignInView() {
     setBusy(true);
     setError(null);
     const result = await setAccountPassword(password);
-    setBusy(false);
     if (!result.ok) {
+      setBusy(false);
       setError(result.message);
       return;
     }
+
+    // Somebody resuming here already has an account and may well have filled in
+    // their details long ago — they were sent back only because the password
+    // was missing. Making them retype a date of birth they already gave would
+    // be asking for the same information twice to fix a different problem.
+    if (resumeStep === "password" && (await detailsAreComplete())) {
+      await finish(false);
+      return;
+    }
+
+    setBusy(false);
     setStep("details");
   };
 
