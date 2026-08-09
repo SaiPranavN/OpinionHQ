@@ -24,28 +24,19 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { useAsk } from "@/components/ask/AskProvider";
-import {
-  AskStatusBadge,
-  CredentialChip,
-  PrivateBadge,
-  SimulatedTag,
-} from "@/components/ask/primitives";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { headlineOf, isPro } from "@/lib/contributions";
-import { questionStatus, relativeTime, shortDate } from "@/lib/ask/derive";
+import { relativeTime } from "@/lib/ask/derive";
 import { formatNumber, sentimentColor, sentimentIcon } from "@/lib/derive";
-import { askAllowanceLine, FREE_ASKS, PRO_PLAN } from "@/lib/entitlements";
-import { getPoll } from "@/lib/polls";
+import { PRO_PLAN } from "@/lib/entitlements";
 import type { DecoratedTopic, Sentiment } from "@/lib/types";
 
-type SectionId = "opinions" | "polls" | "ask";
+type SectionId = "opinions" | "polls";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "opinions", label: "Opinions" },
   { id: "polls", label: "Polls" },
-  { id: "ask", label: "Ask Verified" },
 ];
 
 export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
@@ -69,15 +60,6 @@ export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
     openAuth,
   } = usePrototype();
 
-  const {
-    ready: askReady,
-    myQuestions,
-    answers,
-    myCredentials,
-    matches,
-    threads,
-    freeAsksLeft,
-  } = useAsk();
 
   const [section, setSection] = useState<SectionId>("opinions");
 
@@ -105,17 +87,13 @@ export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
   const pollRows = useMemo(
     () =>
       Object.entries(pollVotes)
-        .map(([pollId, cast]) => ({ pollId, cast, poll: getPoll(pollId) }))
+        .map(([pollId, cast]) => ({ pollId, cast }))
         .sort((a, b) => b.cast.updatedAt.localeCompare(a.cast.updatedAt)),
     [pollVotes],
   );
 
-  const myAnswers = useMemo(
-    () => answers.filter((a) => a.professionalUserId === "you"),
-    [answers],
-  );
 
-  if (!ready || !askReady) return null;
+  if (!ready) return null;
 
   if (!signedIn) {
     return (
@@ -143,7 +121,6 @@ export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
   const counts = {
     opinions: voteRows.length + contributions.length + replies.length,
     polls: pollRows.length,
-    ask: myQuestions.length + myAnswers.length,
   };
 
   return (
@@ -179,9 +156,8 @@ export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
           </span>
           <span className="max-w-[440px] text-[12.5px] leading-[1.55] text-dim">
             {pro
-              ? "Unlimited questions and the rich composer. Cancelling leaves everything you published in place."
-              : askAllowanceLine(false, freeAsksLeft) +
-                " Reading, voting, replying and answering are free and always will be."}
+              ? "The rich composer for structured contributions. Cancelling leaves everything you published in place."
+              : "Reading, voting, replying and writing ordinary opinions are free and always will be."}
           </span>
           <span className="ml-auto">
             {pro ? (
@@ -304,96 +280,21 @@ export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
           empty="You have not picked a side in a poll yet."
           count={pollRows.length}
         >
-          {pollRows.map(({ pollId, cast, poll }) => {
-            const option = poll?.options.find((o) => o.id === cast.side);
-            return (
-              <Row
-                key={pollId}
-                href={`/polls/${pollId}`}
-                title={poll?.question ?? pollId}
-                meta={`Picked ${option?.name ?? cast.side} · ${relativeTime(cast.updatedAt)}`}
-                body={cast.reason || undefined}
-              />
-            );
-          })}
+          {/* The poll's question is not resolved here. It used to come from a
+              catalog held in this browser; the real one is in Postgres and this
+              page does not fetch it yet, so the row links by address rather
+              than inventing a title. */}
+          {pollRows.map(({ pollId, cast }) => (
+            <Row
+              key={pollId}
+              href={`/polls/${pollId}`}
+              title={pollId}
+              meta={`Picked option ${cast.side.toUpperCase()} · ${relativeTime(cast.updatedAt)}`}
+            />
+          ))}
         </Panel>
       ) : null}
 
-      {/* --------------------------------------------------- ask verified */}
-      {section === "ask" ? (
-        <div className="flex flex-col gap-[clamp(14px,2vw,20px)]">
-          <Panel
-            title="Questions you asked"
-            empty="You have not asked a question yet."
-            count={myQuestions.length}
-            note={
-              pro
-                ? "Pro — unlimited."
-                : `${freeAsksLeft} of ${FREE_ASKS} free questions left.`
-            }
-          >
-            {myQuestions.map((question) => {
-              const mine = matches.filter((m) => m.questionId === question.id);
-              const status = questionStatus(
-                mine,
-                threads.filter((t) => t.questionId === question.id),
-              );
-              return (
-                <Row
-                  key={question.id}
-                  href={`/ask/questions/${question.id}`}
-                  title={question.title}
-                  meta={`${shortDate(question.createdAt)} · sent to ${mine.length} ${
-                    mine.length === 1 ? "person" : "people"
-                  }`}
-                  trailing={
-                    <span className="flex items-center gap-2">
-                      {/* Seeded examples are attributed to the visitor so the
-                          section has something to demonstrate. They are
-                          labelled here and they never count against the free
-                          allowance — nobody asked them. */}
-                      {question.simulated ? <SimulatedTag /> : null}
-                      {question.visibility === "private" ? (
-                        <PrivateBadge />
-                      ) : (
-                        <PrivateBadge label="Public" />
-                      )}
-                      <AskStatusBadge status={status} size="sm" />
-                    </span>
-                  }
-                />
-              );
-            })}
-          </Panel>
-
-          <Panel
-            title="Answers you wrote"
-            empty="You have not answered anybody's question yet."
-            count={myAnswers.length}
-          >
-            {myAnswers.map((answer) => (
-              <Row
-                key={answer.id}
-                href={`/ask/questions/${answer.questionId}`}
-                title={answer.summary}
-                meta={`Answered ${relativeTime(answer.createdAt)}`}
-              />
-            ))}
-          </Panel>
-
-          <Panel
-            title="Proof you hold"
-            empty="Nothing verified yet — verifying lets you answer in that area."
-            count={myCredentials.length}
-          >
-            <div className="flex flex-wrap gap-2">
-              {myCredentials.map((credential) => (
-                <CredentialChip key={credential.id} credential={credential} />
-              ))}
-            </div>
-          </Panel>
-        </div>
-      ) : null}
     </Shell>
   );
 }

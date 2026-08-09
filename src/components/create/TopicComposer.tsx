@@ -116,7 +116,7 @@ export interface TopicPublisher {
 
 export function TopicComposer({ publisher }: { publisher?: TopicPublisher } = {}) {
   const router = useRouter();
-  const { signedIn, openAuth, createTopic, isIdAvailable, ready } = usePrototype();
+  const { signedIn, openAuth, ready } = usePrototype();
 
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -194,7 +194,7 @@ export function TopicComposer({ publisher }: { publisher?: TopicPublisher } = {}
   const validateBasics = (): string | null => {
     if (name.trim().length < 4) return "Give the topic a name of at least four characters.";
     if (!id) return "That name does not produce a usable address. Add some letters or numbers.";
-    const taken = publisher ? slugTaken : !isIdAvailable(id);
+    const taken = slugTaken;
     if (taken) return "A topic with that name already exists. Try a more specific one.";
     if (summary.trim().length < 20) return "Write a one-line summary of at least twenty characters.";
     if (about.trim().length < 40) return "Add a little more context — at least forty characters.";
@@ -248,29 +248,9 @@ export function TopicComposer({ publisher }: { publisher?: TopicPublisher } = {}
       return;
     }
 
-    const draft: Omit<Topic, "createdBy" | "createdAt"> = {
-      id,
-      name: name.trim(),
-      cat,
-      place,
-      status,
-      summary: summary.trim(),
-      about: about.trim(),
-      tags: tags.length > 0 ? tags : [cat],
-      aspects: toFacets(complete),
-      // A brand-new topic has no aggregate. Everything downstream reads
-      // `participants === 0` and shows "no votes yet" rather than a fake split.
-      pos: 0,
-      neu: 0,
-      neg: 0,
-      participants: 0,
-      trend: 0,
-      recency: 0,
-      updated: "just now",
-      change: { metric: "participation", value: 0, direction: "up" },
-    };
-    createTopic(draft);
-    router.push(`/topics/${id}`);
+    // Without a publisher there is nowhere for this to go. The public
+    // composer route is gone; only /admin/topics/new renders this component.
+    setError("Publishing is not available here.");
   };
 
   // The admin does its own gating in the route's layout, and its editors are
@@ -350,7 +330,7 @@ export function TopicComposer({ publisher }: { publisher?: TopicPublisher } = {}
               {id ? (
                 <span className="font-mono text-[10.5px] text-dim">
                   /topics/{id}{" "}
-                  {!isIdAvailable(id) ? (
+                  {slugTaken ? (
                     <span className="text-negative-light">· already taken</span>
                   ) : null}
                 </span>

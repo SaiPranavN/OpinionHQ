@@ -31,8 +31,6 @@ import { UpgradeModal } from "@/components/prototype/UpgradeModal";
 import { isPublishable } from "@/lib/contributions";
 import type { ProFeature } from "@/lib/entitlements";
 import { isUsablePoll } from "@/lib/derive-poll";
-import { POLLS as FIXTURE_POLLS } from "@/lib/sample-data/polls";
-import { TOPICS as FIXTURE_TOPICS } from "@/lib/sample-data/topics";
 import {
   checkPollDuplicate,
   signPoll,
@@ -268,10 +266,6 @@ function initialsOf(name: string): string {
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
   return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase();
 }
-
-/** Ids already taken by editor-published fixtures. */
-const FIXTURE_IDS = new Set(FIXTURE_TOPICS.map((e) => e.id));
-const FIXTURE_POLL_IDS = new Set(FIXTURE_POLLS.map((p) => p.id));
 
 function readStored(): PersistedState {
   if (typeof window === "undefined") return EMPTY;
@@ -545,7 +539,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
    * in this session, signed once per change rather than per keystroke.
    */
   const signedPolls = useMemo(
-    () => [...FIXTURE_POLLS, ...state.createdPolls].map(signPoll),
+    () => state.createdPolls.map(signPoll),
     [state.createdPolls],
   );
 
@@ -584,12 +578,12 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
   );
 
   const isPollIdAvailable = useCallback(
-    (id: string) => !FIXTURE_POLL_IDS.has(id) && !state.createdPolls.some((p) => p.id === id),
+    (id: string) => !state.createdPolls.some((p) => p.id === id),
     [state.createdPolls],
   );
 
   const isIdAvailable = useCallback(
-    (id: string) => !FIXTURE_IDS.has(id) && !state.created.some((e) => e.id === id),
+    (id: string) => !state.created.some((e) => e.id === id),
     [state.created],
   );
 

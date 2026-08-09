@@ -11,14 +11,13 @@
  * export button is the only thing that pulls it in.
  */
 
-import { formatNumber, trendPoints, TREND_VIEWBOX } from "@/lib/derive";
+import { formatNumber } from "@/lib/derive";
 import {
   CONTENT_W,
   CREAM,
   Ctx,
   DIM,
   Doc,
-  INK,
   distributionRow,
   ensure,
   eyebrow,
@@ -38,7 +37,6 @@ import {
   sectionHeading,
   SOFT,
   text,
-  polyline,
 } from "@/lib/export/pdf-kit";
 import { statusStyle } from "@/lib/taxonomy";
 import type { DecoratedTopic, TopicContext, TimelineEvent } from "@/lib/types";
@@ -83,91 +81,6 @@ function donut(doc: Doc, topic: DecoratedTopic, cx: number, cy: number, r: numbe
   });
 }
 
-
-function trendChart(
-  doc: Doc,
-  topic: DecoratedTopic,
-  markers: TopicContext["markers"],
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-) {
-  const sx = w / TREND_VIEWBOX.width;
-  const sy = h / TREND_VIEWBOX.height;
-  const project = (p: { x: number; y: number }) => ({ x: x + p.x * sx, y: y + p.y * sy });
-
-  // Horizontal gridlines, matching the on-screen chart.
-  doc.setDrawColor(...rgb(LINE));
-  doc.setLineWidth(0.5);
-  for (const gy of [40, 90, 140, 190, 240]) {
-    doc.line(x, y + gy * sy, x + w, y + gy * sy);
-  }
-
-  // One dashed guide per verified development, at the date it happened.
-  markers.forEach((marker) => {
-    const pct = Number.parseFloat(marker.left);
-    if (!Number.isFinite(pct)) return;
-    const mx = x + (pct / 100) * w;
-    doc.setDrawColor(29, 185, 84);
-    doc.setLineWidth(0.5);
-    doc.setLineDashPattern([2, 3], 0);
-    doc.line(mx, y, mx, y + 240 * sy);
-    doc.setLineDashPattern([], 0);
-  });
-
-  polyline(doc, trendPoints(Math.max(topic.neg - 34, 6), topic.neg).map(project), NEGATIVE, 1.6);
-  polyline(
-    doc,
-    trendPoints(Math.min(topic.pos + 22, 94), topic.pos).map(project),
-    POSITIVE,
-    1.6,
-  );
-
-  // Numbered pins, keyed to the list printed underneath.
-  markers.forEach((marker, i) => {
-    const pct = Number.parseFloat(marker.left);
-    if (!Number.isFinite(pct)) return;
-    const mx = x + (pct / 100) * w;
-    doc.setFillColor(...rgb(INK));
-    doc.setDrawColor(29, 185, 84);
-    doc.setLineWidth(0.6);
-    doc.circle(mx, y, 6, "FD");
-    text(doc, String(i + 1), mx, y + 2.2, { size: 6.5, color: "#4ED27C", align: "center" });
-  });
-
-  const axis = ["30d ago", "22d", "15d", "7d", "Today"];
-  axis.forEach((label, i) => {
-    const px = x + (i / (axis.length - 1)) * w;
-    text(doc, label, px, y + h + 10, {
-      size: 6.5,
-      color: DIM,
-      align: i === 0 ? "left" : i === axis.length - 1 ? "right" : "center",
-    });
-  });
-}
-
-function participationChart(
-  doc: Doc,
-  topic: DecoratedTopic,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-) {
-  if (topic.unrated) {
-    text(doc, "No participation recorded yet.", x, y + h / 2, { size: 8, color: DIM });
-    return;
-  }
-  const bars = topic.participationBars;
-  const gap = 1.6;
-  const barW = (w - gap * (bars.length - 1)) / bars.length;
-  doc.setFillColor(...rgb(POSITIVE));
-  bars.forEach((value, i) => {
-    const bh = Math.max((value / 100) * h, 1);
-    doc.rect(x + i * (barW + gap), y + h - bh, barW, bh, "F");
-  });
-}
 
 function sentimentBar(
   doc: Doc,
@@ -299,7 +212,7 @@ function headlineStats(ctx: Ctx, topic: DecoratedTopic) {
   ctx.y += 122;
 }
 
-function charts(ctx: Ctx, topic: DecoratedTopic, context: TopicContext) {
+function charts(ctx: Ctx, topic: DecoratedTopic) {
   const { doc } = ctx;
 
   /* Distribution + trend, side by side. */
@@ -333,30 +246,39 @@ function charts(ctx: Ctx, topic: DecoratedTopic, context: TopicContext) {
 
   const trendX = MARGIN + donutW + 12;
   panel(doc, trendX, ctx.y, trendW, 176);
-  eyebrow(doc, "Sentiment trend · last 30 days", trendX + 14, ctx.y + 18);
+  eyebrow(doc, "Sentiment trend", trendX + 14, ctx.y + 18);
 
-  if (topic.unrated) {
-    paragraph(doc, "No trend to plot yet — this topic has no votes.", trendX + 14, ctx.y + 40, trendW - 28, {
-      size: 8,
-      color: DIM,
-    });
-  } else {
-    trendChart(doc, topic, context.markers, trendX + 16, ctx.y + 40, trendW - 32, 92);
-    let keyY = ctx.y + 152;
-    context.markers.slice(0, 3).forEach((marker, i) => {
-      text(doc, `${i + 1}`, trendX + 16, keyY, { size: 6.5, color: "#4ED27C" });
-      text(doc, marker.label, trendX + 26, keyY, { size: 7.5, color: MUTED });
-      keyY += 10;
-    });
-  }
+  // The 30-day curve this used to draw was eased from two constants
+  // (`today − 34` and `today + 22`) with a sine wobble on top. Nobody measured
+  // it. `topic_daily_stats` holds the real readings and has no writer yet, so
+  // the report says what it knows and nothing more.
+  paragraph(
+    doc,
+    topic.unrated
+      ? "No trend to plot yet — this topic has no votes."
+      : "No earlier readings recorded. The current split is known; how it got there was never measured.",
+    trendX + 14,
+    ctx.y + 40,
+    trendW - 28,
+    { size: 8, color: DIM },
+  );
 
   ctx.y += 190;
 
   /* Daily participation. */
   ensure(ctx, 110);
   panel(doc, MARGIN, ctx.y, CONTENT_W, 96);
-  eyebrow(doc, "Daily participants · 30 days", MARGIN + 14, ctx.y + 18);
-  participationChart(doc, topic, MARGIN + 16, ctx.y + 28, CONTENT_W - 32, 54);
+  eyebrow(doc, "Participation", MARGIN + 14, ctx.y + 18);
+  paragraph(
+    doc,
+    topic.unrated
+      ? "No participation recorded yet."
+      : `${formatNumber(topic.participants)} ${topic.participants === 1 ? "person has" : "people have"} taken part. Day-by-day figures are not kept yet, so there is no daily series to plot.`,
+    MARGIN + 14,
+    ctx.y + 34,
+    CONTENT_W - 28,
+    { size: 8, color: DIM },
+  );
   ctx.y += 110;
 }
 
@@ -550,7 +472,7 @@ export async function buildTopicReport({
 
   header(ctx, topic, context);
   headlineStats(ctx, topic);
-  charts(ctx, topic, context);
+  charts(ctx, topic);
   aspects(ctx, topic);
   audience(ctx, topic);
   developments(ctx, timeline);

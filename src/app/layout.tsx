@@ -3,7 +3,6 @@ import { JetBrains_Mono, Manrope, Plus_Jakarta_Sans } from "next/font/google";
 
 import { AmbientBackground } from "@/components/ambient/AmbientBackground";
 import { CardSpotlight } from "@/components/ambient/CardSpotlight";
-import { AskProvider } from "@/components/ask/AskProvider";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { PrototypeProvider } from "@/components/prototype/PrototypeProvider";
 import { Nav } from "@/components/site/Nav";
@@ -99,7 +98,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   measurement objects; Ask Verified holds one-to-one consultations
                   with an access-control list, and sharing a store between them is
                   how a private question ends up in a public feed. */}
-              <AskProvider>
                 <Nav />
                 {/* `overflow-x: clip` rather than `hidden`: `hidden` turns this into
                     a scroll container, which silently breaks `position: sticky` for
@@ -110,7 +108,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     the ambient background entirely. The page colour comes from
                     <body>, and the background layer paints over it. */}
                 <main className="relative min-h-screen overflow-x-clip">{children}</main>
-              </AskProvider>
             </PrototypeProvider>
           </SessionProvider>
         </ThemeProvider>

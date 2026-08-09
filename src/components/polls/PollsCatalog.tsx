@@ -7,7 +7,6 @@ import { CategoryFilter } from "@/components/catalog/CategoryFilter";
 import { PollCard } from "@/components/polls/PollCard";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { PlaceFilter } from "@/components/ui/PlaceFilter";
-import { PrototypeDataBadge } from "@/components/ui/PrototypeDataBadge";
 import { SearchField } from "@/components/ui/SearchField";
 import { formatNumber } from "@/lib/derive-poll";
 import { placeLabel, type PlaceFilterId } from "@/lib/places";
@@ -71,7 +70,6 @@ export function PollsCatalog({
           </p>
         </div>
         <div className="mb-1 flex flex-wrap items-center gap-2.5">
-          <PrototypeDataBadge />
           <Link
             href="/polls/new"
             className="rounded-full border border-poll/45 bg-poll/12 px-4 py-[7px] text-[13px] font-medium whitespace-nowrap text-poll-soft transition-colors duration-300 outline-none hover:bg-poll/20 focus-visible:ring-2 focus-visible:ring-poll/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ink"

@@ -11,9 +11,72 @@ import {
   signPoll,
   type PollSignatureInput,
 } from "@/lib/signature";
-import { POLLS } from "@/lib/sample-data/polls";
+import { TWO_OPTION_POLL } from "@/lib/test-support/fixtures";
+import type { Poll } from "@/lib/types";
 
-const SIGNED = POLLS.map(signPoll);
+/**
+ * The catalog these tests compare against.
+ *
+ * Declared here rather than imported. It used to be the product fixtures, and
+ * the tests were really asserting things about that specific set of thirty
+ * polls — so deleting the fixtures broke tests that are actually about the
+ * duplicate-detection logic. A test that owns its inputs says what it means.
+ */
+const CATALOG: Poll[] = [
+  {
+    ...TWO_OPTION_POLL,
+    id: "messi-ronaldo",
+    question: "Ronaldo or Messi — who is the GOAT?",
+    place: "worldwide",
+    options: [
+      { id: "a", name: "Ronaldo", blurb: "CR7.", votes: 500 },
+      { id: "b", name: "Messi", blurb: "LM10.", votes: 500 },
+    ],
+  },
+  {
+    ...TWO_OPTION_POLL,
+    id: "neet-jee",
+    question: "NEET or JEE — which is harder?",
+    place: "india",
+    options: [
+      { id: "a", name: "NEET", blurb: "Medical.", votes: 400 },
+      { id: "b", name: "JEE Advanced", blurb: "Engineering.", votes: 600 },
+    ],
+  },
+  {
+    ...TWO_OPTION_POLL,
+    id: "chai-coffee",
+    question: "Chai or coffee?",
+    place: "india",
+    options: [
+      { id: "a", name: "Chai", blurb: "Tea.", votes: 700 },
+      { id: "b", name: "Coffee", blurb: "Coffee.", votes: 300 },
+    ],
+  },
+  {
+    ...TWO_OPTION_POLL,
+    id: "approval-modi",
+    question: "Do you approve of Narendra Modi as Prime Minister?",
+    cat: "politicians",
+    place: "india",
+    options: [
+      { id: "a", name: "Approve", blurb: "Yes.", votes: 500 },
+      { id: "b", name: "Disapprove", blurb: "No.", votes: 500 },
+    ],
+  },
+  {
+    ...TWO_OPTION_POLL,
+    id: "iphone-pixel",
+    question: "iPhone 16 or Pixel 9?",
+    place: "india",
+    options: [
+      { id: "a", name: "iPhone 16", blurb: "Apple.", votes: 500 },
+      { id: "b", name: "Pixel 9", blurb: "Google.", votes: 400 },
+    ],
+  },
+];
+
+const SIGNED = CATALOG.map(signPoll);
 
 const messiRonaldo: PollSignatureInput = {
   question: "Messi or Ronaldo?",
@@ -170,7 +233,7 @@ describe("the seeded catalog", () => {
 
   it("reports each seeded poll as a duplicate of itself", () => {
     // The other half of the guard: the rule has to actually fire.
-    for (const poll of POLLS) {
+    for (const poll of CATALOG) {
       const verdict = checkPollDuplicate(poll, SIGNED);
       expect(verdict.kind, poll.id).toBe("duplicate");
       if (verdict.kind === "duplicate") expect(verdict.existing.id).toBe(poll.id);

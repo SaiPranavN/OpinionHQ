@@ -19,9 +19,11 @@ import { decorate } from "@/lib/derive";
 import { supabaseServer } from "@/lib/supabase/server";
 import {
   rowToTopic,
+  rowsToAudience,
   rowsToFacets,
   relativeTime,
   type AspectRow,
+  type AudienceRow,
   type TopicCardRow,
 } from "@/lib/topics/rows";
 import type {
@@ -135,8 +137,15 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
   } = await supabase.auth.getUser();
   const uid = user?.id ?? null;
 
-  const [{ data: written }, { data: events }, { data: mine }, { data: facetAnswers }] =
-    await Promise.all([
+  const [
+    { data: written },
+    { data: events },
+    { data: mine },
+    { data: facetAnswers },
+    { data: audienceRows },
+    { data: optIn },
+    { data: tallyRows },
+  ] = await Promise.all([
       // Written opinions only. A bare vote is a row here too, and listing them
       // would fill the discussion with empty cards.
       supabase
@@ -172,11 +181,22 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
             .eq("topic_id", topicId)
             .eq("user_id", uid)
         : Promise.resolve({ data: null }),
+      // The measured cross-tabs, the opt-in share, and what people actually
+      // answered. All three replaced generators — see the note on
+      // `facetResults` in lib/derive.ts.
+      supabase.rpc("topic_audience", { target: topicId }),
+      supabase.rpc("topic_demographic_opt_in", { target: topicId }),
+      supabase.rpc("aspect_tallies", { target: topicId }),
     ]);
 
   const answers: Record<string, string> = {};
   for (const answer of (facetAnswers as { aspect_id: string; option_id: string }[] | null) ?? []) {
     answers[answer.aspect_id] = answer.option_id;
+  }
+
+  const facetTallies: Record<string, Record<string, number>> = {};
+  for (const row of (tallyRows as { aspect_id: string; option_id: string; responses: number }[] | null) ?? []) {
+    (facetTallies[row.aspect_id] ??= {})[row.option_id] = Number(row.responses);
   }
 
   const opinions = ((written as OpinionRow[] | null) ?? []).map((o) => toOpinion(o, card.slug));
@@ -230,7 +250,15 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
   }
 
   return {
-    topic: decorate(rowToTopic(card, { about: (row.about as string) ?? "", aspects })),
+    topic: decorate(
+      rowToTopic(card, {
+        about: (row.about as string) ?? "",
+        aspects,
+        audience: rowsToAudience((audienceRows as AudienceRow[] | null) ?? []),
+        demographicOptIn: Number(optIn ?? 0),
+        facetTallies,
+      }),
+    ),
     opinions,
     replies,
     myReplyVotes,

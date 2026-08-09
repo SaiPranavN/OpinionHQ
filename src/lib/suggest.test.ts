@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { hintCycle, suggest, type SuggestItem } from "@/lib/suggest";
-import { allPolls, pollIndex } from "@/lib/polls";
+import { pollIndex } from "@/lib/polls";
+import { testDecoratedPolls } from "@/lib/test-support/fixtures";
 import { topicIndex } from "@/lib/topics";
-import { sampleTopics } from "@/lib/sample-data/decorated";
+import { testTopics } from "@/lib/test-support/fixtures";
 
 const INDEX: SuggestItem[] = [
   { id: "1", label: "Bengaluru Metro Yellow Line Delay", kind: "topic", href: "/topics/blrmetro" },
@@ -81,19 +82,19 @@ describe("hintCycle", () => {
 });
 
 describe("the real catalogs", () => {
-  const topics = topicIndex(sampleTopics());
-  const polls = pollIndex(allPolls());
+  const topics = topicIndex(testTopics());
+  const polls = pollIndex(testDecoratedPolls());
 
   it("suggests a topic by its place", () => {
     const hits = suggest("bengaluru", topics);
-    expect(hits.some((h) => h.href === "/topics/blrmetro")).toBe(true);
+    expect(hits.some((h) => h.href === "/topics/test-subject-epsilon")).toBe(true);
   });
 
   it("suggests a poll by an option name", () => {
-    // The seeded poll writes "Lionel Messi", so this only works because option
-    // names are indexed as keywords.
-    const hits = suggest("messi", polls);
-    expect(hits.some((h) => h.href === "/polls/messi-ronaldo")).toBe(true);
+    // Option names are indexed as keywords, so a search for an option finds
+    // the poll rather than a row saying the option's name.
+    const hits = suggest("gamma", polls);
+    expect(hits.some((h) => h.href === "/polls/test-poll-three")).toBe(true);
   });
 
   it("gives every artifact row somewhere to go", () => {

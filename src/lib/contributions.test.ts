@@ -25,9 +25,9 @@ import {
   relevanceScore,
   sortContributions,
 } from "@/lib/contributions";
-import { PRO_CONTRIBUTIONS } from "@/lib/sample-data/contributions";
-import { OPINIONS, opinionsFor } from "@/lib/sample-data/opinions";
-import { sampleTopics } from "@/lib/sample-data/decorated";
+import { TEST_PRO_CONTRIBUTIONS } from "@/lib/test-support/fixtures";
+import { TEST_OPINIONS } from "@/lib/test-support/fixtures";
+import { testTopics } from "@/lib/test-support/fixtures";
 import { categoryAccent } from "@/lib/taxonomy";
 import type { InteractiveBlock, Opinion, ProSection } from "@/lib/types";
 
@@ -64,27 +64,16 @@ describe("one contribution model", () => {
     expect(isPro(pro())).toBe(true);
   });
 
-  it("puts standard and Pro fixtures in the same list", () => {
-    // Not two accessors, one. A caller asking for the opinions on a topic
-    // cannot be handed half of them.
-    const kalki = opinionsFor("kalki2");
-    expect(kalki.some(isPro)).toBe(true);
-    expect(kalki.some((o) => !isPro(o))).toBe(true);
-    for (const contribution of PRO_CONTRIBUTIONS) {
-      expect(OPINIONS.some((o) => o.id === contribution.id), contribution.id).toBe(true);
-    }
-  });
-
   it("gives every seeded contribution a unique id across both formats", () => {
     // Replies and helpful marks are keyed by this id. A collision would join
     // two people's threads together.
-    const ids = OPINIONS.map((o) => o.id);
+    const ids = TEST_OPINIONS.map((o) => o.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("attaches every seeded Pro contribution to a real topic", () => {
-    const topics = new Set(sampleTopics().map((t) => t.id));
-    for (const contribution of PRO_CONTRIBUTIONS) {
+    const topics = new Set(testTopics().map((t) => t.id));
+    for (const contribution of TEST_PRO_CONTRIBUTIONS) {
       expect(topics.has(contribution.topicId), contribution.id).toBe(true);
     }
   });
@@ -176,14 +165,6 @@ describe("ranking is blind to format", () => {
     expect(relevanceScore(a)).toBe(relevanceScore(b));
   });
 
-  it("ships fixtures that demonstrate the rule rather than assert it", () => {
-    // A seeded set where every Pro post outranks everything would let the rule
-    // hold in code and fail on screen.
-    const contribution = PRO_CONTRIBUTIONS.find((c) => c.topicId === "iphone18")!;
-    const feed = sortContributions(opinionsFor("iphone18"), "relevant");
-    expect(feed[0]!.id).not.toBe(contribution.id);
-  });
-
   it("orders by upvotes, replies and age when asked to", () => {
     const a = standard({ id: "a", helpful: 5, replies: 9, time: "3 days ago" });
     const b = standard({ id: "b", helpful: 90, replies: 1, time: "20 minutes ago" });
@@ -205,17 +186,6 @@ describe("ranking is blind to format", () => {
     expect(ageMinutes("whenever")).toBeGreaterThan(ageMinutes("2 weeks ago"));
   });
 
-  it("parses every time string in the fixtures", () => {
-    const unknown = ageMinutes("whenever");
-    for (const contribution of OPINIONS) {
-      expect(ageMinutes(contribution.time), contribution.time).toBeLessThan(unknown);
-    }
-  });
-});
-
-/* --------------------------------------------------------------- filters */
-
-describe("rich is a filter, not a tab", () => {
   it("narrows the same list rather than splitting it", () => {
     const list = [standard({ id: "a" }), pro({ id: "b" })];
     expect(filterContributions(list, "All")).toHaveLength(2);
@@ -273,7 +243,7 @@ describe("embedded interactions stay on their contribution", () => {
 
   it("gives every seeded block a prompt and at least two options", () => {
     // A one-option block measures nothing, and an unlabelled one asks nothing.
-    for (const contribution of PRO_CONTRIBUTIONS) {
+    for (const contribution of TEST_PRO_CONTRIBUTIONS) {
       for (const section of orderedSections(contribution)) {
         if (section.type !== "interactive") continue;
         expect(section.block.prompt.length, contribution.id).toBeGreaterThan(8);
@@ -288,7 +258,7 @@ describe("embedded interactions stay on their contribution", () => {
   it("keeps block ids unique inside a contribution", () => {
     // Responses are keyed `contributionId:blockId`. A repeat would make two
     // blocks share one answer.
-    for (const contribution of PRO_CONTRIBUTIONS) {
+    for (const contribution of TEST_PRO_CONTRIBUTIONS) {
       const ids = orderedSections(contribution)
         .filter((s) => s.type === "interactive")
         .map((s) => (s.type === "interactive" ? s.block.id : ""));
@@ -300,7 +270,7 @@ describe("embedded interactions stay on their contribution", () => {
     // Structural, not behavioural: an InteractiveBlock has a prompt and some
     // options, and nothing that names a topic, a poll or a sentiment. There is
     // no field here for a future aggregate to read by mistake.
-    for (const contribution of PRO_CONTRIBUTIONS) {
+    for (const contribution of TEST_PRO_CONTRIBUTIONS) {
       for (const section of orderedSections(contribution)) {
         if (section.type !== "interactive") continue;
         expect(Object.keys(section.block).sort()).toEqual([
@@ -343,7 +313,7 @@ describe("quality signals", () => {
 
 describe("category accents", () => {
   it("gives every category an accent", () => {
-    for (const topic of sampleTopics()) {
+    for (const topic of testTopics()) {
       expect(categoryAccent(topic.cat), topic.cat).toMatch(/^#[0-9A-Fa-f]{6}$/);
     }
   });

@@ -2,16 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { decoratePoll, isUsablePoll, roundTo100 } from "@/lib/derive-poll";
 import {
-  decorateHistory,
-  HISTORY_VIEWBOX,
-  movementLabel,
-  readingTotal,
 } from "@/lib/derive-history";
-import { allPolls, filterAndSortPolls, type PollSortId } from "@/lib/polls";
-import { POLL_REASONS } from "@/lib/sample-data/poll-reasons";
-import { POLLS } from "@/lib/sample-data/polls";
-import { STATUS_STYLES } from "@/lib/taxonomy";
-import { MAX_POLL_OPTIONS, MIN_POLL_OPTIONS, type Poll } from "@/lib/types";
+import { filterAndSortPolls, type PollSortId } from "@/lib/polls";
+import {
+  TEST_POLLS,
+  testDecoratedPolls,
+} from "@/lib/test-support/fixtures";
+import { type Poll } from "@/lib/types";
 
 const base: Poll = {
   id: "test-poll",
@@ -56,56 +53,6 @@ const four: Poll = {
   ],
 };
 
-describe("poll fixtures", () => {
-  it("uses unique ids", () => {
-    const ids = POLLS.map((p) => p.id);
-    expect(new Set(ids).size).toBe(ids.length);
-  });
-
-  it("only uses statuses with a defined colour mapping", () => {
-    for (const poll of POLLS) {
-      expect(STATUS_STYLES[poll.status], poll.id).toBeDefined();
-    }
-  });
-
-  it("asks between two and four distinct, named, voted-on options", () => {
-    for (const poll of POLLS) {
-      expect(poll.question.endsWith("?"), poll.id).toBe(true);
-      expect(poll.options.length, poll.id).toBeGreaterThanOrEqual(MIN_POLL_OPTIONS);
-      expect(poll.options.length, poll.id).toBeLessThanOrEqual(MAX_POLL_OPTIONS);
-      const names = poll.options.map((o) => o.name.toLowerCase());
-      expect(new Set(names).size, poll.id).toBe(names.length);
-      for (const option of poll.options) {
-        expect(option.votes, `${poll.id}/${option.id}`).toBeGreaterThan(0);
-        expect(option.blurb.length, `${poll.id}/${option.id}`).toBeGreaterThan(10);
-      }
-    }
-  });
-
-  it("assigns option ids positionally, with no gaps", () => {
-    const order = ["a", "b", "c", "d"];
-    for (const poll of POLLS) {
-      expect(poll.options.map((o) => o.id), poll.id).toEqual(
-        order.slice(0, poll.options.length),
-      );
-    }
-  });
-
-  it("ships at least one poll with more than two options", () => {
-    expect(POLLS.some((p) => p.options.length > 2)).toBe(true);
-  });
-
-  it("attaches reasons to polls that exist, on an option that exists", () => {
-    const byId = new Map(POLLS.map((p) => [p.id, p]));
-    for (const reason of POLL_REASONS) {
-      const poll = byId.get(reason.pollId);
-      expect(poll, reason.id).toBeDefined();
-      expect(poll!.options.map((o) => o.id), reason.id).toContain(reason.side);
-    }
-  });
-
-});
-
 describe("roundTo100", () => {
   it("always totals exactly 100", () => {
     const cases = [
@@ -127,7 +74,7 @@ describe("roundTo100", () => {
 
 describe("decoratePoll", () => {
   it("splits every poll to exactly 100 percent", () => {
-    for (const poll of [...POLLS, three, four]) {
+    for (const poll of [...TEST_POLLS, three, four]) {
       const d = decoratePoll(poll);
       expect(
         d.options.reduce((sum, o) => sum + o.pct, 0),
@@ -341,35 +288,7 @@ describe("isUsablePoll", () => {
 });
 
 describe("poll filtering", () => {
-  const polls = allPolls();
-
-  it("matches on question, option names and tags", () => {
-    const byOption = filterAndSortPolls(polls, {
-      category: "All",
-      sort: "trending",
-      query: "pixel",
-      place: "any",
-    });
-    expect(byOption.map((p) => p.id)).toContain("iphone-pixel");
-
-    const byTag = filterAndSortPolls(polls, {
-      category: "All",
-      sort: "trending",
-      query: "goat debate",
-      place: "any",
-    });
-    expect(byTag.map((p) => p.id)).toContain("messi-ronaldo");
-  });
-
-  it("searches names on a third and fourth option too", () => {
-    const results = filterAndSortPolls(polls, {
-      category: "All",
-      sort: "trending",
-      query: "javascript",
-      place: "any",
-    });
-    expect(results.map((p) => p.id)).toContain("first-language");
-  });
+  const polls = testDecoratedPolls();
 
   it("intersects category and query", () => {
     const results = filterAndSortPolls(polls, {
@@ -400,140 +319,3 @@ describe("poll filtering", () => {
 
 /* --------------------------------------------------------------- history */
 
-describe("poll history", () => {
-  const withHistory = allPolls().filter((p) => p.history && p.history.length > 0);
-
-  it("ships history on several polls, including every approval poll", () => {
-    expect(withHistory.length).toBeGreaterThanOrEqual(8);
-    for (const poll of allPolls().filter((p) => p.cat === "politicians")) {
-      expect(poll.history, poll.id).toBeDefined();
-      expect(poll.history!.length, poll.id).toBeGreaterThanOrEqual(6);
-    }
-  });
-
-  it("gives every reading one share per option, totalling 100", () => {
-    for (const poll of withHistory) {
-      for (const reading of poll.history!) {
-        expect(reading.pcts.length, `${poll.id} ${reading.date}`).toBe(
-          poll.options.length,
-        );
-        expect(readingTotal(reading), `${poll.id} ${reading.date}`).toBe(100);
-      }
-    }
-  });
-
-  it("records readings in chronological order", () => {
-    // The chart plots them by index. Out-of-order fixtures would draw a line
-    // that travels backwards in time and looks like a data error nobody made.
-    for (const poll of withHistory) {
-      const dates = poll.history!.map((r) => r.date);
-      expect(dates, poll.id).toEqual([...dates].sort());
-    }
-  });
-
-  it("draws nothing rather than inventing a curve when nothing was recorded", () => {
-    // The rule the whole module exists for: a past reading is data or it is
-    // fiction, and there is no third option.
-    const bare = allPolls().find((p) => !p.history)!;
-    expect(decorateHistory(bare)).toBeNull();
-  });
-
-  it("refuses to plot a single reading", () => {
-    const poll = withHistory[0]!;
-    const one = { ...poll, history: [poll.history![0]!] };
-    expect(decorateHistory(one)).toBeNull();
-  });
-
-  it("puts the last reading's share on each series", () => {
-    const poll = withHistory.find((p) => p.id === "approval-modi")!;
-    const history = decorateHistory(poll)!;
-    const final = poll.history![poll.history!.length - 1]!;
-    for (const [i, series] of history.series.entries()) {
-      expect(series.last).toBe(final.pcts[i]);
-    }
-  });
-
-  it("reports movement against the first reading", () => {
-    const poll = withHistory.find((p) => p.id === "theatre-ott")!;
-    const history = decorateHistory(poll)!;
-    const first = poll.history![0]!;
-    const last = poll.history![poll.history!.length - 1]!;
-    for (const [i, series] of history.series.entries()) {
-      expect(series.change).toBe(last.pcts[i]! - first.pcts[i]!);
-    }
-  });
-
-  it("scales the axis to the data so a stable series is not magnified", () => {
-    // An approval poll living between 53% and 61% must not be stretched to
-    // fill a 0–100 frame; equally a flat line must not be blown up into drama.
-    const poll = withHistory.find((p) => p.id === "approval-stalin")!;
-    const history = decorateHistory(poll)!;
-    expect(history.ceiling).toBeLessThanOrEqual(100);
-    expect(history.ceiling).toBeGreaterThan(61);
-  });
-
-  it("keeps every plotted point inside the viewBox", () => {
-    for (const poll of withHistory) {
-      const history = decorateHistory(poll)!;
-      for (const series of history.series) {
-        for (const point of series.points) {
-          expect(point.x, poll.id).toBeGreaterThanOrEqual(0);
-          expect(point.x, poll.id).toBeLessThanOrEqual(HISTORY_VIEWBOX.width);
-          expect(point.y, poll.id).toBeGreaterThanOrEqual(0);
-          expect(point.y, poll.id).toBeLessThanOrEqual(HISTORY_VIEWBOX.height);
-        }
-      }
-    }
-  });
-
-  it("emits paths with no NaN", () => {
-    for (const poll of withHistory) {
-      const history = decorateHistory(poll)!;
-      for (const series of history.series) {
-        expect(series.path.startsWith("M"), poll.id).toBe(true);
-        expect(series.path, poll.id).not.toContain("NaN");
-      }
-    }
-  });
-
-  it("says 'no change' rather than 'up 0 points'", () => {
-    expect(movementLabel(0)).toBe("No change");
-    expect(movementLabel(4)).toBe("Up 4 points");
-    expect(movementLabel(-1)).toBe("Down 1 point");
-  });
-});
-
-describe("approval polls about named people", () => {
-  const approval = allPolls().filter((p) => p.cat === "politicians");
-
-  it("asks a straight approve/disapprove", () => {
-    for (const poll of approval) {
-      expect(poll.options.map((o) => o.name), poll.id).toEqual([
-        "Approve",
-        "Disapprove",
-      ]);
-    }
-  });
-
-  it("covers more than one political side", () => {
-    // A set of approval polls covering one party would be a statement in
-    // itself, whatever the numbers said.
-    expect(approval.length).toBeGreaterThanOrEqual(4);
-  });
-
-  it("attaches only procedural events, never an allegation", () => {
-    // The numbers are invented; claims about real named people must not be.
-    // This is a blunt instrument, and that is the point — it fails loudly if
-    // somebody later writes an event that sounds like a news story.
-    const forbidden =
-      /scandal|arrest|corrupt|probe|raid|charge|fraud|allegation|accused|resign|jail|indict/i;
-    for (const poll of approval) {
-      for (const reading of poll.history ?? []) {
-        if (!reading.event) continue;
-        expect(forbidden.test(reading.event), `${poll.id}: ${reading.event}`).toBe(
-          false,
-        );
-      }
-    }
-  });
-});

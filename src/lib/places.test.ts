@@ -12,8 +12,8 @@ import {
   placeOptions,
   type PlaceId,
 } from "@/lib/places";
-import { POLLS } from "@/lib/sample-data/polls";
-import { TOPICS } from "@/lib/sample-data/topics";
+import { TEST_POLLS } from "@/lib/test-support/fixtures";
+import { TEST_TOPICS } from "@/lib/test-support/fixtures";
 
 describe("the registry", () => {
   it("has exactly one root", () => {
@@ -137,13 +137,13 @@ describe("fixtures", () => {
   const ids = new Set<string>(PLACES.map((p) => p.id));
 
   it("places every topic somewhere real", () => {
-    for (const topic of TOPICS) {
+    for (const topic of TEST_TOPICS) {
       expect(ids.has(topic.place), `${topic.id} → ${topic.place}`).toBe(true);
     }
   });
 
   it("places every poll somewhere real", () => {
-    for (const poll of POLLS) {
+    for (const poll of TEST_POLLS) {
       expect(ids.has(poll.place), `${poll.id} → ${poll.place}`).toBe(true);
     }
   });
@@ -151,17 +151,16 @@ describe("fixtures", () => {
   it("puts local subjects under their state, not just under India", () => {
     // The point of the tree. If everything were tagged "india" the filter
     // would be a no-op, so a few known-local artifacts are asserted directly.
-    const topics = new Map(TOPICS.map((t) => [t.id, t.place as PlaceId]));
-    expect(topics.get("blrmetro")).toBe("bengaluru");
-    expect(topics.get("office-cm-karnataka")).toBe("karnataka");
-    expect(topics.get("neet")).toBe("india");
-    expect(topics.get("tajmahal")).toBe("agra");
+    const topics = new Map(TEST_TOPICS.map((t) => [t.id, t.place as PlaceId]));
+    expect(topics.get("test-subject-epsilon")).toBe("bengaluru");
+    expect(topics.get("test-subject-alpha")).toBe("india");
   });
 
   it("filtering to Karnataka reaches Bengaluru topics", () => {
-    const inKarnataka = TOPICS.filter((t) => matchesPlaceFilter("karnataka", t.place));
-    expect(inKarnataka.map((t) => t.id)).toContain("blrmetro");
-    expect(inKarnataka.map((t) => t.id)).toContain("office-cm-karnataka");
-    expect(inKarnataka.map((t) => t.id)).not.toContain("neet");
+    const inKarnataka = TEST_TOPICS.filter((t) => matchesPlaceFilter("karnataka", t.place));
+    // Karnataka contains Bengaluru, so a city-placed topic is reached...
+    expect(inKarnataka.map((t) => t.id)).toContain("test-subject-epsilon");
+    // ...and one placed at the country is not. The filter widens downward only.
+    expect(inKarnataka.map((t) => t.id)).not.toContain("test-subject-alpha");
   });
 });

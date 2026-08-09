@@ -12,6 +12,7 @@
  */
 
 import type {
+  TopicAudience,
   ChangeMetric,
   CategoryId,
   Facet,
@@ -139,7 +140,13 @@ function changeOf(row: TopicCardRow): MetricChange {
 
 export function rowToTopic(
   row: TopicCardRow,
-  extras: { about?: string; aspects?: Facet[] } = {},
+  extras: {
+    about?: string;
+    aspects?: Facet[];
+    audience?: TopicAudience;
+    demographicOptIn?: number;
+    facetTallies?: Record<string, Record<string, number>>;
+  } = {},
 ): Topic {
   const shares = sharesOf(row.positive_count, row.neutral_count, row.negative_count);
 
@@ -155,6 +162,13 @@ export function rowToTopic(
     about: extras.about ?? "",
     tags: row.tags ?? [],
     aspects: extras.aspects,
+    // Absent rather than empty when nothing was measured, so `decorate` can
+    // tell "no data" from "measured and zero".
+    ...(extras.audience ? { audience: extras.audience } : {}),
+    ...(extras.demographicOptIn !== undefined
+      ? { demographicOptIn: extras.demographicOptIn }
+      : {}),
+    ...(extras.facetTallies ? { facetTallies: extras.facetTallies } : {}),
     ...shares,
     participants: row.participants,
     written: row.written_count,
@@ -208,4 +222,59 @@ export function rowsToFacets(rows: AspectRow[]): Facet[] {
           tone: option.tone as Sentiment,
         })),
     }));
+}
+
+/* --------------------------------------------------------------- audience */
+
+/** One row of `public.topic_audience`. */
+export interface AudienceRow {
+  dimension: string;
+  segment: string;
+  vote: string;
+  responses: number;
+}
+
+/**
+ * Audience rows into the panels' shapes.
+ *
+ * The database returns counts per (segment, sentiment); shares and the negative
+ * lean are computed here so they go through the same rounding as everything
+ * else on the page. A segment absent from the rows was withheld by the
+ * suppression floor and simply does not appear — there is no "other" bucket,
+ * because inventing one would put the withheld people somewhere.
+ */
+export function rowsToAudience(rows: AudienceRow[]): TopicAudience {
+  const build = (dimension: string) => {
+    const bySegment = new Map<string, { total: number; negative: number }>();
+    for (const row of rows) {
+      if (row.dimension !== dimension) continue;
+      const entry = bySegment.get(row.segment) ?? { total: 0, negative: 0 };
+      entry.total += row.responses;
+      if (row.vote === "Negative") entry.negative += row.responses;
+      bySegment.set(row.segment, entry);
+    }
+    const measured = [...bySegment.values()].reduce((sum, e) => sum + e.total, 0) || 1;
+    return [...bySegment.entries()]
+      .map(([label, entry]) => ({
+        label,
+        pct: Math.round((entry.total / measured) * 100),
+        count: entry.total,
+        negativeShare: Math.round((entry.negative / entry.total) * 100),
+      }))
+      .sort((a, b) => b.count - a.count);
+  };
+
+  return {
+    geo: build("region").map((row) => ({
+      ...row,
+      lean:
+        row.negativeShare > 55
+          ? ("leans negative" as const)
+          : row.negativeShare < 34
+            ? ("leans positive" as const)
+            : ("mixed" as const),
+    })),
+    ageGroups: build("age").map(({ label, pct, count }) => ({ label, pct, count })),
+    occupations: build("occupation").map(({ label, pct, count }) => ({ label, pct, count })),
+  };
 }

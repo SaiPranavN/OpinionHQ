@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { ShieldIcon } from "@/components/ask/primitives";
 import { formatNumber } from "@/lib/derive";
 
 export function Hero({
@@ -63,15 +62,15 @@ export function Hero({
           data-reveal
           className="ohq-reveal m-0 max-w-[640px] text-[clamp(14px,1.05vw,16px)] leading-[1.5] font-light tracking-[-0.01em] text-pretty text-muted delay-[160ms] duration-[1100ms]"
         >
-          See what people think, compare competing choices, and get private
-          opinions from verified professionals with relevant experience.
+          See what people think about a subject, or force a straight choice
+          between competing options — and see how the answer splits.
         </p>
 
-        {/* Three calls to action, centred on their own row and wrapping to a
+        {/* Two calls to action, centred on their own row and wrapping to a
             vertical stack on narrow screens; the jump link goes underneath so it
             never pulls the group off centre.
 
-            ONE SHAPE, THREE FILLS. Every button here shares `CTA` below — the
+            ONE SHAPE, TWO FILLS. Every button here shares `CTA` below — the
             same fixed width, the same height, the same padding, the same icon
             slot, the same centring — so the row is a set of three modes rather
             than three buttons that happen to sit together. Only the colour
@@ -90,7 +89,7 @@ export function Hero({
             different form. Three columns or one — never two and a stray. */}
         <div
           data-reveal
-          className="ohq-reveal mt-1.5 grid w-full max-w-[824px] grid-cols-1 justify-items-center gap-[14px] delay-[240ms] duration-[1100ms] lg:grid-cols-3"
+          className="ohq-reveal mt-1.5 grid w-full max-w-[548px] grid-cols-1 justify-items-center gap-[14px] delay-[240ms] duration-[1100ms] sm:grid-cols-2"
         >
           <CTA
             href="/topics"
@@ -106,22 +105,16 @@ export function Hero({
           >
             Participate in a poll
           </CTA>
-          <CTA
-            href="/ask"
-            icon={<ShieldIcon size={17} />}
-            className="border border-private/45 bg-private/10 text-private-soft transition-[background,border-color] hover:border-private/70 hover:bg-private/18"
-          >
-            Ask expert opinions
-          </CTA>
         </div>
 
         <p
           data-reveal
           className="ohq-reveal m-0 max-w-[540px] text-[13.5px] leading-[1.6] text-pretty text-dim delay-[270ms] duration-[1100ms]"
         >
-          Measure what a crowd thinks, force a choice, or ask someone who has{" "}
-          <strong className="font-medium text-soft">proved they know</strong> — on
-          careers, colleges and exams.
+          Measure what a crowd thinks, or force a choice between two — on films,
+          brands, exams, colleges, policies and{" "}
+          <strong className="font-medium text-soft">whatever is being argued about</strong>{" "}
+          this week.
         </p>
 
         <a
@@ -151,7 +144,7 @@ export function Hero({
 }
 
 /**
- * One hero call to action. Three of these make the row.
+ * One hero call to action. Two of these make the row.
  *
  * Everything that decides the shape lives here rather than on each instance,
  * because "give them identical padding" is a promise that only survives if
@@ -194,7 +187,7 @@ function CTA({
  * thing its section actually shows: measured bars for topics, and the split bar
  * for polls — the product's own signature element rather than a generic tick.
  *
- * House style, matched to ShieldIcon beside them: 24-unit box, 1.7 stroke,
+ * House style: 24-unit box, 1.7 stroke,
  * round caps, no fill.
  */
 function TopicsIcon({ size = 17 }: { size?: number }) {

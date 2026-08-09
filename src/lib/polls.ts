@@ -1,27 +1,15 @@
 /**
- * Read model for polls. Fixture-backed in the prototype; the signatures are
- * what the Prisma-backed versions will keep.
+ * Pure helpers over a list of polls — filtering, sorting, the suggest index.
+ *
+ * The fixture catalog that used to live here is gone; `lib/polls/queries.ts`
+ * reads the real one from Postgres. What remains is the sorting and filtering
+ * logic, which is pure and is where the tests point.
  */
 
-import { decoratePoll } from "@/lib/derive-poll";
 import { matchesPlaceFilter, type PlaceFilterId } from "@/lib/places";
-import { POLLS } from "@/lib/sample-data/polls";
 import type { SuggestItem } from "@/lib/suggest";
 import type { CategoryFilterId, DecoratedPoll } from "@/lib/types";
 
-const DECORATED: DecoratedPoll[] = POLLS.map(decoratePoll);
-
-export function allPolls(): DecoratedPoll[] {
-  return DECORATED;
-}
-
-export function getPoll(id: string): DecoratedPoll | undefined {
-  return DECORATED.find((p) => p.id === id);
-}
-
-export function hotPolls(limit = 4): DecoratedPoll[] {
-  return [...DECORATED].sort((a, b) => b.trend - a.trend).slice(0, limit);
-}
 
 export type PollSortId = "trending" | "closest" | "voted" | "recent";
 
@@ -86,17 +74,6 @@ export function filterAndSortPolls(
   });
 }
 
-export const TOTAL_POLLS = DECORATED.length;
-
-export const TOTAL_POLL_VOTES = DECORATED.reduce((sum, p) => sum + p.total, 0);
-
-export function pollCountByCategory(): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const poll of DECORATED) {
-    counts.set(poll.cat, (counts.get(poll.cat) ?? 0) + 1);
-  }
-  return counts;
-}
 
 /**
  * Everything on the polls catalog worth suggesting.

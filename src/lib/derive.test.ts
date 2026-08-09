@@ -3,18 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   arc,
   decorate,
-  participationBars,
-  trendPath,
-  trendPoints,
-  trendValues,
 } from "@/lib/derive";
 import { filterAndSort } from "@/lib/topics";
-import { sampleTopics } from "@/lib/sample-data/decorated";
 import { DEFAULT_FACET_SET, FACET_SETS } from "@/lib/facets";
-import { TOPICS } from "@/lib/sample-data/topics";
-import { OPINIONS } from "@/lib/sample-data/opinions";
-import { TIMELINE } from "@/lib/sample-data/timeline";
-import { CATEGORIES, STATUS_STYLES } from "@/lib/taxonomy";
+import { TEST_TOPICS } from "@/lib/test-support/fixtures";
+import { CATEGORIES } from "@/lib/taxonomy";
 import type { Topic } from "@/lib/types";
 
 const base: Topic = {
@@ -36,101 +29,7 @@ const base: Topic = {
   change: { metric: "participation", value: 1, direction: "up" },
 };
 
-describe("fixture integrity", () => {
-  it("every topic's sentiment sums to 100 percent", () => {
-    for (const topic of TOPICS) {
-      expect(topic.pos + topic.neu + topic.neg, topic.id).toBe(100);
-    }
-  });
-
-  it("uses unique ids", () => {
-    const ids = TOPICS.map((e) => e.id);
-    expect(new Set(ids).size).toBe(ids.length);
-  });
-
-  it("covers every editor-published category in the taxonomy", () => {
-    for (const category of CATEGORIES) {
-      // The catch-all is reserved for participant-created subjects, so it is
-      // deliberately empty of fixtures.
-      if (category.reserved) continue;
-      const inCategory = TOPICS.filter((e) => e.cat === category.id);
-      expect(inCategory.length, category.id).toBeGreaterThan(0);
-    }
-  });
-
-  it("publishes nothing into the reserved catch-all category", () => {
-    const reserved = CATEGORIES.filter((c) => c.reserved).map((c) => c.id);
-    for (const id of reserved) {
-      expect(TOPICS.filter((t) => t.cat === id), id).toHaveLength(0);
-    }
-  });
-
-  it("only uses statuses that have a defined colour mapping", () => {
-    for (const topic of TOPICS) {
-      expect(STATUS_STYLES[topic.status], `${topic.id}: ${topic.status}`).toBeDefined();
-    }
-    for (const event of TIMELINE) {
-      expect(STATUS_STYLES[event.status], `${event.id}: ${event.status}`).toBeDefined();
-    }
-  });
-
-  it("attaches opinions and timelines to topics that exist", () => {
-    const ids = new Set(TOPICS.map((e) => e.id));
-    for (const opinion of OPINIONS) {
-      expect(ids.has(opinion.topicId), opinion.id).toBe(true);
-    }
-    for (const event of TIMELINE) {
-      expect(ids.has(event.topicId), event.id).toBe(true);
-    }
-  });
-
-  it("gives every topic a card summary short enough to read at a glance", () => {
-    for (const topic of TOPICS) {
-      expect(topic.summary.length, topic.id).toBeLessThanOrEqual(160);
-      expect(topic.about.length, topic.id).toBeGreaterThan(topic.summary.length);
-    }
-  });
-});
-
 describe("aspects", () => {
-  it("gives every topic aspects written for it, not just its category", () => {
-    for (const topic of TOPICS) {
-      expect(topic.aspects, topic.id).toBeDefined();
-      expect(topic.aspects!.length, topic.id).toBeGreaterThanOrEqual(4);
-    }
-  });
-
-  it("never reuses one topic's aspect set on another", () => {
-    const seen = new Map<string, string>();
-    for (const topic of TOPICS) {
-      const signature = topic.aspects!.map((a) => a.label).join("|");
-      const owner = seen.get(signature);
-      expect(owner, `${topic.id} duplicates ${owner}`).toBeUndefined();
-      seen.set(signature, topic.id);
-    }
-  });
-
-  it("asks every aspect as a question with three distinct answers", () => {
-    for (const topic of TOPICS) {
-      for (const aspect of topic.aspects!) {
-        expect(aspect.prompt.endsWith("?"), `${topic.id}/${aspect.id}`).toBe(true);
-        expect(aspect.label.length, `${topic.id}/${aspect.id}`).toBeGreaterThan(2);
-        const labels = aspect.options.map((o) => o.label);
-        expect(new Set(labels).size, `${topic.id}/${aspect.id}`).toBe(3);
-        for (const label of labels) {
-          expect(label.length, `${topic.id}/${aspect.id}`).toBeGreaterThan(0);
-        }
-      }
-    }
-  });
-
-  it("uses unique aspect ids within an topic", () => {
-    for (const topic of TOPICS) {
-      const ids = topic.aspects!.map((a) => a.id);
-      expect(new Set(ids).size, topic.id).toBe(ids.length);
-    }
-  });
-
   it("prefers an topic's own aspects over the category fallback", () => {
     const withOwn = decorate({
       ...base,
@@ -169,15 +68,6 @@ describe("category fallback sets", () => {
       for (const facet of facets) {
         const tones = facet.options.map((o) => o.tone).sort();
         expect(tones, facet.id).toEqual(["Negative", "Neutral", "Positive"]);
-      }
-    }
-  });
-
-  it("produces tallies that total 100 percent for every topic", () => {
-    for (const topic of TOPICS) {
-      for (const result of decorate(topic).facets) {
-        const total = result.tallies.reduce((sum, t) => sum + t.pct, 0);
-        expect(total, `${topic.id}/${result.facet.id}`).toBe(100);
       }
     }
   });
@@ -287,13 +177,6 @@ describe("topics nobody has voted on", () => {
     }
   });
 
-  it("still derives tallies for editor-published topics", () => {
-    const fixture = decorate({ ...base, participants: 5000 });
-    expect(fixture.facets[0]!.responses).toBeGreaterThan(0);
-  });
-});
-
-describe("seven-day change", () => {
   it("spells out what moved rather than showing a bare percentage", () => {
     const negUp = decorate({
       ...base,
@@ -328,24 +211,6 @@ describe("seven-day change", () => {
   });
 });
 
-describe("audience breakdowns", () => {
-  it("keeps every geographic column at exactly 100 percent", () => {
-    for (const topic of TOPICS) {
-      const total = decorate(topic).geo.reduce((sum, row) => sum + row.pct, 0);
-      expect(total, topic.id).toBe(100);
-    }
-  });
-
-  it("lists named regions above the residual bucket", () => {
-    for (const topic of TOPICS) {
-      const geo = decorate(topic).geo;
-      expect(geo.at(-1)!.label, topic.id).toBe("Other states");
-      const named = geo.slice(0, -1).map((r) => r.pct);
-      expect([...named].sort((a, b) => b - a), topic.id).toEqual(named);
-    }
-  });
-});
-
 describe("chart geometry", () => {
   it("keeps donut segments within the circumference", () => {
     const { dash } = arc(50, 0);
@@ -358,42 +223,10 @@ describe("chart geometry", () => {
     expect(arc(0, 0).dash.startsWith("0.0 ")).toBe(true);
   });
 
-  it("spans the full chart width", () => {
-    const path = trendPath(40, 80);
-    expect(path.startsWith("M0 ")).toBe(true);
-    expect(path).toContain("800 ");
-  });
-
-  it("produces 30 participation bars inside 0-100", () => {
-    const bars = participationBars(3);
-    expect(bars).toHaveLength(30);
-    for (const bar of bars) {
-      expect(bar).toBeGreaterThanOrEqual(0);
-      expect(bar).toBeLessThanOrEqual(100);
-    }
-  });
 });
 
 describe("catalog filtering", () => {
-  const decorated = TOPICS.map(decorate);
-
-  it("matches on name, category label, status, summary and tags", () => {
-    const byStatus = filterAndSort(decorated, {
-      category: "All",
-      sort: "trending",
-      query: "under investigation",
-      place: "any",
-    });
-    expect(byStatus.map((e) => e.id)).toContain("neet");
-
-    const byTag = filterAndSort(decorated, {
-      category: "All",
-      sort: "trending",
-      query: "signalling",
-      place: "any",
-    });
-    expect(byTag.map((e) => e.id)).toContain("blrmetro");
-  });
+  const decorated = TEST_TOPICS.map(decorate);
 
   it("intersects category and query rather than unioning them", () => {
     const results = filterAndSort(decorated, {
@@ -428,63 +261,3 @@ describe("catalog filtering", () => {
   });
 });
 
-describe("trend series", () => {
-  it("never plots a share below zero or above a hundred", () => {
-    // A topic with a large weekly swing used to ease from a negative start,
-    // which drew the line under the baseline and read out "-3% negative".
-    for (const [from, to] of [
-      [-20, 13],
-      [110, 68],
-      [0, 100],
-      [50, 50],
-    ] as const) {
-      for (const value of trendValues(from, to)) {
-        expect(value, `${from}→${to}`).toBeGreaterThanOrEqual(0);
-        expect(value, `${from}→${to}`).toBeLessThanOrEqual(100);
-      }
-    }
-  });
-
-  it("stays inside the plot area for every fixture topic", () => {
-    for (const topic of sampleTopics()) {
-      if (topic.unrated) continue;
-      const series = [
-        ...trendPoints(topic.neg - topic.change.value, topic.neg),
-        ...trendPoints(topic.pos + topic.change.value, topic.pos),
-      ];
-      for (const point of series) {
-        expect(point.y, topic.id).toBeGreaterThanOrEqual(40);
-        expect(point.y, topic.id).toBeLessThanOrEqual(240);
-      }
-    }
-  });
-
-  it("starts and ends on the values it claims", () => {
-    // The wobble tapers to nothing at both ends, so the right edge of the chart
-    // agrees with the headline share sitting next to it.
-    const series = trendValues(30, 68);
-    expect(series[0]).toBe(30);
-    expect(series.at(-1)).toBe(68);
-  });
-
-  it("keeps the wobble in the middle, where it belongs", () => {
-    const flat = trendValues(50, 50);
-    expect(flat[0]).toBe(50);
-    expect(flat.at(-1)).toBe(50);
-    expect(flat.some((v) => v !== 50)).toBe(true);
-  });
-
-  it("ends every fixture topic's line on its stated share", () => {
-    for (const topic of sampleTopics()) {
-      if (topic.unrated) continue;
-      expect(
-        trendValues(topic.neg - topic.change.value, topic.neg).at(-1),
-        topic.id,
-      ).toBe(topic.neg);
-      expect(
-        trendValues(topic.pos + topic.change.value, topic.pos).at(-1),
-        topic.id,
-      ).toBe(topic.pos);
-    }
-  });
-});

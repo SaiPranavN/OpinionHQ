@@ -19,12 +19,10 @@ import type {
   ArcDash,
   ChangeMetric,
   DecoratedTopic,
-  DistributionRow,
   Topic,
   Facet,
   FacetResult,
   FacetTally,
-  GeoRow,
   MetricChange,
   Sentiment,
 } from "@/lib/types";
@@ -47,15 +45,6 @@ export function formatCompact(n: number): string {
   if (n < 1000) return String(n);
   if (n < 100_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0)}K`;
   return `${(n / 100_000).toFixed(1)}L`;
-}
-
-/** Small deterministic hash so fixture-derived numbers are stable per topic. */
-function seedOf(id: string): number {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) % 100_003;
-  }
-  return hash;
 }
 
 export function sentimentColor(sentiment: Sentiment): string {
@@ -112,164 +101,6 @@ export function arc(pct: number, precedingPct: number): ArcDash {
   };
 }
 
-/** Chart viewBox the trend series is expressed in. */
-export const TREND_VIEWBOX = { width: 800, height: 260 } as const;
-
-/**
- * The 30-day sentiment trend as points in the 800x260 chart viewBox.
- * The curve eases from `from` to `to` with a small deterministic wobble so the
- * line reads as sampled data rather than a straight interpolation.
- *
- * Exposed as points, not just a path string, so the PDF export can redraw the
- * identical series with vector primitives instead of re-parsing SVG.
- */
-export function trendPoints(from: number, to: number): { x: number; y: number }[] {
-  const points: { x: number; y: number }[] = [];
-  for (let i = 0; i <= 14; i++) {
-    const t = i / 14;
-    // The wobble tapers to nothing at both ends, so the line starts and ends on
-    // the values it claims to. It used to carry the full wobble at t=1, which
-    // left the last point a couple of points off the headline share — invisible
-    // until the chart became hoverable and started reading the figure out.
-    const wobble = Math.sin(i * 1.7) * 1.8 * Math.sin(Math.PI * t);
-    // Clamped to a real share. On a topic with a large weekly swing the eased
-    // start could land outside 0–100, drawing a line below the baseline and
-    // reading out "-3% negative". A share is never negative and never over 100.
-    const value = Math.min(
-      Math.max(from + (to - from) * (t * t * 0.55 + t * 0.45) + wobble, 0),
-      100,
-    );
-    points.push({ x: i * 57.14, y: 240 - (value / 100) * 200 });
-  }
-  return points;
-}
-
-/** The series as whole-percentage values, for read-outs and axis labels. */
-export function trendValues(from: number, to: number): number[] {
-  return trendPoints(from, to).map((p) => Math.round(((240 - p.y) / 200) * 100));
-}
-
-export function trendPath(from: number, to: number): string {
-  const points = trendPoints(from, to).map(
-    (p) => `${p.x.toFixed(0)} ${p.y.toFixed(1)}`,
-  );
-  return `M${points.join(" L")}`;
-}
-
-/** 30 daily participation bars as percentage heights, trending upward. */
-export function participationBars(seed: number): number[] {
-  const out: number[] = [];
-  for (let i = 0; i < 30; i++) {
-    const base = 34 + Math.abs(Math.sin((i + seed) * 1.37)) * 52;
-    const recentLift = i > 21 ? (i - 21) * 3.4 : 0;
-    out.push(Math.min(base + recentLift, 100));
-  }
-  return out;
-}
-
-/* ---------------------------------------------------------- audience mix */
-
-/**
- * Baseline region mix, roughly tracking where India's online population sits.
- * Each topic jitters these deterministically so dashboards differ from one
- * another without any region landing somewhere implausible.
- */
-const REGION_BASELINE: readonly { name: string; weight: number }[] = [
-  { name: "Maharashtra", weight: 18 },
-  { name: "Uttar Pradesh", weight: 16 },
-  { name: "Delhi NCR", weight: 15 },
-  { name: "Karnataka", weight: 14 },
-  { name: "Tamil Nadu", weight: 12 },
-  { name: "West Bengal", weight: 10 },
-];
-
-const OTHER_REGIONS = "Other states";
-
-/** Share reserved for regions too small to list individually. */
-const OTHER_REGIONS_SHARE = 12;
-
-function geoRows(topic: Topic): GeoRow[] {
-  const seed = topic.participants % 13;
-
-  const jittered = REGION_BASELINE.map(({ name, weight }, i) => ({
-    name,
-    // ±3 points, deterministic per topic and region.
-    weight: Math.max(4, weight + (((i * 5 + seed) % 7) - 3)),
-  })).sort((a, b) => b.weight - a.weight);
-
-  // Rescale the named regions onto the share left over by "Other states", then
-  // hand any rounding remainder to the smallest one so the column totals 100.
-  const namedTarget = 100 - OTHER_REGIONS_SHARE;
-  const rawTotal = jittered.reduce((sum, r) => sum + r.weight, 0);
-  let assigned = 0;
-  const named = jittered
-    .map((region, i) => {
-      if (i === jittered.length - 1) {
-        return { ...region, weight: namedTarget - assigned };
-      }
-      const weight = Math.round((region.weight / rawTotal) * namedTarget);
-      assigned += weight;
-      return { ...region, weight };
-    })
-    // Re-sort: the remainder handed to the last region can nudge it above its
-    // neighbour, and a column that is not monotonically descending reads wrong.
-    .sort((a, b) => b.weight - a.weight);
-
-  const rows = [...named, { name: OTHER_REGIONS, weight: OTHER_REGIONS_SHARE }];
-
-  return rows.map(({ name, weight }, i) => {
-    const negativeShare = Math.min(
-      96,
-      Math.max(3, topic.neg + ((i * 7 + seed) % 15) - 7),
-    );
-    return {
-      label: name,
-      pct: weight,
-      count: Math.round((topic.participants * weight) / 100),
-      negativeShare,
-      lean:
-        negativeShare > 55
-          ? "leans negative"
-          : negativeShare < 34
-            ? "leans positive"
-            : "mixed",
-    };
-  });
-}
-
-const AGE_GROUPS = ["17–20", "21–24", "25–30", "31 and over"] as const;
-const OCCUPATIONS = [
-  "Student",
-  "Working professional",
-  "Parent or guardian",
-  "Educator",
-] as const;
-
-function distribution(
-  labels: readonly string[],
-  weights: readonly number[],
-  total: number,
-): DistributionRow[] {
-  return labels.map((label, i) => {
-    const pct = weights[i] ?? 0;
-    return { label, pct, count: Math.round((total * pct) / 100) };
-  });
-}
-
-/** Audience skew differs sharply by topic type; students dominate education. */
-function demographics(topic: Topic) {
-  const educational = ["exams", "colleges", "careers"].includes(topic.cat);
-  const civic = ["policies", "national-politics", "politicians", "controversies"].includes(
-    topic.cat,
-  );
-  const age = educational ? [46, 31, 15, 8] : civic ? [18, 27, 29, 26] : [22, 34, 27, 17];
-  const role = educational ? [68, 19, 9, 4] : civic ? [31, 44, 17, 8] : [29, 52, 13, 6];
-  return {
-    ageGroups: distribution(AGE_GROUPS, age, topic.participants),
-    occupations: distribution(OCCUPATIONS, role, topic.participants),
-  };
-}
-
 /* ---------------------------------------------------------------- facets */
 
 /**
@@ -283,68 +114,57 @@ export function facetsFor(topic: Topic): Facet[] {
 }
 
 /**
- * Facet answers track the topic's overall mood but are not identical to it —
- * a film can be loved for its visuals and disliked for its writing. Each option
- * starts from its tone's headline share and is jittered deterministically.
+ * What people actually answered, per aspect.
+ *
+ * COUNTED, NOT DERIVED. This used to start each option from its tone's share of
+ * the topic's headline sentiment and jitter it — so a film "loved for its
+ * visuals and disliked for its writing" got a plausible spread that was really
+ * just the overall mood wearing four different hats. It also invented a
+ * response rate (`0.52 + seed % 26 / 100`) so later questions appeared to have
+ * fewer answers, which is true of real discussions and was not true of this
+ * data.
+ *
+ * The guard that existed — zero participants, or a locally-created topic —
+ * covered the two cases where the invention was most obviously wrong and left
+ * it running everywhere else.
+ *
+ * Absent tallies now mean zero, and zero renders as an unanswered question.
  */
 function facetResults(topic: Topic): FacetResult[] {
-  const seed = seedOf(topic.id);
+  const tallies = topic.facetTallies ?? {};
 
-  // Derived tallies stand in for server aggregates on editor-published fixture
-  // topics. They must never be applied to a topic a participant created in
-  // this browser: there is no server counting anyone's answers, so a jittered
-  // "92% said None given" off a single response would be pure invention.
-  if (topic.participants === 0 || topic.createdBy) {
-    return facetsFor(topic).map((facet) => {
-      const tallies: FacetTally[] = facet.options.map((option) => ({
-        ...option,
-        pct: 0,
-        count: 0,
-      }));
-      return { facet, tallies, responses: 0, leading: tallies[0]! };
-    });
-  }
+  return facetsFor(topic).map((facet) => {
+    const counts = tallies[facet.id] ?? {};
+    const responses = Object.values(counts).reduce((sum, n) => sum + n, 0);
 
-  return facetsFor(topic).map((facet, f) => {
-    const raw = facet.options.map((option, i) => {
-      const base =
-        option.tone === "Positive"
-          ? topic.pos
-          : option.tone === "Negative"
-            ? topic.neg
-            : topic.neu;
-      const jitter = ((seed + f * 17 + i * 29) % 27) - 13;
-      return Math.max(4, base + jitter);
-    });
+    const rows: FacetTally[] = facet.options.map((option) => ({
+      ...option,
+      count: counts[option.id] ?? 0,
+      pct: 0,
+    }));
 
-    const rawTotal = raw.reduce((sum, v) => sum + v, 0);
-    let assigned = 0;
-    const pcts = raw.map((value, i) =>
-      i === raw.length - 1
-        ? 100 - assigned
-        : (() => {
-            const pct = Math.round((value / rawTotal) * 100);
-            assigned += pct;
-            return pct;
-          })(),
-    );
+    if (responses > 0) {
+      // Largest remainder, so the column totals exactly 100 — the same
+      // arithmetic the sentiment split uses, since a reader comparing the two
+      // is comparing like with like.
+      const exact = rows.map((row) => (row.count / responses) * 100);
+      const floors = exact.map((v) => Math.floor(v));
+      let remainder = 100 - floors.reduce((sum, v) => sum + v, 0);
+      const order = exact
+        .map((v, i) => ({ i, frac: v - Math.floor(v) }))
+        .sort((x, y) => y.frac - x.frac);
+      for (const { i } of order) {
+        if (remainder <= 0) break;
+        floors[i] = floors[i]! + 1;
+        remainder -= 1;
+      }
+      rows.forEach((row, i) => {
+        row.pct = floors[i] ?? 0;
+      });
+    }
 
-    // Not everyone answers every facet; later questions get fewer responses.
-    const responseRate = 0.52 + ((seed + f * 11) % 26) / 100;
-    const responses = Math.round(topic.participants * responseRate);
-
-    const tallies: FacetTally[] = facet.options.map((option, i) => {
-      const pct = pcts[i] ?? 0;
-      return {
-        ...option,
-        pct,
-        count: Math.round((responses * pct) / 100),
-      };
-    });
-
-    const leading = tallies.reduce((best, t) => (t.pct > best.pct ? t : best), tallies[0]!);
-
-    return { facet, tallies, responses, leading };
+    const leading = rows.reduce((best, t) => (t.count > best.count ? t : best), rows[0]!);
+    return { facet, tallies: rows, responses, leading };
   });
 }
 
@@ -384,7 +204,6 @@ export function decorate(topic: Topic): DecoratedTopic {
   // 2 × min(pos, neg): peaks at 100 when the two poles are equal and large.
   const polarization = topic.pos + topic.neg - Math.abs(topic.pos - topic.neg);
   const writtenCount = topic.written ?? 0;
-  const demo = demographics(topic);
 
   return {
     ...topic,
@@ -442,13 +261,11 @@ export function decorate(topic: Topic): DecoratedTopic {
     negArc: arc(topic.neg, 0),
     neuArc: arc(topic.neu, topic.neg),
     posArc: arc(topic.pos, topic.neg + topic.neu),
-    negPath: trendPath(Math.max(topic.neg - 34, 6), topic.neg),
-    posPath: trendPath(Math.min(topic.pos + 22, 94), topic.pos),
-    participationBars: participationBars(topic.participants % 7),
-    geo: geoRows(topic),
-    ageGroups: demo.ageGroups,
-    occupations: demo.occupations,
-    demographicOptIn: 54 + (topic.participants % 11),
+    // Measured, or nothing at all. See the note on `TopicAudience`.
+    geo: topic.audience?.geo ?? [],
+    ageGroups: topic.audience?.ageGroups ?? [],
+    occupations: topic.audience?.occupations ?? [],
+    demographicOptIn: topic.demographicOptIn ?? 0,
     facets: facetResults(topic),
   };
 }

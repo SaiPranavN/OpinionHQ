@@ -3,12 +3,7 @@ import Link from "next/link";
 import { CategoriesSection } from "@/components/landing/CategoriesSection";
 import { Hero } from "@/components/landing/Hero";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
-import { IntegritySection } from "@/components/landing/IntegritySection";
-import { MovementSection } from "@/components/landing/MovementSection";
-import { PrivateGuidanceSection } from "@/components/landing/PrivateGuidanceSection";
-import { StructureSection } from "@/components/landing/StructureSection";
 import { TwoModesSection } from "@/components/landing/TwoModesSection";
-import { VoicesSection } from "@/components/landing/VoicesSection";
 import { RevealOnScroll } from "@/components/motion/RevealOnScroll";
 import { Footer } from "@/components/site/Footer";
 import { topicCountByCategory } from "@/lib/topics";
@@ -59,16 +54,7 @@ export default async function LandingPage() {
         pollCount={pollTotals.count}
         pollVotes={pollTotals.votes}
       />
-      <PrivateGuidanceSection />
       <HowItWorksSection />
-
-      {/* The written half, before the sections that are all about charts. */}
-      <VoicesSection />
-
-      {/* Then the three things that make the numbers worth reading. */}
-      <StructureSection />
-      <IntegritySection />
-      <MovementSection />
 
       {/* Scope, then out. */}
       <CategoriesSection
@@ -125,18 +111,6 @@ export default async function LandingPage() {
               Vote in a poll
             </Link>
           </div>
-          {/* Ask Verified has no count to advertise, and that is the point: a
-              private-guidance service with a public question counter would be
-              counting private questions in an aggregate. */}
-          <Link
-            href="/ask"
-            className="inline-flex items-center gap-2 text-[14.5px] text-private-soft underline-offset-4 transition-colors duration-300 hover:text-cream hover:underline"
-          >
-            Need private guidance? Ask someone verified
-            <span aria-hidden className="font-mono">
-              →
-            </span>
-          </Link>
         </div>
       </section>
 

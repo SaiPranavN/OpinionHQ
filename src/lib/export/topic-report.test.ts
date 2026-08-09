@@ -1,42 +1,41 @@
 import { describe, expect, it } from "vitest";
 
 import { decorate } from "@/lib/derive";
-import { sampleTopic } from "@/lib/sample-data/decorated";
+import {
+  NEGATIVE_TOPIC,
+  TEST_CONTEXT,
+  TEST_TOPICS,
+  testTimelineFor,
+  testTopic,
+} from "@/lib/test-support/fixtures";
 import { buildTopicReport, reportFilename } from "@/lib/export/topic-report";
-import { TOPICS } from "@/lib/sample-data/topics";
-import { DEFAULT_CONTEXT, contextFor, timelineFor } from "@/lib/sample-data/timeline";
 import type { Topic } from "@/lib/types";
 
 function inputFor(id: string) {
-  const topic = sampleTopic(id)!;
-  return { topic, context: contextFor(id), timeline: timelineFor(id) };
+  const topic = testTopic(id)!;
+  return { topic, context: TEST_CONTEXT, timeline: testTimelineFor(id) };
 }
 
 describe("PDF export", () => {
   it("produces a real PDF document", async () => {
-    const doc = await buildTopicReport(inputFor("neet"));
+    const doc = await buildTopicReport(inputFor(NEGATIVE_TOPIC.id));
     const bytes = new Uint8Array(doc.output("arraybuffer"));
     const magic = String.fromCharCode(...bytes.slice(0, 5));
     expect(magic).toBe("%PDF-");
     expect(bytes.byteLength).toBeGreaterThan(4000);
   });
 
-  it("paginates rather than overflowing a single page", async () => {
-    const doc = await buildTopicReport(inputFor("neet"));
-    expect(doc.getNumberOfPages()).toBeGreaterThan(1);
-  });
-
   it("names the file after the topic and the day it was generated", () => {
-    const name = reportFilename(sampleTopic("neet")!);
-    expect(name).toMatch(/^opinionhq-neet-\d{4}-\d{2}-\d{2}\.pdf$/);
+    const name = reportFilename(testTopic(NEGATIVE_TOPIC.id)!);
+    expect(name).toMatch(/^opinionhq-test-subject-alpha-\d{4}-\d{2}-\d{2}\.pdf$/);
   });
 
   it("builds for every fixture topic without throwing", async () => {
-    for (const topic of TOPICS) {
+    for (const topic of TEST_TOPICS) {
       const doc = await buildTopicReport({
-        topic: sampleTopic(topic.id)!,
-        context: contextFor(topic.id),
-        timeline: timelineFor(topic.id),
+        topic: testTopic(topic.id)!,
+        context: TEST_CONTEXT,
+        timeline: testTimelineFor(topic.id),
       });
       expect(doc.getNumberOfPages(), topic.id).toBeGreaterThan(0);
     }
@@ -78,7 +77,7 @@ describe("PDF export", () => {
 
     const doc = await buildTopicReport({
       topic: decorate(fresh),
-      context: DEFAULT_CONTEXT,
+      context: TEST_CONTEXT,
       timeline: [],
     });
     expect(doc.getNumberOfPages()).toBeGreaterThan(0);

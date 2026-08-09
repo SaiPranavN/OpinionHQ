@@ -176,6 +176,30 @@ export interface Topic {
    * assembled. Absent means none.
    */
   written?: number;
+  /**
+   * How the audience actually divided, per segment.
+   *
+   * Absent until somebody has voted and a segment clears the suppression floor.
+   * This replaced three generators that took a seed derived from the
+   * participant count and produced a full national breakdown — with no
+   * small-sample guard, so one vote drew a chart about a country.
+   */
+  audience?: TopicAudience;
+  /**
+   * Share of participants who supplied any demographics, as a whole percentage.
+   *
+   * The audience panel states this in its footnote, so it has to be counted. It
+   * was `54 + (participants % 11)`, which made the invention underneath it read
+   * as a methodology note.
+   */
+  demographicOptIn?: number;
+  /**
+   * Real answer counts per aspect option, keyed `aspectId` then `optionId`.
+   *
+   * Absent means nobody has answered. The panel then shows the questions with
+   * no bars rather than a distribution jittered off the topic's own sentiment.
+   */
+  facetTallies?: Record<string, Record<string, number>>;
   /** Server-computed trending score, 0–100 (brief §31). */
   trend: number;
   /** Lower is more recently updated; used by the "Recently updated" sort. */
@@ -611,6 +635,20 @@ export interface DistributionRow {
   count: number;
 }
 
+/**
+ * Measured audience breakdown for a topic.
+ *
+ * Empty arrays are meaningful and common: a topic can be too young to break
+ * down, or every segment can fall under the floor `public.topic_audience`
+ * applies. The panels then draw nothing — the difference between "nobody has
+ * measured this" and a plausible chart describing no one.
+ */
+export interface TopicAudience {
+  geo: GeoRow[];
+  ageGroups: DistributionRow[];
+  occupations: DistributionRow[];
+}
+
 export interface GeoRow extends DistributionRow {
   /** Negative share within this region, as a whole percentage. */
   negativeShare: number;
@@ -658,9 +696,6 @@ export interface DecoratedTopic extends Topic {
   negArc: ArcDash;
   neuArc: ArcDash;
   posArc: ArcDash;
-  negPath: string;
-  posPath: string;
-  participationBars: number[];
   geo: GeoRow[];
   ageGroups: DistributionRow[];
   occupations: DistributionRow[];

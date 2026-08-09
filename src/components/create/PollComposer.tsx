@@ -9,9 +9,8 @@
  * options have to be genuinely different things.
  */
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { PollSplitBar } from "@/components/polls/PollSplitBar";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
@@ -20,10 +19,9 @@ import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { PlacePicker } from "@/components/ui/PlacePicker";
 import { decoratePoll, pollColor } from "@/lib/derive-poll";
-import { placeLabel, type PlaceId } from "@/lib/places";
-import { similarityLabel } from "@/lib/signature";
+import { type PlaceId } from "@/lib/places";
 import { CATEGORIES } from "@/lib/taxonomy";
-import type { CategoryId, Poll, PollOption, PollOptionId, StatusId } from "@/lib/types";
+import type { CategoryId, PollOption, PollOptionId, StatusId } from "@/lib/types";
 import { MAX_POLL_OPTIONS, MIN_POLL_OPTIONS } from "@/lib/types";
 
 const MAX_QUESTION = 90;
@@ -86,8 +84,7 @@ export interface PollPublisher {
 
 export function PollComposer({ publisher }: { publisher?: PollPublisher } = {}) {
   const router = useRouter();
-  const { signedIn, ready, openAuth, createPoll, isPollIdAvailable, pollDuplicate } =
-    usePrototype();
+  const { signedIn, ready, openAuth } = usePrototype();
 
   const [question, setQuestion] = useState("");
   const [cat, setCat] = useState<CategoryId>("entertainment");
@@ -102,6 +99,7 @@ export function PollComposer({ publisher }: { publisher?: PollPublisher } = {}) 
   ]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [slugTaken, setSlugTaken] = useState(false);
 
   const setDraft = (i: number, patch: Partial<{ name: string; blurb: string }>) =>
     setDrafts((prev) => prev.map((d, k) => (k === i ? { ...d, ...patch } : d)));
@@ -156,16 +154,36 @@ export function PollComposer({ publisher }: { publisher?: PollPublisher } = {}) 
    * nothing. Told early, they go and vote on the one that exists — which is
    * the outcome the whole feature is for.
    */
-  const verdict = useMemo(
-    () => pollDuplicate({ question, options: optionsFrom(drafts), place }),
-    [pollDuplicate, question, drafts, place],
-  );
+  // The duplicate check ran against a fixture catalog held in this browser.
+  // The real one is `slug_available` in Postgres, which the publisher calls —
+  // so there is nothing left to compare against here, and a check that always
+  // says "clear" would be worse than no check at all.
+
+  // Debounced, so typing a question is not one request per keystroke. The
+  // stale guard matters more than the delay: replies can arrive out of order,
+  // and the slow answer to an old question would overwrite the fast answer to
+  // the current one.
+  useEffect(() => {
+    if (!publisher || !id) {
+      setSlugTaken(false);
+      return;
+    }
+    let stale = false;
+    const timer = window.setTimeout(async () => {
+      const free = await publisher.isSlugFree(id);
+      if (!stale) setSlugTaken(!free);
+    }, 350);
+    return () => {
+      stale = true;
+      window.clearTimeout(timer);
+    };
+  }, [publisher, id]);
 
   const validate = (): string | null => {
+    if (slugTaken) return "A poll or topic already uses that address.";
     if (question.trim().length < 8) return "Write a question of at least eight characters.";
     if (!question.trim().endsWith("?")) return "A poll has to be a question — end it with a question mark.";
     if (!id) return "That question does not produce a usable address. Add some letters or numbers.";
-    if (!isPollIdAvailable(id)) return "A poll with that question already exists.";
     if (drafts.some((d) => d.name.trim().length < 2))
       return "Every option needs a name of at least two characters.";
     const names = drafts.map((d) => d.name.trim().toLowerCase());
@@ -174,9 +192,6 @@ export function PollComposer({ publisher }: { publisher?: PollPublisher } = {}) 
     if (drafts.some((d) => !d.blurb.trim()))
       return "Give each option a one-line case — it is what keeps the choice fair.";
     if (summary.trim().length < 20) return "Write a one-line summary of at least twenty characters.";
-    if (verdict.kind === "duplicate") {
-      return "This poll already exists. Vote on the original instead — that is where the answers are.";
-    }
     return null;
   };
 
@@ -219,24 +234,9 @@ export function PollComposer({ publisher }: { publisher?: PollPublisher } = {}) 
       return;
     }
 
-    const draft: Poll = {
-      id,
-      question: question.trim(),
-      cat,
-      place,
-      status: "Live",
-      summary: summary.trim(),
-      about: about.trim() || summary.trim(),
-      tags: tags.length > 0 ? tags : [cat],
-      options: optionsFrom(drafts),
-      closes: closes.trim() || "Open-ended",
-      trend: 0,
-      recency: 0,
-      updated: "just now",
-    };
-    // Refused at the mutation as well as here, so the two can never disagree.
-    const result = createPoll(draft);
-    router.push(`/polls/${result.ok ? result.id : result.existingId}`);
+    // Without a publisher there is nowhere for this to go. The public
+    // composer route is gone; only /admin/polls/new renders this component.
+    setError("Publishing is not available here.");
   };
 
   if (ready && !signedIn) {
@@ -288,7 +288,7 @@ export function PollComposer({ publisher }: { publisher?: PollPublisher } = {}) 
               {id ? (
                 <span className="font-mono text-[10.5px] text-dim">
                   /polls/{id}{" "}
-                  {!isPollIdAvailable(id) ? (
+                  {slugTaken ? (
                     <span className="text-negative-light">· already taken</span>
                   ) : null}
                 </span>
@@ -332,7 +332,6 @@ export function PollComposer({ publisher }: { publisher?: PollPublisher } = {}) 
             </div>
           </section>
 
-          <DuplicateNotice verdict={verdict} place={place} />
 
           {/* One card per option, each in its own colour. Between two and four:
               two is the sharpest question, and past four a split bar stops
@@ -497,17 +496,7 @@ export function PollComposer({ publisher }: { publisher?: PollPublisher } = {}) 
             </p>
           ) : null}
 
-          {/* A refused draft gets a button that does the useful thing instead of
-              a disabled one. Nothing here is lost — the poll they wanted exists,
-              and their vote is what it was missing. */}
-          {verdict.kind === "duplicate" ? (
-            <Link
-              href={`/polls/${verdict.existing.id}`}
-              className="rounded-full bg-poll px-6 py-3 text-center text-[14.5px] font-semibold text-poll-ink transition-colors duration-300 outline-none hover:bg-[#B9A2FC] focus-visible:ring-2 focus-visible:ring-poll-soft"
-            >
-              Open the poll that exists
-            </Link>
-          ) : (
+          {(
             <div className="flex flex-col gap-2.5">
               <button
                 type="button"
@@ -515,11 +504,7 @@ export function PollComposer({ publisher }: { publisher?: PollPublisher } = {}) 
                 disabled={saving}
                 className="cursor-pointer rounded-full bg-poll px-6 py-3 text-[14.5px] font-semibold text-poll-ink transition-colors duration-300 outline-none hover:bg-[#B9A2FC] focus-visible:ring-2 focus-visible:ring-poll-soft disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {saving
-                  ? "Publishing…"
-                  : verdict.kind === "near"
-                    ? "Publish anyway"
-                    : "Publish poll"}
+                {saving ? "Publishing…" : "Publish poll"}
               </button>
               {publisher?.allowDraft ? (
                 <button
@@ -536,77 +521,6 @@ export function PollComposer({ publisher }: { publisher?: PollPublisher } = {}) 
         </aside>
       </div>
     </Shell>
-  );
-}
-
-/**
- * What the duplicate check found.
- *
- * Two states with deliberately different tones. A refusal explains itself and
- * hands over a link, because the author is not being told off — they are being
- * told their question is already being answered somewhere with more votes on
- * it. A warning shows its working, including the percentage, so somebody who
- * knows their poll is genuinely different can say so and carry on.
- */
-function DuplicateNotice({
-  verdict,
-  place,
-}: {
-  verdict: ReturnType<ReturnType<typeof usePrototype>["pollDuplicate"]>;
-  place: PlaceId;
-}) {
-  if (verdict.kind === "unique") return null;
-
-  if (verdict.kind === "duplicate") {
-    return (
-      <section className="flex flex-col gap-3 rounded-[18px] border border-negative/35 bg-negative/6 p-5">
-        <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-negative-light">
-          Already asked
-        </span>
-        <p className="m-0 text-[14px] leading-[1.55] text-cream-bright">
-          This is the same question, in {placeLabel(place)}, as a poll that
-          already exists.
-        </p>
-        <Link
-          href={`/polls/${verdict.existing.id}`}
-          className="text-[14px] leading-[1.45] font-medium text-cream underline decoration-veil/30 underline-offset-4 transition-colors hover:decoration-veil/70"
-        >
-          {verdict.existing.question}
-        </Link>
-        <p className="m-0 text-[12.5px] leading-[1.6] text-muted">
-          A second copy would split the answers between two cards and make both
-          of them weaker. Vote on that one instead — a poll is only worth reading
-          because everybody answered the same one.
-        </p>
-      </section>
-    );
-  }
-
-  return (
-    <section className="flex flex-col gap-3 rounded-[18px] border border-veil/14 bg-veil/3 p-5">
-      <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-dim">
-        {verdict.matches.length === 1 ? "One similar poll" : "Similar polls"}
-      </span>
-      <p className="m-0 text-[13.5px] leading-[1.55] text-soft">
-        Close to something already here. Worth a look before you publish — if
-        yours asks something different, publish it.
-      </p>
-      <ul className="m-0 flex list-none flex-col gap-2 p-0">
-        {verdict.matches.map((match) => (
-          <li key={match.poll.id} className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-            <Link
-              href={`/polls/${match.poll.id}`}
-              className="text-[13.5px] leading-[1.45] text-cream underline decoration-veil/25 underline-offset-4 transition-colors hover:decoration-veil/60"
-            >
-              {match.poll.question}
-            </Link>
-            <span className="font-mono text-[10.5px] text-dim">
-              {similarityLabel(match.score)}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 

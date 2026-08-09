@@ -5,7 +5,6 @@ import { PollSplitBar } from "@/components/polls/PollSplitBar";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
-import { PrototypeDataBadge } from "@/components/ui/PrototypeDataBadge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatNumber } from "@/lib/derive-poll";
 import type { DecoratedPoll, PollReason } from "@/lib/types";
@@ -41,7 +40,6 @@ export function PollHeader({
             { label: poll.category.short },
           ]}
         />
-        <PrototypeDataBadge />
       </div>
 
       <div className="flex flex-wrap items-center gap-2.5">

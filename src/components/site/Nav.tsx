@@ -54,12 +54,6 @@ export function Nav() {
           Polls
         </Link>
         <Link
-          href="/ask"
-          className="shrink-0 whitespace-nowrap text-muted transition-colors hover:text-cream"
-        >
-          Ask Verified
-        </Link>
-        <Link
           href="/#how"
           className="hidden shrink-0 whitespace-nowrap text-muted transition-colors hover:text-cream sm:inline"
         >

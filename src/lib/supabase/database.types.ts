@@ -3356,14 +3356,16 @@ export type Database = {
       }
       slug_available: { Args: { candidate: string }; Returns: boolean }
       toggle_reason_helpful: { Args: { reason: string }; Returns: boolean }
-      topic_demographics: {
+      topic_audience: {
         Args: { target: string }
         Returns: {
           dimension: string
-          label: string
           responses: number
+          segment: string
+          vote: Database["public"]["Enums"]["sentiment"]
         }[]
       }
+      topic_demographic_opt_in: { Args: { target: string }; Returns: number }
       vote_on_reply: {
         Args: {
           kind: Database["public"]["Enums"]["reader_vote"]

@@ -54,7 +54,7 @@ export function TopicDashboard({
       <div className="flex flex-col gap-[clamp(14px,1.6vw,20px)]">
         <div className="flex flex-wrap gap-[clamp(14px,1.6vw,20px)]">
           <SentimentDonut topic={topic} />
-          <SentimentTrend topic={topic} markers={context.markers} />
+          <SentimentTrend topic={topic} />
           <ParticipationChart topic={topic} />
         </div>
         <KpiGrid topic={topic} />
