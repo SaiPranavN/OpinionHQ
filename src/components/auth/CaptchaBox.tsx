@@ -15,8 +15,22 @@
  * enabled, Supabase refuses the request and says so. The two halves fail
  * together, which is the correct direction to fail in.
  *
- * Turnstile over hCaptcha: free at any volume, no image puzzles for the person
- * signing up, and it does not need a cookie banner. Supabase supports both.
+ * THE WIDGET IS RENDERED EXACTLY ONCE.
+ *
+ * This is the whole difficulty of the component and the first version got it
+ * wrong. Turnstile renders into a DOM node it owns and runs its own challenge;
+ * tearing that node down and re-rendering restarts the challenge from scratch.
+ * The first version had the mount effect depend on the callback props, and the
+ * parent passes `onChange` as an inline arrow — a new function identity on
+ * every render. Every keystroke in the sign-in form therefore re-rendered the
+ * parent, changed the identity, ran the cleanup, removed the widget and made a
+ * new one. It looked like a captcha stuck in a loop, because it was: a fresh
+ * challenge per character typed.
+ *
+ * So the callbacks live in refs that are kept current, and the mount effect
+ * takes no dependencies at all. The widget's own callbacks read `.current`, so
+ * they always call the latest handler without the effect ever needing to know
+ * that the handler changed.
  */
 
 import Script from "next/script";
@@ -63,41 +77,56 @@ export function CaptchaBox({
   const [failed, setFailed] = useState(false);
   const fallbackId = useId();
 
+  // Kept current every render, read by the widget callbacks below. This is what
+  // lets the mount effect have no dependencies — see the note at the top.
+  const onChangeRef = useRef(onChange);
+  const onTokenRef = useRef(onToken);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    onTokenRef.current = onToken;
+  });
+
+  /**
+   * Renders the widget, once.
+   *
+   * `widgetId.current` is the guard rather than a piece of state: it survives
+   * re-renders, and both the script's `onLoad` and the mount effect call this
+   * without either needing to know whether the other got there first.
+   */
   const mount = useCallback(() => {
     if (!SITE_KEY || !holder.current || !window.turnstile || widgetId.current) return;
-    onChange("checking");
+    setReady(true);
+    onChangeRef.current("checking");
     widgetId.current = window.turnstile.render(holder.current, {
       sitekey: SITE_KEY,
       theme: "auto",
       callback: (token) => {
-        onToken(token);
-        onChange("passed");
+        onTokenRef.current(token);
+        onChangeRef.current("passed");
       },
       // A token is good for a few minutes. Somebody who leaves the form open
       // longer than that must not be allowed to submit a stale one — Supabase
       // would reject it, and the failure would look like a bug in the form.
       "expired-callback": () => {
-        onToken(null);
-        onChange("idle");
+        onTokenRef.current(null);
+        onChangeRef.current("idle");
       },
       "error-callback": () => {
-        onToken(null);
-        onChange("idle");
+        onTokenRef.current(null);
+        onChangeRef.current("idle");
         setFailed(true);
       },
     });
-  }, [onChange, onToken]);
+  }, []);
 
+  // No dependencies, deliberately. This runs on mount and cleans up on unmount,
+  // and nothing a parent re-render does can restart the challenge.
   useEffect(() => {
-    if (window.turnstile) {
-      setReady(true);
-      mount();
-    }
+    mount();
+    const id = widgetId.current;
     return () => {
-      if (widgetId.current && window.turnstile) {
-        window.turnstile.remove(widgetId.current);
-        widgetId.current = null;
-      }
+      if (id && window.turnstile) window.turnstile.remove(id);
+      widgetId.current = null;
     };
   }, [mount]);
 
@@ -127,10 +156,8 @@ export function CaptchaBox({
       <Script
         src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
         strategy="afterInteractive"
-        onLoad={() => {
-          setReady(true);
-          mount();
-        }}
+        // `mount` is stable, so this cannot re-render the widget either.
+        onLoad={mount}
       />
       <div ref={holder} className="min-h-[65px]" />
       {!ready ? (
