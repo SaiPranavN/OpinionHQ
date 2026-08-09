@@ -182,8 +182,8 @@ export function ProfilePrivacyNote() {
       until enough people have shared theirs. Your email and mobile number are
       never shown to anyone.
       <span className="mt-1.5 block text-dim/80">
-        In this prototype nothing is transmitted anywhere — details stay in this
-        browser&rsquo;s local storage until you clear it.
+        These are stored against your account, not in this browser. You can change
+        them later, and deleting your account deletes them with it.
       </span>
     </p>
   );

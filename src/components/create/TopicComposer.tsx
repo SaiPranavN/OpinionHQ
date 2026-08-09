@@ -34,7 +34,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DEFAULT_FACET_SET, FACET_SETS } from "@/lib/facets";
 import type { PlaceId } from "@/lib/places";
 import { CATEGORIES, SENTIMENT_COLOR, STATUS_STYLES } from "@/lib/taxonomy";
-import type { CategoryId, Topic, Facet, StatusId } from "@/lib/types";
+import type { CategoryId, Facet, StatusId } from "@/lib/types";
 
 const STEPS = ["What it is", "What to ask", "Review"] as const;
 

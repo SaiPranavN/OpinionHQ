@@ -33,10 +33,15 @@
  * the account from the address alone and leaves the password to `updateUser`
  * afterwards, so the four steps map one to one. See `lib/auth/account.ts`.
  *
- * WHAT IS STILL A PLACEHOLDER, and only this: the bot check. It has no provider
- * behind it and says so on screen. Everything else on this page now talks to a
- * real auth service — the code is emailed and verified server-side, the password
- * is set against a proved address, and the demographics land in Postgres.
+ * NOTHING HERE IS A PLACEHOLDER ANY MORE. The bot check is Cloudflare Turnstile
+ * and its token is verified by the auth service, not by this page; the code is
+ * emailed and verified server-side; the password is set against a proved
+ * address; and the demographics land in Postgres.
+ *
+ * The captcha renders in BOTH modes. Enabling it on the project makes a token
+ * mandatory on every auth endpoint, so showing the widget only on the sign-up
+ * side left sign-in posting without one and being refused outright — which
+ * reads as a wrong password rather than a missing widget.
  */
 
 import Link from "next/link";
@@ -367,17 +372,36 @@ export function SignInView() {
   /* -------------------------------------------------------------- render */
 
   /**
-   * Signed in, but not finished.
+   * Partway through creating an account in this tab, right now.
    *
-   * An account can exist with no date of birth, occupation or country — abandon
-   * the flow at step four, or arrive through Google, and that is exactly where
-   * you are. Showing the "nothing to do here" panel to somebody in that state
-   * would be a dead end in front of the only screen that can fix it, so the
-   * details step wins over it.
+   * THIS DISTINCTION IS THE WHOLE BUG THIS FIXES. Verifying the emailed code
+   * opens a session, so `signedIn` turns true at step two — while the person is
+   * still standing in the middle of the flow with a password and a profile left
+   * to give. Without this, `unfinished` below turned true at exactly that
+   * moment, and since the password screen renders only when `!unfinished`, step
+   * three was suppressed and the form jumped from "verify email" straight to
+   * "about you". The password was never asked for, so the account had none, so
+   * the next sign-in had nothing to sign in with.
+   *
+   * A session is not evidence that sign-up finished. Being at a later step is.
    */
-  const unfinished = ready && signedIn && needsDetails;
+  const midFlow = signup && (step === "verify" || step === "password");
 
-  if (ready && signedIn && !unfinished) {
+  /**
+   * Signed in, and the flow was never finished — on some earlier visit.
+   *
+   * An account can exist with no date of birth, occupation or country: abandon
+   * step four, or arrive through Google, and that is exactly where you are.
+   * Showing the "nothing to do here" panel to somebody in that state would be a
+   * dead end in front of the only screen that can fix it, so the details step
+   * wins over it.
+   */
+  const unfinished = ready && signedIn && needsDetails && !midFlow;
+
+  // `midFlow` guards this too: signing in happens at step two, and without it
+  // the panel would replace the rest of the form the instant the code was
+  // accepted.
+  if (ready && signedIn && !unfinished && !midFlow) {
     return (
       <Shell>
         <div className="flex flex-col items-start gap-4">
@@ -413,7 +437,16 @@ export function SignInView() {
 
   return (
     <Shell>
-      {signup && !unfinished ? <Progress index={position.index} total={position.total} /> : null}
+      {/* Shown while walking the flow, including its last step.
+          `unfinished` is true on the details screen of a normal sign-up — the
+          account exists by then and its demographics are still blank — so
+          gating on it alone hid the progress bar exactly where somebody most
+          wants to see "Step 4 of 4". The one case that should not show it is a
+          returning visitor who is dropped straight onto details having done
+          none of the earlier steps. */}
+      {signup && !(unfinished && step === "account") ? (
+        <Progress index={position.index} total={position.total} />
+      ) : null}
 
       {/* ---------------------------------------------------- verify email */}
       {!unfinished && signup && step === "verify" ? (
@@ -642,21 +675,32 @@ export function SignInView() {
                   </button>
                 }
               />
-            ) : (
-              <CaptchaBox
-                onToken={setCaptchaToken}
-                state={captcha}
-                onChange={(nextState) => {
-                  setCaptcha(nextState);
-                  setError(null);
-                }}
-              />
-            )}
+            ) : null}
+
+            {/* BOTH MODES, not just sign-up.
+                Captcha is enabled on the project, which means Supabase requires
+                a token on every auth endpoint — `signInWithPassword` included.
+                Rendering the widget only on the sign-up side meant sign-in sent
+                no token and was refused outright with "captcha protection:
+                request disallowed", which reads as a broken password rather
+                than a missing widget.
+
+                It belongs here on the merits anyway: credential stuffing hits
+                the sign-in endpoint, and that is the attack a captcha is most
+                use against. */}
+            <CaptchaBox
+              onToken={setCaptchaToken}
+              state={captcha}
+              onChange={(nextState) => {
+                setCaptcha(nextState);
+                setError(null);
+              }}
+            />
           </div>
 
           {error ? <ErrorLine>{error}</ErrorLine> : null}
 
-          <PrimaryButton type="submit" disabled={busy || (signup && captcha !== "passed")}>
+          <PrimaryButton type="submit" disabled={busy || captcha !== "passed"}>
             {busy
               ? signup
                 ? "Sending…"
@@ -683,9 +727,9 @@ export function SignInView() {
       ) : null}
 
       <p className="m-0 border-t border-veil/8 pt-4 text-[11.5px] leading-[1.6] text-dim">
-        <strong className="font-medium text-muted">The bot check is still a placeholder.</strong>{" "}
-        Everything else on this page is real: the code is emailed and verified server-side, and your
-        password is stored hashed by the auth service and never by this app.
+        Everything on this page is real: the bot check is verified by Cloudflare and
+        again server-side, the code is emailed and verified by the auth service, and
+        your password is stored hashed by it and never by this app.
       </p>
     </Shell>
   );
