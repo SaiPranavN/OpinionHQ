@@ -78,8 +78,30 @@ const smtp = process.env.SMTP_PASSWORD
     }
   : {};
 
+/**
+ * Bot protection, and the half that actually enforces it.
+ *
+ * The widget in the browser only fetches a token. THIS is the part that checks
+ * it: with `security_captcha_enabled` on, Supabase verifies every token
+ * against this secret before it will create an account or issue a session. A
+ * bot posting straight to the auth endpoint never runs the widget, so without
+ * the server side there is no protection at all.
+ *
+ * Left alone entirely when the secret is absent. Enabling it without a secret
+ * would reject every sign-up on the site, and doing that silently because an
+ * environment variable was missing is worse than having no captcha.
+ */
+const captcha = process.env.TURNSTILE_SECRET_KEY
+  ? {
+      security_captcha_enabled: true,
+      security_captcha_provider: "turnstile",
+      security_captcha_secret: process.env.TURNSTILE_SECRET_KEY,
+    }
+  : {};
+
 const desired: Record<string, unknown> = {
   ...smtp,
+  ...captcha,
   // Has to equal CODE_LENGTH. See the note at the top.
   mailer_otp_length: CODE_LENGTH,
   mailer_templates_magic_link_content: OTP_EMAIL,

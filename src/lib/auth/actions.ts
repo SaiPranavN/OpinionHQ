@@ -27,6 +27,7 @@ const REFUSED = "That email or password is not right.";
 export async function signInWithIdentifier(
   identifier: string,
   password: string,
+  captchaToken?: string,
 ): Promise<SignInResult> {
   const read = readIdentifier(identifier);
   if ("error" in read) return { ok: false, message: read.error };
@@ -44,7 +45,14 @@ export async function signInWithIdentifier(
   }
 
   const supabase = await supabaseServer();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+    // Supabase checks this against the project's captcha secret. Sign-in is
+    // covered as well as sign-up: credential stuffing is the attack the check
+    // is most useful against, and it targets the sign-in endpoint.
+    ...(captchaToken ? { options: { captchaToken } } : {}),
+  });
 
   if (error) {
     const m = error.message.toLowerCase();
@@ -53,6 +61,9 @@ export async function signInWithIdentifier(
         ok: false,
         message: "This address has not been confirmed yet. Finish creating your account first.",
       };
+    }
+    if (m.includes("captcha")) {
+      return { ok: false, message: "The bot check did not pass. Reload the page and try again." };
     }
     if (m.includes("rate limit") || m.includes("too many")) {
       return { ok: false, message: "Too many attempts just now. Wait a minute and try again." };

@@ -125,6 +125,7 @@ export function SignInView() {
   const [profile, setProfile] = useState<ProfileDetails>({ country: "India" });
 
   const [captcha, setCaptcha] = useState<CaptchaState>("idle");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [cooldown, setCooldown] = useState(0);
 
@@ -201,7 +202,7 @@ export function SignInView() {
       }
       setBusy(true);
       setError(null);
-      const result = await signInWithIdentifier(identifier, password);
+      const result = await signInWithIdentifier(identifier, password, captchaToken ?? undefined);
       setBusy(false);
       if (!result.ok) {
         setError(result.message);
@@ -226,7 +227,7 @@ export function SignInView() {
 
     setBusy(true);
     setError(null);
-    const result = await startSignUp(read.email, name);
+    const result = await startSignUp(read.email, name, captchaToken ?? undefined);
     setBusy(false);
     if (!result.ok) {
       setError(result.message);
@@ -278,7 +279,7 @@ export function SignInView() {
   const resend = async () => {
     if (cooldown > 0 || busy) return;
     setBusy(true);
-    const result = await resendSignUpCode(identifier);
+    const result = await resendSignUpCode(identifier, captchaToken ?? undefined);
     setBusy(false);
     if (!result.ok) {
       setError(result.message);
@@ -643,6 +644,7 @@ export function SignInView() {
               />
             ) : (
               <CaptchaBox
+                onToken={setCaptchaToken}
                 state={captcha}
                 onChange={(nextState) => {
                   setCaptcha(nextState);

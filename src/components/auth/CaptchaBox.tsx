@@ -1,120 +1,149 @@
 "use client";
 
 /**
- * The bot check — a placeholder with a real gate behind it.
+ * The bot check. Cloudflare Turnstile.
  *
- * IT VERIFIES NOTHING. There is no provider, no sitekey and no token: pressing
- * it waits a moment and reports success. What it does do is sit in the flow as
- * a real precondition — the button that sends a verification code stays
- * disabled until this passes — so the shape of the screen, the timing and the
- * failure states are all exercised, and dropping in a real widget later changes
- * this file and nothing else.
+ * THIS FILE IS NOT THE ENFORCEMENT AND MUST NOT BE MISTAKEN FOR IT. All it does
+ * is obtain a token from Cloudflare and hand it upward. The token is then
+ * attached to the Supabase auth call, and SUPABASE VERIFIES IT SERVER-SIDE
+ * against the secret key held in the project config. That server check is the
+ * gate. A captcha validated only in the browser stops nobody, because a bot
+ * never runs the browser code — it posts to the auth endpoint directly.
  *
- * DELIBERATELY NOT DRESSED AS SOMEBODY ELSE'S WIDGET. It carries OpinionHQ's
- * own styling and says on its face that it is a placeholder. A pixel-accurate
- * copy of a well-known challenge box would teach every reviewer that the check
- * is real, and that is exactly the wrong thing to be convincing about.
+ * Which is also why a missing sitekey is not a reason to let somebody through.
+ * If the widget cannot run, no token is produced; if the project has captcha
+ * enabled, Supabase refuses the request and says so. The two halves fail
+ * together, which is the correct direction to fail in.
  *
- * For production the shortlist is Cloudflare Turnstile (free, no puzzles, good
- * privacy posture) or hCaptcha. Both are a script tag plus a server-side
- * verification call, and the server call is the part that matters: a captcha
- * validated only in the browser stops nobody, because a bot never runs the
- * browser code.
+ * Turnstile over hCaptcha: free at any volume, no image puzzles for the person
+ * signing up, and it does not need a cookie banner. Supabase supports both.
  */
 
-import { useEffect, useRef, useState } from "react";
+import Script from "next/script";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 export type CaptchaState = "idle" | "checking" | "passed";
+
+const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+/** The slice of the Turnstile API this file uses. */
+interface Turnstile {
+  render: (
+    el: HTMLElement,
+    options: {
+      sitekey: string;
+      theme?: "auto" | "light" | "dark";
+      callback: (token: string) => void;
+      "error-callback"?: () => void;
+      "expired-callback"?: () => void;
+    },
+  ) => string;
+  remove: (id: string) => void;
+}
+
+declare global {
+  interface Window {
+    turnstile?: Turnstile;
+  }
+}
 
 export function CaptchaBox({
   state,
   onChange,
+  onToken,
 }: {
   state: CaptchaState;
   onChange: (next: CaptchaState) => void;
+  /** The token to attach to the auth call. Null once it expires. */
+  onToken: (token: string | null) => void;
 }) {
-  const [dots, setDots] = useState(0);
-  const timers = useRef<number[]>([]);
+  const holder = useRef<HTMLDivElement>(null);
+  const widgetId = useRef<string | null>(null);
+  const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const fallbackId = useId();
 
-  useEffect(() => {
-    const running = timers.current;
-    return () => running.forEach((t) => window.clearTimeout(t));
-  }, []);
-
-  useEffect(() => {
-    if (state !== "checking") return;
-    const tick = window.setInterval(() => setDots((d) => (d + 1) % 4), 320);
-    return () => window.clearInterval(tick);
-  }, [state]);
-
-  const run = () => {
-    if (state !== "idle") return;
+  const mount = useCallback(() => {
+    if (!SITE_KEY || !holder.current || !window.turnstile || widgetId.current) return;
     onChange("checking");
-    // The pause is the point: a check that resolves instantly reads as fake,
-    // and the button it gates needs a disabled state somebody actually sees.
-    timers.current.push(window.setTimeout(() => onChange("passed"), 900));
-  };
+    widgetId.current = window.turnstile.render(holder.current, {
+      sitekey: SITE_KEY,
+      theme: "auto",
+      callback: (token) => {
+        onToken(token);
+        onChange("passed");
+      },
+      // A token is good for a few minutes. Somebody who leaves the form open
+      // longer than that must not be allowed to submit a stale one — Supabase
+      // would reject it, and the failure would look like a bug in the form.
+      "expired-callback": () => {
+        onToken(null);
+        onChange("idle");
+      },
+      "error-callback": () => {
+        onToken(null);
+        onChange("idle");
+        setFailed(true);
+      },
+    });
+  }, [onChange, onToken]);
 
-  const passed = state === "passed";
+  useEffect(() => {
+    if (window.turnstile) {
+      setReady(true);
+      mount();
+    }
+    return () => {
+      if (widgetId.current && window.turnstile) {
+        window.turnstile.remove(widgetId.current);
+        widgetId.current = null;
+      }
+    };
+  }, [mount]);
+
+  // Nothing to render a widget with. Said plainly rather than passing silently:
+  // a sign-up form that looks unprotected and is unprotected is better than one
+  // that looks protected and is not.
+  if (!SITE_KEY) {
+    return (
+      <div
+        id={fallbackId}
+        role="status"
+        className="flex flex-col gap-1.5 rounded-[12px] border border-caution/30 bg-caution/8 px-4 py-3"
+      >
+        <span className="text-[12.5px] font-medium text-cream">
+          Bot protection is not configured
+        </span>
+        <span className="text-[11.5px] leading-[1.5] text-dim">
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY is not set. If this project has captcha
+          enabled, the server will refuse this sign-up.
+        </span>
+      </div>
+    );
+  }
 
   return (
-    <div
-      className={`flex items-center gap-3.5 rounded-[14px] border p-3.5 transition-colors duration-300 ${
-        passed ? "border-positive/35 bg-positive/6" : "border-veil/12 bg-veil/3"
-      }`}
-    >
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={passed}
-        aria-label="Confirm you are not a robot"
-        disabled={state === "checking"}
-        onClick={run}
-        className={`grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[7px] border transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-positive/50 ${
-          passed
-            ? "border-positive bg-positive"
-            : state === "checking"
-              ? "cursor-wait border-veil/20"
-              : "cursor-pointer border-veil/25 hover:border-veil/50"
-        }`}
-      >
-        {passed ? (
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-            <path
-              d="M2.5 7.5L5.5 10.5 11.5 3.5"
-              stroke="var(--color-positive-ink)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        ) : state === "checking" ? (
-          <span className="h-3 w-3 animate-spin rounded-full border-[1.5px] border-veil/25 border-t-positive" />
-        ) : null}
-      </button>
-
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="text-[13.5px] leading-[1.35] text-cream">
-          {passed
-            ? "Verified — you are not a robot"
-            : state === "checking"
-              ? `Checking${".".repeat(dots)}`
-              : "I am not a robot"}
+    <div className="flex flex-col gap-2">
+      <Script
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+        strategy="afterInteractive"
+        onLoad={() => {
+          setReady(true);
+          mount();
+        }}
+      />
+      <div ref={holder} className="min-h-[65px]" />
+      {!ready ? (
+        <span className="text-[11.5px] text-dim">Loading the bot check…</span>
+      ) : null}
+      {failed ? (
+        <span role="alert" className="text-[11.5px] text-negative-light">
+          That check did not complete. Reload the page and try again.
         </span>
-        <span className="text-[11px] leading-[1.4] text-dim">
-          Placeholder — a real Turnstile or hCaptcha widget drops in here, checked
-          again on the server.
-        </span>
-      </span>
-
-      <span
-        aria-hidden
-        className="ml-auto hidden shrink-0 font-mono text-[9px] leading-[1.3] tracking-[0.1em] text-dim/70 uppercase sm:block"
-      >
-        Bot
-        <br />
-        check
-      </span>
+      ) : null}
+      {state === "passed" ? (
+        <span className="text-[11.5px] text-positive-light">Verified.</span>
+      ) : null}
     </div>
   );
 }

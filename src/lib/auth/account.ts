@@ -42,6 +42,10 @@ const fail = (message: string): AuthResult => ({ ok: false, message });
  * specific message beats a friendly one that hides what happened.
  */
 function readable(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes("captcha")) {
+    return "The bot check did not pass. Reload the page and try again.";
+  }
   const m = message.toLowerCase();
   if (m.includes("invalid login credentials")) {
     return "That email or password is not right.";
@@ -76,22 +80,36 @@ function readable(message: string): string {
  * the trigger fires — otherwise the profile is created from the local part of
  * the address and has to be corrected a moment later.
  */
-export async function startSignUp(email: string, displayName: string): Promise<AuthResult> {
+export async function startSignUp(
+  email: string,
+  displayName: string,
+  captchaToken?: string,
+): Promise<AuthResult> {
   const { error } = await supabaseBrowser().auth.signInWithOtp({
     email: email.trim().toLowerCase(),
     options: {
       shouldCreateUser: true,
       data: { display_name: displayName.trim() },
+      // Verified by Supabase against the project's captcha secret, not here.
+      // Sent even when undefined so the shape of the call does not change
+      // depending on configuration.
+      ...(captchaToken ? { captchaToken } : {}),
     },
   });
   return error ? fail(readable(error.message)) : ok;
 }
 
 /** Sends another code for the same address. Same call; named for the caller. */
-export async function resendSignUpCode(email: string): Promise<AuthResult> {
+export async function resendSignUpCode(
+  email: string,
+  captchaToken?: string,
+): Promise<AuthResult> {
   const { error } = await supabaseBrowser().auth.signInWithOtp({
     email: email.trim().toLowerCase(),
-    options: { shouldCreateUser: true },
+    options: {
+      shouldCreateUser: true,
+      ...(captchaToken ? { captchaToken } : {}),
+    },
   });
   return error ? fail(readable(error.message)) : ok;
 }
