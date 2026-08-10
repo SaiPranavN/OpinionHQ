@@ -52,6 +52,8 @@ interface Turnstile {
       "expired-callback"?: () => void;
     },
   ) => string;
+  /** Runs the challenge again on the existing widget and issues a fresh token. */
+  reset: (id: string) => void;
   remove: (id: string) => void;
 }
 
@@ -65,11 +67,22 @@ export function CaptchaBox({
   state,
   onChange,
   onToken,
+  resetKey = 0,
 }: {
   state: CaptchaState;
   onChange: (next: CaptchaState) => void;
   /** The token to attach to the auth call. Null once it expires. */
   onToken: (token: string | null) => void;
+  /**
+   * Bump this to run the challenge again and issue a fresh token.
+   *
+   * A TURNSTILE TOKEN IS SINGLE USE. Supabase consumes it on verification, so
+   * one token covers exactly one auth attempt — send a code, resend it, or sign
+   * in, and the token in hand is spent whether the attempt succeeded or not.
+   * The caller therefore has to ask for a new one after every attempt, and
+   * after anything that abandons an attempt part-way.
+   */
+  resetKey?: number;
 }) {
   const holder = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
@@ -129,6 +142,28 @@ export function CaptchaBox({
       widgetId.current = null;
     };
   }, [mount]);
+
+  /**
+   * A fresh challenge on demand, without rebuilding the widget.
+   *
+   * `turnstile.reset` keeps the same widget and issues a new token, which is
+   * what "run it again" has to mean here — removing and re-rendering the widget
+   * is what caused the loop this component was rewritten to fix.
+   *
+   * Skipped on the first render: `resetKey` starts at 0 and the widget is
+   * already running its first challenge, so resetting would cancel it.
+   */
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
+    if (!widgetId.current || !window.turnstile) return;
+    onTokenRef.current(null);
+    onChangeRef.current("checking");
+    window.turnstile.reset(widgetId.current);
+  }, [resetKey]);
 
   // Nothing to render a widget with. Said plainly rather than passing silently:
   // a sign-up form that looks unprotected and is unprotected is better than one

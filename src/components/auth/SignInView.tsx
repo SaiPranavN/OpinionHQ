@@ -131,6 +131,19 @@ export function SignInView() {
 
   const [captcha, setCaptcha] = useState<CaptchaState>("idle");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  /**
+   * Bumped whenever the token in hand is spent or abandoned.
+   *
+   * A Turnstile token covers one auth attempt. Supabase consumes it on
+   * verification, so after sending a code, resending one, or signing in — pass
+   * or fail — the next attempt needs a new one. Switching between "Sign in" and
+   * "Create one" abandons the attempt the token was fetched for, which is the
+   * case that was reported: the mode switch cleared the passed state, the
+   * widget had already finished and had no reason to fire again, and the submit
+   * button stayed disabled with no way to re-arm it.
+   */
+  const [captchaNonce, setCaptchaNonce] = useState(0);
+  const refreshCaptcha = () => setCaptchaNonce((n) => n + 1);
   const [code, setCode] = useState("");
   const [cooldown, setCooldown] = useState(0);
 
@@ -167,7 +180,7 @@ export function SignInView() {
     setPassword("");
     setConfirm("");
     setCode("");
-    setCaptcha("idle");
+    refreshCaptcha();
     setError(null);
     setDetailErrors({});
   };
@@ -210,6 +223,9 @@ export function SignInView() {
       const result = await signInWithIdentifier(identifier, password, captchaToken ?? undefined);
       setBusy(false);
       if (!result.ok) {
+        // Supabase consumed the token verifying it, so a second attempt with
+        // the same one is refused for the captcha rather than for the password.
+        refreshCaptcha();
         setError(result.message);
         return;
       }
@@ -234,6 +250,7 @@ export function SignInView() {
     setError(null);
     const result = await startSignUp(read.email, name, captchaToken ?? undefined);
     setBusy(false);
+    refreshCaptcha();
     if (!result.ok) {
       setError(result.message);
       return;
@@ -286,6 +303,7 @@ export function SignInView() {
     setBusy(true);
     const result = await resendSignUpCode(identifier, captchaToken ?? undefined);
     setBusy(false);
+    refreshCaptcha();
     if (!result.ok) {
       setError(result.message);
       return;
@@ -690,6 +708,7 @@ export function SignInView() {
                 use against. */}
             <CaptchaBox
               onToken={setCaptchaToken}
+              resetKey={captchaNonce}
               state={captcha}
               onChange={(nextState) => {
                 setCaptcha(nextState);
