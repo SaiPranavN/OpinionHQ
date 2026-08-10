@@ -20,17 +20,15 @@ import type { DecoratedPoll, PollSplitRow } from "@/lib/types";
  * only on hover.
  */
 export function PollAudience({ poll }: { poll: DecoratedPoll }) {
-  // Below the reporting threshold there is no audience to describe. Splitting a
-  // handful of votes by region would invent a pattern that does not exist.
-  if (poll.unvoted || poll.smallSample) {
+  // Nobody has voted, so there is no audience — the only case left now that the
+  // ten-vote reporting threshold is gone.
+  if (poll.unvoted) {
     return (
       <section aria-label="Who voted" className="ohq-panel flex flex-col gap-2 p-5 sm:p-7">
         <span className="ohq-eyebrow">Who voted</span>
         <p className="m-0 text-[13.5px] leading-[1.6] text-dim">
-          {poll.unvoted
-            ? "Nobody has voted yet, so there is no audience to break down."
-            : `Only ${poll.totalLabel} so far — too few to break down by region, age or occupation without inventing a pattern.`}{" "}
-          The cross-tabs appear once enough people have voted.
+          Nobody has voted yet, so there is no audience to break down. The cross-tabs
+          appear as soon as somebody does.
         </p>
       </section>
     );
@@ -97,7 +95,7 @@ export function PollAudience({ poll }: { poll: DecoratedPoll }) {
                   <span className="flex flex-wrap items-baseline justify-between gap-2 text-[12.5px]">
                     <span className="text-soft">{row.label}</span>
                     <span className="font-mono text-[10.5px] text-dim">
-                      {formatNumber(row.voters)} votes
+                      {formatNumber(row.voters)} {row.voters === 1 ? "vote" : "votes"}
                     </span>
                   </span>
 

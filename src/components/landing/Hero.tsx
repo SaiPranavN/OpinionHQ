@@ -55,7 +55,7 @@ export function Hero({
           data-reveal
           className="ohq-reveal m-0 font-display text-[clamp(2.9rem,7.4vw,6.6rem)] leading-[0.96] font-bold tracking-[-0.026em] text-balance text-cream-bright delay-[80ms] duration-[1150ms]"
         >
-          What does everyone <em className="italic text-positive">really</em> think?
+          What does everyone <em className="text-positive">really</em> think?
         </h1>
 
         <p

@@ -85,11 +85,11 @@ export default async function LandingPage() {
             {totals.topics > 0 ? (
               <>
                 {totals.topics} topics and {pollTotals.count} polls are{" "}
-                <em className="italic">already moving.</em>
+                <em>already moving.</em>
               </>
             ) : (
               <>
-                The first topics are <em className="italic">going up now.</em>
+                The first topics are <em>going up now.</em>
               </>
             )}
           </h2>

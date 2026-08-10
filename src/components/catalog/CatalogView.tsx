@@ -63,7 +63,7 @@ export function CatalogView({
       <header className="mt-4 flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         <div className="min-w-0">
           <h1 className="m-0 font-display text-[clamp(2rem,4vw,3.1rem)] leading-[1.02] font-bold tracking-[-0.025em] text-cream-bright">
-            Explore <em className="italic">opinions</em>
+            Explore <em>opinions</em>
           </h1>
           <p className="mt-2 mb-0 max-w-[560px] text-[14px] leading-[1.5] font-light text-muted">
             Explore active topics and see how <Brand /> participants currently feel
@@ -141,11 +141,11 @@ export function CatalogView({
           <p className="m-0 font-display font-bold text-[clamp(1.5rem,3vw,2.2rem)] tracking-[-0.02em] text-cream-bright">
             {all.length === 0 ? (
               <>
-                Nothing published <em className="italic">yet.</em>
+                Nothing published <em>yet.</em>
               </>
             ) : (
               <>
-                No topics here <em className="italic">yet.</em>
+                No topics here <em>yet.</em>
               </>
             )}
           </p>

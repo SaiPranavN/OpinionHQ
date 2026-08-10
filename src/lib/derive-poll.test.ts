@@ -130,7 +130,9 @@ describe("decoratePoll", () => {
     expect(fresh.splitLabel).toBe("No votes recorded yet");
   });
 
-  it("declines to call a verdict or cross-tab from a handful of votes", () => {
+  it("declines to call a verdict from a handful of votes", () => {
+    // The cross-tabs are empty here because no audience was supplied, not
+    // because a threshold withheld them — that floor is gone.
     const tiny = decoratePoll({
       ...three,
       options: [
@@ -203,10 +205,12 @@ describe("decoratePoll cross-tabs", () => {
     expect(d.demographicOptIn).toBe(73);
   });
 
-  it("withholds measured segments on a poll too small to break down", () => {
-    // The database suppresses small *segments*; this is the second floor, on
-    // the poll as a whole. Four voters cross-tabbed is a story about four
-    // people told as though it were about a region.
+  it("shows measured segments however few people are in them", () => {
+    // There used to be a ten-vote floor here, withholding every breakdown until
+    // a poll was big enough. Removed by decision: a segment of four is reported
+    // as a segment of four. What `smallSample` still holds back is the verdict —
+    // four votes is not a landslide — and that is a claim about the result, not
+    // a reason to hide the rows behind it.
     const d = decoratePoll({
       ...base,
       options: [
@@ -216,7 +220,8 @@ describe("decoratePoll cross-tabs", () => {
       audience: measured,
     });
     expect(d.smallSample).toBe(true);
-    expect(d.regions).toEqual([]);
+    expect(d.verdict).toBe("Too few votes to call");
+    expect(d.regions).toEqual(measured.regions);
   });
 
   it("finds the contrarian segment among measured rows only", () => {

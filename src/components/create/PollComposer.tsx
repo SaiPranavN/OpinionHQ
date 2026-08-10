@@ -244,7 +244,7 @@ export function PollComposer({ publisher }: { publisher?: PollPublisher } = {}) 
       <Shell>
         <div className="ohq-panel flex flex-col items-center gap-4 px-5 py-[clamp(48px,8vw,90px)] text-center">
           <h1 className="m-0 font-display font-bold text-[clamp(1.8rem,3.6vw,2.8rem)] tracking-[-0.02em] leading-[1.05] text-cream-bright">
-            Sign in to <em className="italic">create a poll</em>
+            Sign in to <em>create a poll</em>
           </h1>
           <p className="m-0 max-w-[460px] text-[14px] leading-[1.6] font-light text-muted">
             Polls are attributed to the account that publishes them. Reading and
@@ -266,7 +266,7 @@ export function PollComposer({ publisher }: { publisher?: PollPublisher } = {}) 
     <Shell>
       <header className="flex flex-col gap-3">
         <h1 className="m-0 font-display font-bold text-[clamp(2rem,4vw,3.1rem)] leading-[1.02] tracking-[-0.025em] text-cream-bright">
-          Create a <em className="italic">poll</em>
+          Create a <em>poll</em>
         </h1>
         <p className="m-0 max-w-[620px] text-[14px] leading-[1.55] font-light text-muted">
           One question, two to four options, no middle ground. The best polls on{" "}

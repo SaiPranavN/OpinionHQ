@@ -100,7 +100,7 @@ export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
       <Shell>
         <div className="ohq-panel flex flex-col items-center gap-4 px-5 py-[clamp(48px,8vw,90px)] text-center">
           <h1 className="m-0 font-display font-bold text-[clamp(1.8rem,3.6vw,2.6rem)] tracking-[-0.02em] leading-[1.05] text-cream-bright">
-            Sign in to see your <em className="italic">activity</em>
+            Sign in to see your <em>activity</em>
           </h1>
           <p className="m-0 max-w-[420px] text-[14px] leading-[1.6] font-light text-muted">
             Everything you vote on, write and ask is kept against your account so you can

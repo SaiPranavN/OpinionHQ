@@ -29,7 +29,7 @@ export function FacetPanel({ topic }: { topic: DecoratedTopic }) {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="m-0 mb-2 font-display text-[clamp(1.6rem,3vw,2.2rem)] leading-[1.05] font-bold tracking-[-0.02em] text-cream-bright">
-            The parts people actually <em className="italic">argue about</em>
+            The parts people actually <em>argue about</em>
           </h2>
           <p className="m-0 max-w-[560px] text-[13.5px] leading-[1.55] text-dim">
             {topic.facets.length} aspects, written for this topic rather than for

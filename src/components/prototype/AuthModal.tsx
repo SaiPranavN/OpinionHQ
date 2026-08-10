@@ -165,7 +165,7 @@ export function AuthModal({
           >
             {heldVote ? (
               <>
-                Almost there — <em className="italic">sign in</em> to record your opinion.
+                Almost there — <em>sign in</em> to record your opinion.
               </>
             ) : (
               <>

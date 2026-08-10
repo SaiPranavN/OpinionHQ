@@ -1,5 +1,4 @@
 import { formatNumber } from "@/lib/derive";
-import { MIN_SEGMENT } from "@/lib/demographics";
 import type { DecoratedTopic, DistributionRow } from "@/lib/types";
 
 function DistributionBars({
@@ -14,13 +13,12 @@ function DistributionBars({
   return (
     <div className="flex flex-col gap-3">
       <span className="text-[12.5px] text-muted">{title}</span>
-      {/* An empty panel is the suppression floor doing its job, not a missing
-          feature. Saying so is the difference between "not enough people yet"
-          and "this chart is broken". */}
+      {/* Every segment is reported now, however few people are in it, so an
+          empty panel means nobody has supplied this field rather than that a
+          threshold has not been met. */}
       {rows.length === 0 ? (
         <p className="m-0 text-[12px] leading-[1.5] text-dim">
-          Nothing to show yet — a group appears once at least {MIN_SEGMENT} people in
-          it have taken part.
+          Nobody who has taken part has given this yet.
         </p>
       ) : null}
       {rows.map((row) => (
@@ -79,9 +77,8 @@ export function AudiencePanels({ topic }: { topic: DecoratedTopic }) {
         </figcaption>
         {topic.geo.length === 0 ? (
           <p className="m-0 text-[13px] leading-[1.55] text-dim">
-            No regional breakdown yet. A state appears here once at least {MIN_SEGMENT}{" "}
-            people from it have taken part — below that, a row would identify the
-            people in it rather than describe a region.
+            No regional breakdown yet — nobody who has taken part has set a location
+            inside a state.
           </p>
         ) : null}
         <ul className="m-0 flex list-none flex-col gap-3.5 p-0">
@@ -120,8 +117,8 @@ export function AudiencePanels({ topic }: { topic: DecoratedTopic }) {
         </ul>
         <p className="m-0 border-t border-line pt-4 text-[12.5px] leading-[1.55] text-dim">
           Location is optional and self-declared, shared by {topic.demographicOptIn}% of
-          participants on this topic. Regions below 3% of the sample are grouped as
-          “Other states” rather than shown separately.
+          participants on this topic. A voter is counted under the state their place
+          sits in; somebody who set only a country appears in no row here.
         </p>
       </figure>
 
@@ -145,8 +142,8 @@ export function AudiencePanels({ topic }: { topic: DecoratedTopic }) {
         <p className="m-0 border-t border-line pt-4 text-[12.5px] leading-[1.55] text-dim">
           Demographics are voluntary. Percentages describe the participants who chose to
           share them — not all {formatNumber(topic.participants)} voters, and not the
-          public. A group is withheld entirely until enough people are in it to report
-          without identifying them, and “prefer not to say” is not counted as an answer.
+          public. Every group that has anybody in it is shown, however small, and
+          “prefer not to say” is not counted as an answer.
         </p>
       </figure>
     </section>

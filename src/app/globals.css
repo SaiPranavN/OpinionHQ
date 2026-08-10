@@ -379,6 +379,19 @@ body {
   color: var(--color-cream);
 }
 
+/*
+ * Emphasis without the slant.
+ *
+ * `<em>` is kept for what it means — a screen reader announces stress emphasis,
+ * and that is worth having — but it no longer leans. The display face is a
+ * geometric sans whose italic is really an oblique, so the emphasised word read
+ * as a rendering artefact rather than as emphasis. Weight and colour carry it
+ * where it matters instead.
+ */
+em {
+  font-style: normal;
+}
+
 ::selection {
   background: rgb(29 185 84 / 0.28);
 }

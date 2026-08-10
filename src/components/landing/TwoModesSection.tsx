@@ -37,8 +37,8 @@ export function TwoModesSection({
         <div data-reveal className="ohq-reveal mx-auto max-w-[760px] text-center">
           <span className="ohq-eyebrow">Two ways to ask in public</span>
           <h2 className="mt-4 mb-5 font-display text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.02] font-bold tracking-[-0.025em] text-balance text-cream-bright">
-            Some questions need a <em className="italic">scale.</em> Others need a{" "}
-            <em className="italic">winner.</em>
+            Some questions need a <em>scale.</em> Others need a{" "}
+            <em>winner.</em>
           </h2>
           <p className="m-0 text-[16px] leading-[1.6] font-light text-pretty text-muted">
             Asking &ldquo;how do you feel about the fee hike?&rdquo; and &ldquo;IIT or
@@ -66,7 +66,7 @@ export function TwoModesSection({
                 Opinion intelligence
               </span>
               <h3 className="m-0 font-display text-[clamp(1.7rem,2.6vw,2.4rem)] leading-[1.06] font-bold tracking-[-0.02em] text-cream-bright">
-                How does everyone feel about <em className="italic">this?</em>
+                How does everyone feel about <em>this?</em>
               </h3>
               <p className="m-0 text-[14.5px] leading-[1.6] font-light text-muted">
                 One subject, measured continuously. A positive / neutral / negative
@@ -117,7 +117,7 @@ export function TwoModesSection({
                 Polling
               </span>
               <h3 className="m-0 font-display text-[clamp(1.7rem,2.6vw,2.4rem)] leading-[1.06] font-bold tracking-[-0.02em] text-cream-bright">
-                Up to four options. <em className="italic">Pick one.</em>
+                Up to four options. <em>Pick one.</em>
               </h3>
               <p className="m-0 text-[14.5px] leading-[1.6] font-light text-muted">
                 A forced choice on anything — people, products, formats, policies,

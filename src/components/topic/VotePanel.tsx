@@ -60,7 +60,7 @@ export function VotePanel({ topicId, accent }: { topicId: string; accent: string
       className="ohq-panel-raised p-5 sm:p-[34px]"
     >
       <h2 className="m-0 mb-2 font-display text-[clamp(1.7rem,3vw,2.4rem)] leading-[1.05] font-bold tracking-[-0.02em] text-cream-bright">
-        Share your <em className="italic">opinion</em>
+        Share your <em>opinion</em>
       </h2>
       <p className="m-0 mb-6 text-[13.5px] text-dim">
         No account needed to choose — sign-in happens only when you submit.

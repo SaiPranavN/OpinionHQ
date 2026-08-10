@@ -196,13 +196,13 @@ export function decoratePoll(poll: Poll): DecoratedPoll {
   const runnerUp = ranked[1] ?? leader;
   const margin = leader.pct - runnerUp.pct;
 
-  // Measured cross-tabs, or nothing. The client applies one more floor on top
-  // of the per-segment suppression the database already did: below
-  // MIN_REPORTABLE votes in total there is a result but nothing that can
-  // honestly be broken down, and a regional split of four voters is a story
-  // about four people told as though it were about a region.
-  const reportable = !unvoted && !smallSample;
-  const measured = reportable ? poll.audience : undefined;
+  // Measured cross-tabs, whatever their size. There used to be a second floor
+  // here on top of the database's, hiding every breakdown until ten people had
+  // voted. Both are gone by decision — a segment of one is shown as a segment
+  // of one. `smallSample` still exists below, but only to hold back the
+  // *verdict*: two votes is not a landslide, and that is a claim about the
+  // result rather than a reason to withhold the data behind it.
+  const measured = unvoted ? undefined : poll.audience;
   const regions = measured?.regions ?? [];
   const ageGroups = measured?.ageGroups ?? [];
   const occupations = measured?.occupations ?? [];

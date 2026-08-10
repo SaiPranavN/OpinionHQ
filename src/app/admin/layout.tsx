@@ -60,7 +60,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header className="flex flex-col gap-3 border-b border-veil/10 pb-6">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
           <h1 className="m-0 font-display text-[clamp(1.8rem,3.4vw,2.6rem)] leading-[1.05] font-bold tracking-[-0.025em] text-cream-bright">
-            Editorial <em className="italic">desk</em>
+            Editorial <em>desk</em>
           </h1>
           <span className="flex items-center gap-2 text-[12.5px] text-muted">
             {profile?.display_name}

@@ -28,8 +28,10 @@ const manrope = Manrope({
  * IT REPLACED A SERIF, and that is a bigger change than a font swap. The old
  * Instrument Serif carried the emphasis in these headings through its italic —
  * a genuinely different set of letterforms. A geometric sans has no such
- * register: its italic is close to a slant. So the `<em>` runs still lean, but
- * the weight below is what actually does the work now.
+ * register: its italic is really an oblique, which read as a rendering fault
+ * rather than as emphasis. So the italic face is not downloaded at all now, and
+ * weight and colour carry the emphasis instead (see the `em` rule in
+ * globals.css).
  *
  * Only the weights the headings use are downloaded. 500 and 600 are here for
  * smaller headings, 700 and 800 for display sizes; 400 is deliberately absent,
@@ -39,7 +41,6 @@ const manrope = Manrope({
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   weight: ["500", "600", "700", "800"],
-  style: ["normal", "italic"],
   variable: "--font-plus-jakarta",
   display: "swap",
 });

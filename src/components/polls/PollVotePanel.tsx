@@ -33,11 +33,11 @@ export function PollVotePanel({ poll }: { poll: DecoratedPoll }) {
       <h2 className="m-0 mb-2 font-display text-[clamp(1.7rem,3vw,2.4rem)] leading-[1.05] font-bold tracking-[-0.02em] text-cream-bright">
         {cast ? (
           <>
-            Your vote is <em className="italic">counted.</em>
+            Your vote is <em>counted.</em>
           </>
         ) : (
           <>
-            So — which <em className="italic">one?</em>
+            So — which <em>one?</em>
           </>
         )}
       </h2>

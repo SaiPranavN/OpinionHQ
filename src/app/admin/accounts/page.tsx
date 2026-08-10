@@ -54,8 +54,8 @@ export default async function AdminAccounts() {
           </span>
         </h2>
         <p className="m-0 max-w-[72ch] text-[13px] leading-[1.6] font-light text-muted">
-          Roles are what somebody may <em className="italic">do</em>. Pro is what they have{" "}
-          <em className="italic">paid for</em> and is not on this ladder — an admin may or may not
+          Roles are what somebody may <em>do</em>. Pro is what they have{" "}
+          <em>paid for</em> and is not on this ladder — an admin may or may not
           be a subscriber, and it changes nothing either way.
         </p>
       </div>

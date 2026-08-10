@@ -424,7 +424,7 @@ export function SignInView() {
       <Shell>
         <div className="flex flex-col items-start gap-4">
           <h1 className="m-0 font-display font-bold text-[clamp(1.7rem,3.4vw,2.3rem)] tracking-[-0.02em] leading-[1.08] text-cream-bright">
-            You are signed in as <em className="italic">{displayName || "you"}</em>.
+            You are signed in as <em>{displayName || "you"}</em>.
           </h1>
           <p className="m-0 text-[14px] leading-[1.6] font-light text-muted">
             Nothing to do here. Your activity is on your dashboard.
@@ -472,7 +472,7 @@ export function SignInView() {
           <Heading
             title={
               <>
-                Check your <em className="italic">email</em>
+                Check your <em>email</em>
               </>
             }
             blurb={
@@ -531,7 +531,7 @@ export function SignInView() {
           <Heading
             title={
               <>
-                Set a <em className="italic">password</em>
+                Set a <em>password</em>
               </>
             }
             blurb="Your email is confirmed. This is the last thing standing between your account and somebody else."
@@ -582,7 +582,7 @@ export function SignInView() {
           <Heading
             title={
               <>
-                A little <em className="italic">about you</em>
+                A little <em>about you</em>
               </>
             }
             blurb="Every field is needed — these are what the region, age and occupation breakdowns are built from."
@@ -617,7 +617,7 @@ export function SignInView() {
             title={
               signup ? (
                 <>
-                  Create your <em className="italic">account</em>
+                  Create your <em>account</em>
                 </>
               ) : (
                 <>
@@ -870,7 +870,7 @@ function Shell({ children }: { children: React.ReactNode }) {
     <section className="mx-auto grid w-full max-w-[1120px] grid-cols-1 items-start gap-10 px-4 py-[clamp(28px,5vw,64px)] sm:px-8 lg:grid-cols-[minmax(0,1fr)_468px] lg:gap-14">
       <aside className="hidden flex-col gap-6 lg:sticky lg:top-[calc(var(--ohq-nav-h)+56px)] lg:flex">
         <h2 className="m-0 max-w-[13ch] font-display text-[clamp(2rem,3.2vw,2.9rem)] leading-[1.04] font-bold tracking-[-0.025em] text-balance text-cream-bright">
-          An account is <em className="italic">one vote</em>.
+          An account is <em>one vote</em>.
         </h2>
         <p className="m-0 max-w-[42ch] text-[14.5px] leading-[1.6] font-light text-muted">
           Every number on <Brand /> is worth reading because it counts each person
