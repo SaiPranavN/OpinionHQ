@@ -176,16 +176,41 @@ export function rowsToAudience(rows: AudienceRow[], optionCount: number): PollAu
   };
 }
 
-export function rowsToHistory(
-  rows: { recorded_on: string; pcts: number[]; event: string | null }[],
-): PollHistoryPoint[] {
-  return [...rows]
-    .sort((a, b) => a.recorded_on.localeCompare(b.recorded_on))
-    .map((row) => ({
-      date: row.recorded_on,
-      pcts: row.pcts.map(Number),
-      ...(row.event ? { event: row.event } : {}),
-    }));
+/** One row of `public.poll_daily_series`. */
+export interface DailyRow {
+  cast_on: string;
+  slot: string;
+  votes: number;
+}
+
+/**
+ * Per-day option counts into the running split the chart plots.
+ *
+ * CUMULATIVE, not per-day. The figure a reader sees at the top of the page is
+ * the share of everyone who has voted, so each point here is the split as it
+ * stood at the end of that day. A per-day line would swing on a quiet Tuesday
+ * and disagree with the headline directly above it.
+ *
+ * `pcts` is aligned with the options by slot and rounded to total exactly 100,
+ * because a cross-tab row elsewhere on the page makes the same promise and a
+ * reader comparing the two is comparing like with like.
+ */
+export function rowsToHistory(rows: DailyRow[], optionCount: number): PollHistoryPoint[] {
+  const slots = SLOTS.slice(0, optionCount);
+  const days = [...new Set(rows.map((r) => r.cast_on))].sort();
+  const running = new Map<PollOptionId, number>(slots.map((s) => [s, 0]));
+
+  return days.map((date) => {
+    for (const row of rows) {
+      if (row.cast_on !== date || !isSlot(row.slot)) continue;
+      running.set(row.slot, (running.get(row.slot) ?? 0) + Number(row.votes));
+    }
+    const total = slots.reduce((sum, s) => sum + (running.get(s) ?? 0), 0) || 1;
+    return {
+      date,
+      pcts: roundTo100(slots.map((s) => ((running.get(s) ?? 0) / total) * 100)),
+    };
+  });
 }
 
 export function rowToPoll(

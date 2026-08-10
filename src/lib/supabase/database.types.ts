@@ -3195,6 +3195,14 @@ export type Database = {
           voters: number
         }[]
       }
+      poll_daily_series: {
+        Args: { target: string }
+        Returns: {
+          cast_on: string
+          slot: Database["public"]["Enums"]["option_slot"]
+          votes: number
+        }[]
+      }
       poll_demographic_opt_in: { Args: { target: string }; Returns: number }
       poll_reason_counts: {
         Args: { target: string }

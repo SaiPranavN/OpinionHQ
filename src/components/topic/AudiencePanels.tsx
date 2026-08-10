@@ -1,4 +1,5 @@
 import { formatNumber } from "@/lib/derive";
+import { MIN_SEGMENT } from "@/lib/demographics";
 import type { DecoratedTopic, DistributionRow } from "@/lib/types";
 
 function DistributionBars({
@@ -13,6 +14,15 @@ function DistributionBars({
   return (
     <div className="flex flex-col gap-3">
       <span className="text-[12.5px] text-muted">{title}</span>
+      {/* An empty panel is the suppression floor doing its job, not a missing
+          feature. Saying so is the difference between "not enough people yet"
+          and "this chart is broken". */}
+      {rows.length === 0 ? (
+        <p className="m-0 text-[12px] leading-[1.5] text-dim">
+          Nothing to show yet — a group appears once at least {MIN_SEGMENT} people in
+          it have taken part.
+        </p>
+      ) : null}
       {rows.map((row) => (
         <span key={row.label} className="flex items-center gap-3">
           <span
@@ -67,6 +77,13 @@ export function AudiencePanels({ topic }: { topic: DecoratedTopic }) {
             Self-reported
           </span>
         </figcaption>
+        {topic.geo.length === 0 ? (
+          <p className="m-0 text-[13px] leading-[1.55] text-dim">
+            No regional breakdown yet. A state appears here once at least {MIN_SEGMENT}{" "}
+            people from it have taken part — below that, a row would identify the
+            people in it rather than describe a region.
+          </p>
+        ) : null}
         <ul className="m-0 flex list-none flex-col gap-3.5 p-0">
           {topic.geo.map((row) => (
             <li key={row.label} className="flex flex-wrap items-center gap-x-3.5 gap-y-2">

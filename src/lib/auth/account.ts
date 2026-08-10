@@ -168,11 +168,11 @@ export async function detailsAreComplete(): Promise<boolean> {
 
   const { data } = await supabase
     .from("profile_private")
-    .select("dob, occupation, country")
+    .select("dob, occupation, country, gender")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  return Boolean(data?.dob && data?.occupation && data?.country);
+  return Boolean(data?.dob && data?.occupation && data?.country && data?.gender);
 }
 
 /* --------------------------------------------------------------- the profile */

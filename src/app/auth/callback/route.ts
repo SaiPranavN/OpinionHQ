@@ -73,11 +73,12 @@ export async function GET(request: NextRequest) {
   if (user) {
     const { data: details } = await supabase
       .from("profile_private")
-      .select("dob, occupation, country")
+      .select("dob, occupation, country, gender")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    const unfinished = !details?.dob || !details?.occupation || !details?.country;
+    const unfinished =
+      !details?.dob || !details?.occupation || !details?.country || !details?.gender;
 
     if (unfinished) {
       // A Google account has no password to set and never will — asking would

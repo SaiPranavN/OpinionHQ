@@ -37,6 +37,18 @@ export const OCCUPATIONS: string[] = OCCUPATION_OPTIONS.map((o) => o.label);
  * excluded from the breakdowns in `topic_audience` — declining to state a
  * gender is not a gender, the same rule occupations already follow.
  */
+/**
+ * How many people a segment needs before it is published.
+ *
+ * MUST MATCH `min_segment` in `public.topic_audience` and
+ * `public.poll_audience`. The database enforces it — this copy exists so the
+ * screen can say why a panel is empty instead of looking broken.
+ *
+ * A cross-tab of a small group is a re-identification tool: "Educators in Goa,
+ * 100% against, 1 voter" plus one person's known job and city names their vote.
+ */
+export const MIN_SEGMENT = 10;
+
 export const GENDERS = ["Woman", "Man", "Non-binary", "Prefer not to say"] as const;
 
 export type Gender = (typeof GENDERS)[number];

@@ -23,6 +23,7 @@ import {
   rowsToOptions,
   type AudienceRow,
   type PollCardRow,
+  type DailyRow,
   type PollOptionRow,
 } from "@/lib/polls/rows";
 import type { DecoratedPoll, PollOptionId, PollReason } from "@/lib/types";
@@ -121,11 +122,9 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
     supabase.rpc("poll_audience", { target: pollId }).then((r) => r.data),
     supabase.rpc("poll_demographic_opt_in", { target: pollId }).then((r) => r.data),
     supabase.rpc("poll_reason_counts", { target: pollId }).then((r) => r.data),
-    supabase
-      .from("poll_history")
-      .select("recorded_on, pcts, event")
-      .eq("poll_id", pollId)
-      .then((r) => r.data),
+    // From the votes themselves. `poll_history` was meant to be filled by a
+    // scheduled job that never existed, so the chart had nothing to draw.
+    supabase.rpc("poll_daily_series", { target: pollId }).then((r) => r.data),
     supabase
       .from("poll_reasons")
       // `!user_id` NAMES THE RELATIONSHIP, and it has to.
@@ -194,10 +193,7 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
       ),
       reasonCounts,
       demographicOptIn: Number(optIn ?? 0),
-      history: rowsToHistory(
-        (historyRows as { recorded_on: string; pcts: number[]; event: string | null }[] | null) ??
-          [],
-      ),
+      history: rowsToHistory((historyRows as DailyRow[] | null) ?? [], options.length),
     },
   );
 

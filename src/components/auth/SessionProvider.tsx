@@ -32,6 +32,7 @@ export interface PrivateDetails {
   mobile: string | null;
   occupation: string | null;
   country: string | null;
+  gender: string | null;
   state: string | null;
   city: string | null;
   placeId: string | null;
@@ -85,13 +86,14 @@ const SessionContext = createContext<SessionValue | null>(null);
  */
 const ACCOUNT_QUERY =
   "id, display_name, initials, username, headline, role, suspended_at, " +
-  "profile_private(dob, mobile, occupation, country, state, city, place_id), " +
+  "profile_private(dob, mobile, occupation, gender, country, state, city, place_id), " +
   "subscriptions(status, current_period_end)";
 
 type PrivateRow = {
   dob: string | null;
   mobile: string | null;
   occupation: string | null;
+  gender: string | null;
   country: string | null;
   state: string | null;
   city: string | null;
@@ -148,6 +150,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         dob: priv?.dob ?? null,
         mobile: priv?.mobile ?? null,
         occupation: priv?.occupation ?? null,
+        gender: (priv?.gender as string | null) ?? null,
         country: priv?.country ?? null,
         state: priv?.state ?? null,
         city: priv?.city ?? null,
@@ -230,10 +233,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       account,
       signedIn: Boolean(user),
       displayName: account?.displayName ?? "",
-      // The three the cross-tabs are built from. Mobile is not on this list —
+      // The four the cross-tabs are built from. Mobile is not on this list —
       // it is for account recovery and nothing charts it.
+      //
+      // `gender` is here so accounts created before the column existed are
+      // routed back to the details step to fill it in, rather than sitting
+      // permanently outside the gender breakdown with no way to opt in.
       needsDetails:
-        Boolean(user) && (!details?.dob || !details?.occupation || !details?.country),
+        Boolean(user) &&
+        (!details?.dob || !details?.occupation || !details?.country || !details?.gender),
       isEditor: account?.role === "editor" || account?.role === "admin",
       isAdmin: account?.role === "admin",
       googleEnabled,

@@ -41,9 +41,12 @@ export function PollHistory({ poll }: { poll: DecoratedPoll }) {
       <section className="ohq-panel flex flex-col gap-3 p-5 sm:p-7">
         <span className="ohq-eyebrow">How the split moved</span>
         <p className="m-0 max-w-[560px] text-[13.5px] leading-[1.6] text-dim">
-          No earlier readings recorded for this poll. Once the split has been
-          measured more than once, the movement between those readings appears
-          here — this chart only ever plots readings that were actually taken.
+          {/* Two different situations, and telling them apart matters: one is
+              "nobody has voted", the other is "everybody voted at once". The
+              second looks like a broken chart if it is described as the first. */}
+          {poll.unvoted
+            ? "No votes yet, so there is no split to move. This fills in from the votes themselves — every one is stamped with the day it was cast."
+            : `Everyone who has voted so far did so on the same day, so there is no movement to plot yet. The split stands at ${poll.leader.name} ${poll.leader.pct}% across ${poll.total} ${poll.total === 1 ? "vote" : "votes"}; a second day of voting gives this chart its first line.`}
         </p>
       </section>
     );
