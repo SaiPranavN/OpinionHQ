@@ -120,10 +120,16 @@ export function AudiencePanels({ topic }: { topic: DecoratedTopic }) {
           rows={topic.occupations}
           labelWidth="clamp(74px,10vw,120px)"
         />
+        <DistributionBars
+          title="Gender"
+          rows={topic.genders}
+          labelWidth="clamp(74px,10vw,120px)"
+        />
         <p className="m-0 border-t border-line pt-4 text-[12.5px] leading-[1.55] text-dim">
           Demographics are voluntary. Percentages describe the participants who chose to
           share them — not all {formatNumber(topic.participants)} voters, and not the
-          public.
+          public. A group is withheld entirely until enough people are in it to report
+          without identifying them, and “prefer not to say” is not counted as an answer.
         </p>
       </figure>
     </section>

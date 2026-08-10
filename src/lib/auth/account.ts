@@ -181,6 +181,7 @@ export interface AccountDetailsInput {
   displayName?: string;
   dob?: string;
   mobile?: string;
+  gender?: string;
   occupation?: string;
   country?: string;
   state?: string;
@@ -219,6 +220,7 @@ export async function saveAccountDetails(details: AccountDetailsInput): Promise<
     .update({
       dob: details.dob || null,
       mobile: details.mobile?.trim() || null,
+      gender: (details.gender || null) as never,
       occupation: details.occupation || null,
       country: details.country || null,
       state: details.state?.trim() || null,

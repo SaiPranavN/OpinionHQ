@@ -145,6 +145,7 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
     { data: audienceRows },
     { data: optIn },
     { data: tallyRows },
+    { data: seriesRows },
   ] = await Promise.all([
       // Written opinions only. A bare vote is a row here too, and listing them
       // would fill the discussion with empty cards.
@@ -187,6 +188,9 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
       supabase.rpc("topic_audience", { target: topicId }),
       supabase.rpc("topic_demographic_opt_in", { target: topicId }),
       supabase.rpc("aspect_tallies", { target: topicId }),
+      // Per-day participation and sentiment, counted from opinions.created_at.
+      // No scheduled job behind it — the timestamps are already there.
+      supabase.rpc("topic_daily_series", { target: topicId }),
     ]);
 
   const answers: Record<string, string> = {};
@@ -257,6 +261,17 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
         audience: rowsToAudience((audienceRows as AudienceRow[] | null) ?? []),
         demographicOptIn: Number(optIn ?? 0),
         facetTallies,
+        series: (
+          (seriesRows as
+            | { cast_on: string; votes: number; positive: number; neutral: number; negative: number }[]
+            | null) ?? []
+        ).map((row) => ({
+          date: row.cast_on,
+          votes: Number(row.votes),
+          positive: Number(row.positive),
+          neutral: Number(row.neutral),
+          negative: Number(row.negative),
+        })),
       }),
     ),
     opinions,

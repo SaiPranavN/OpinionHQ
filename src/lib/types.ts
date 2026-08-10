@@ -200,6 +200,8 @@ export interface Topic {
    * no bars rather than a distribution jittered off the topic's own sentiment.
    */
   facetTallies?: Record<string, Record<string, number>>;
+  /** Per-day readings, counted from the opinions themselves. */
+  series?: TopicDayReading[];
   /** Server-computed trending score, 0–100 (brief §31). */
   trend: number;
   /** Lower is more recently updated; used by the "Recently updated" sort. */
@@ -647,6 +649,24 @@ export interface TopicAudience {
   geo: GeoRow[];
   ageGroups: DistributionRow[];
   occupations: DistributionRow[];
+  genders: DistributionRow[];
+}
+
+/**
+ * One day of a topic's record, counted from the opinions cast that day.
+ *
+ * Not a stored aggregate and not a scheduled job: every opinion carries the
+ * moment it was cast, so the series is read straight off the table. A day
+ * nobody voted has no row, which is what keeps the chart from drawing a line
+ * through a measurement nobody took.
+ */
+export interface TopicDayReading {
+  /** ISO date, `YYYY-MM-DD`. */
+  date: string;
+  votes: number;
+  positive: number;
+  neutral: number;
+  negative: number;
 }
 
 export interface GeoRow extends DistributionRow {
@@ -699,6 +719,9 @@ export interface DecoratedTopic extends Topic {
   geo: GeoRow[];
   ageGroups: DistributionRow[];
   occupations: DistributionRow[];
+  genders: DistributionRow[];
   demographicOptIn: number;
+  /** Per-day participation and sentiment, oldest first. Empty when nobody has voted. */
+  series: TopicDayReading[];
   facets: FacetResult[];
 }

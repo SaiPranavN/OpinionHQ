@@ -163,6 +163,7 @@ const MOBILE_RE = /^[+]?[0-9\s-]{7,18}$/;
 export interface AccountDetailsDraft {
   dob?: string;
   mobile?: string;
+  gender?: string;
   occupation?: string;
   country?: string;
   state?: string;
@@ -204,6 +205,7 @@ export function validateDetails(
   if (!details.mobile?.trim()) errors.mobile = "Used to recover your account.";
   else if (!MOBILE_RE.test(details.mobile.trim())) errors.mobile = "That does not look like a phone number.";
 
+  if (!details.gender) errors.gender = "Needed for the gender breakdowns.";
   if (!details.occupation) errors.occupation = "Needed for the occupation breakdowns.";
   if (!details.country) errors.country = "Needed for the regional breakdowns.";
   if (!details.state?.trim()) errors.state = "Needed for the regional breakdowns.";

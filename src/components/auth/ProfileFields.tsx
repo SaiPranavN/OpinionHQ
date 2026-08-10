@@ -24,18 +24,19 @@
 import { Select, type SelectOption } from "@/components/ui/Select";
 import { AuthField, authInput } from "@/components/auth/CredentialForm";
 import type { DetailErrors } from "@/lib/auth/signup";
-import { COUNTRIES, OCCUPATIONS } from "@/lib/demographics";
+import { COUNTRIES, GENDERS, OCCUPATIONS } from "@/lib/demographics";
 import { PLACES } from "@/lib/places";
 
 // Re-exported so existing imports keep working. The lists themselves moved to
 // `lib/demographics.ts`, where the database seed can also read them — see the
 // note at the top of that file.
-export { COUNTRIES, OCCUPATIONS };
+export { COUNTRIES, GENDERS, OCCUPATIONS };
 
 /** The demographic half of an account. Keys match `Profile` exactly. */
 export interface ProfileDetails {
   dob?: string;
   mobile?: string;
+  gender?: string;
   occupation?: string;
   country?: string;
   state?: string;
@@ -97,6 +98,17 @@ export function ProfileFields({
           autoComplete="tel"
           aria-invalid={Boolean(errors.mobile) || undefined}
           className={`${authInput} ${errors.mobile ? "border-negative/55" : ""}`}
+        />
+      </AuthField>
+
+      <AuthField label="Gender" required error={errors.gender} htmlFor="ohq-gender">
+        <Select
+          id="ohq-gender"
+          value={value.gender ?? ""}
+          onChange={(next) => set("gender", next)}
+          options={asOptions(GENDERS)}
+          ariaLabel="Gender"
+          invalid={Boolean(errors.gender)}
         />
       </AuthField>
 

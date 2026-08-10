@@ -13,6 +13,7 @@
 
 import type {
   TopicAudience,
+  TopicDayReading,
   ChangeMetric,
   CategoryId,
   Facet,
@@ -146,6 +147,7 @@ export function rowToTopic(
     audience?: TopicAudience;
     demographicOptIn?: number;
     facetTallies?: Record<string, Record<string, number>>;
+    series?: TopicDayReading[];
   } = {},
 ): Topic {
   const shares = sharesOf(row.positive_count, row.neutral_count, row.negative_count);
@@ -169,6 +171,7 @@ export function rowToTopic(
       ? { demographicOptIn: extras.demographicOptIn }
       : {}),
     ...(extras.facetTallies ? { facetTallies: extras.facetTallies } : {}),
+    ...(extras.series ? { series: extras.series } : {}),
     ...shares,
     participants: row.participants,
     written: row.written_count,
@@ -276,5 +279,6 @@ export function rowsToAudience(rows: AudienceRow[]): TopicAudience {
     })),
     ageGroups: build("age").map(({ label, pct, count }) => ({ label, pct, count })),
     occupations: build("occupation").map(({ label, pct, count }) => ({ label, pct, count })),
+    genders: build("gender").map(({ label, pct, count }) => ({ label, pct, count })),
   };
 }

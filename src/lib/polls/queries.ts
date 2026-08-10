@@ -128,10 +128,22 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
       .then((r) => r.data),
     supabase
       .from("poll_reasons")
+      // `!user_id` NAMES THE RELATIONSHIP, and it has to.
+      //
+      // PostgREST can reach `profiles` from `poll_reasons` two ways — directly
+      // through `user_id`, and around through `poll_id → polls.created_by` —
+      // so an unqualified embed is ambiguous and the whole query fails with
+      // "more than one relationship was found". The failure was silent: the
+      // error was discarded and the page rendered an empty reasons list, so
+      // every written reason looked lost the moment somebody refreshed. They
+      // were in the table the whole time.
+      //
       // `initials` is a generated column, so the monogram is read rather than
       // recomputed — a second implementation here would drift the moment
       // somebody edits their display name.
-      .select("id, option_id, body, helpful_count, created_at, profiles(display_name, initials)")
+      .select(
+        "id, option_id, body, helpful_count, created_at, profiles!user_id(display_name, initials)",
+      )
       .eq("poll_id", pollId)
       .is("hidden_at", null)
       .order("helpful_count", { ascending: false })

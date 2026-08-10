@@ -29,6 +29,18 @@ export const OCCUPATION_OPTIONS: readonly { label: string; countsInBreakdowns: b
 
 export const OCCUPATIONS: string[] = OCCUPATION_OPTIONS.map((o) => o.label);
 
+/**
+ * Gender options.
+ *
+ * "Prefer not to say" is a real answer and is stored, so somebody who declines
+ * is distinguishable from somebody who has not reached the form yet. It is
+ * excluded from the breakdowns in `topic_audience` — declining to state a
+ * gender is not a gender, the same rule occupations already follow.
+ */
+export const GENDERS = ["Woman", "Man", "Non-binary", "Prefer not to say"] as const;
+
+export type Gender = (typeof GENDERS)[number];
+
 export const COUNTRIES = [
   "India",
   "United States",

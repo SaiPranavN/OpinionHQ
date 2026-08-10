@@ -265,7 +265,11 @@ export function decorate(topic: Topic): DecoratedTopic {
     geo: topic.audience?.geo ?? [],
     ageGroups: topic.audience?.ageGroups ?? [],
     occupations: topic.audience?.occupations ?? [],
+    genders: topic.audience?.genders ?? [],
     demographicOptIn: topic.demographicOptIn ?? 0,
+    // Oldest first, and empty when nobody has voted. The charts decide what a
+    // single reading is worth; they do not get to invent a second one.
+    series: topic.series ?? [],
     facets: facetResults(topic),
   };
 }

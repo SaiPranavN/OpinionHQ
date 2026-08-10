@@ -119,6 +119,7 @@ describe("details", () => {
   const complete = {
     dob: "1998-04-12",
     mobile: "+91 9876543210",
+    gender: "Woman",
     occupation: "Working professional",
     country: "India",
     state: "Karnataka",
@@ -138,6 +139,7 @@ describe("details", () => {
       "city",
       "country",
       "dob",
+      "gender",
       "mobile",
       "occupation",
       "state",

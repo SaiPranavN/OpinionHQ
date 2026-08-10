@@ -1323,6 +1323,7 @@ export type Database = {
           created_at: string
           edited_at: string | null
           format: Database["public"]["Enums"]["contribution_format"]
+          gender: Database["public"]["Enums"]["gender"] | null
           helpful_count: number
           hidden_at: string | null
           hidden_reason: string | null
@@ -1347,6 +1348,7 @@ export type Database = {
           created_at?: string
           edited_at?: string | null
           format?: Database["public"]["Enums"]["contribution_format"]
+          gender?: Database["public"]["Enums"]["gender"] | null
           helpful_count?: number
           hidden_at?: string | null
           hidden_reason?: string | null
@@ -1371,6 +1373,7 @@ export type Database = {
           created_at?: string
           edited_at?: string | null
           format?: Database["public"]["Enums"]["contribution_format"]
+          gender?: Database["public"]["Enums"]["gender"] | null
           helpful_count?: number
           hidden_at?: string | null
           hidden_reason?: string | null
@@ -1755,6 +1758,7 @@ export type Database = {
         Row: {
           age_band: Database["public"]["Enums"]["age_band"] | null
           created_at: string
+          gender: Database["public"]["Enums"]["gender"] | null
           id: string
           occupation: string | null
           option_id: string
@@ -1766,6 +1770,7 @@ export type Database = {
         Insert: {
           age_band?: Database["public"]["Enums"]["age_band"] | null
           created_at?: string
+          gender?: Database["public"]["Enums"]["gender"] | null
           id?: string
           occupation?: string | null
           option_id: string
@@ -1777,6 +1782,7 @@ export type Database = {
         Update: {
           age_band?: Database["public"]["Enums"]["age_band"] | null
           created_at?: string
+          gender?: Database["public"]["Enums"]["gender"] | null
           id?: string
           occupation?: string | null
           option_id?: string
@@ -1965,6 +1971,7 @@ export type Database = {
           country: string | null
           created_at: string
           dob: string | null
+          gender: Database["public"]["Enums"]["gender"] | null
           mobile: string | null
           occupation: string | null
           place_id: string | null
@@ -1977,6 +1984,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           dob?: string | null
+          gender?: Database["public"]["Enums"]["gender"] | null
           mobile?: string | null
           occupation?: string | null
           place_id?: string | null
@@ -1989,6 +1997,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           dob?: string | null
+          gender?: Database["public"]["Enums"]["gender"] | null
           mobile?: string | null
           occupation?: string | null
           place_id?: string | null
@@ -3044,6 +3053,7 @@ export type Database = {
         Returns: {
           age_band: Database["public"]["Enums"]["age_band"] | null
           created_at: string
+          gender: Database["public"]["Enums"]["gender"] | null
           id: string
           occupation: string | null
           option_id: string
@@ -3073,6 +3083,7 @@ export type Database = {
           created_at: string
           edited_at: string | null
           format: Database["public"]["Enums"]["contribution_format"]
+          gender: Database["public"]["Enums"]["gender"] | null
           helpful_count: number
           hidden_at: string | null
           hidden_reason: string | null
@@ -3365,7 +3376,18 @@ export type Database = {
           vote: Database["public"]["Enums"]["sentiment"]
         }[]
       }
+      topic_daily_series: {
+        Args: { target: string }
+        Returns: {
+          cast_on: string
+          negative: number
+          neutral: number
+          positive: number
+          votes: number
+        }[]
+      }
       topic_demographic_opt_in: { Args: { target: string }; Returns: number }
+      topic_gender_opt_in: { Args: { target: string }; Returns: number }
       vote_on_reply: {
         Args: {
           kind: Database["public"]["Enums"]["reader_vote"]
@@ -3411,6 +3433,7 @@ export type Database = {
         | "trending"
       contribution_format: "standard" | "pro"
       credential_status: "pending" | "verified" | "rejected" | "revoked"
+      gender: "Woman" | "Man" | "Non-binary" | "Prefer not to say"
       interactive_kind:
         | "poll"
         | "rating"
@@ -3629,6 +3652,7 @@ export const Constants = {
       ],
       contribution_format: ["standard", "pro"],
       credential_status: ["pending", "verified", "rejected", "revoked"],
+      gender: ["Woman", "Man", "Non-binary", "Prefer not to say"],
       interactive_kind: [
         "poll",
         "rating",
