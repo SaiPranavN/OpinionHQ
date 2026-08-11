@@ -82,7 +82,10 @@ export function PollAudience({ poll }: { poll: DecoratedPoll }) {
             key={title}
             className="ohq-panel m-0 flex min-w-0 flex-[1_1_300px] flex-col gap-4 p-5 sm:p-7"
           >
-            <figcaption className="flex flex-wrap items-baseline justify-between gap-2">
+            {/* Stacked on a phone. Side by side, the title and its provenance
+                note filled the whole width and ran together into one line of
+                monospace — "WHERE VOTES CAME FROM SELF-REPORTED LOCATION". */}
+            <figcaption className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-2">
               <span className="ohq-eyebrow">{title}</span>
               <span className="font-mono text-[9.5px] tracking-[0.08em] uppercase text-dim">
                 {note}

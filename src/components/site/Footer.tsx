@@ -10,7 +10,8 @@ export function Footer() {
         All figures describe participating <Brand /> users, not the general public.
         Verified updates are sourced; opinions belong to their authors.
       </span>
-      <span className="font-mono text-[11px] tracking-[0.08em]">Prototype · 2026</span>
+      {/* Said "Prototype" until the week this shipped. */}
+      <span className="font-mono text-[11px] tracking-[0.08em]">© 2026</span>
     </footer>
   );
 }

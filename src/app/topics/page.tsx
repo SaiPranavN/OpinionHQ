@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { CatalogView } from "@/components/catalog/CatalogView";
 import { TrendingTicker } from "@/components/catalog/TrendingTicker";
 import { Footer } from "@/components/site/Footer";
-import { hotTopics, topicCountByCategory } from "@/lib/topics";
+import { topicCountByCategory, trendingTopics } from "@/lib/topics";
 import { listTopics } from "@/lib/topics/queries";
 
 export const metadata: Metadata = {
@@ -31,7 +31,9 @@ export default async function CatalogPage() {
     <div style={{ paddingTop: "var(--ohq-nav-h)" }}>
       {/* Nothing to tick through before anything is published. The strip draws
           nothing rather than an empty rail. */}
-      {topics.length > 0 ? <TrendingTicker topics={hotTopics(topics)} /> : null}
+      {topics.length > 0 ? (
+        <TrendingTicker items={trendingTopics(topics)} />
+      ) : null}
       <CatalogView topics={topics} counts={topicCountByCategory(topics)} />
       <Footer />
     </div>

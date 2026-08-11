@@ -12,11 +12,43 @@
 
 import { matchesPlaceFilter, type PlaceFilterId } from "@/lib/places";
 import type { SuggestItem } from "@/lib/suggest";
-import type { CategoryFilterId, DecoratedTopic, SortId } from "@/lib/types";
+import type {
+  CategoryFilterId,
+  DecoratedTopic,
+  SortId,
+  TickerItem,
+} from "@/lib/types";
 
-/** Top topics by trending score, used by the "Hot right now" strip. */
+/** Top topics by trending score, highest first. */
 export function hotTopics(topics: readonly DecoratedTopic[], limit = 6): DecoratedTopic[] {
   return [...topics].sort((a, b) => b.trend - a.trend).slice(0, limit);
+}
+
+/**
+ * The trending strip's rows, for opinions.
+ *
+ * A topic reads as sentiment · participants · what moved this week. Its twin
+ * for polls is `trendingPolls` in lib/polls.ts, and the two exist separately
+ * for the reason `TickerItem` documents: neither section's headline figure
+ * means the same thing as the other's.
+ */
+export function trendingTopics(
+  topics: readonly DecoratedTopic[],
+  limit = 6,
+): TickerItem[] {
+  return hotTopics(topics, limit).map((topic) => ({
+    id: topic.id,
+    href: `/topics/${topic.id}`,
+    title: topic.name,
+    metric: topic.headlineMetric,
+    metricColor: topic.dominantVar,
+    count: topic.participants,
+    // Named, because the trailing note is hidden on a narrow screen and a bare
+    // figure between two dots reads as nothing in particular.
+    countLabel: topic.participants === 1 ? "participant" : "participants",
+    note: topic.changeLabel,
+    noteColor: topic.changeColor,
+  }));
 }
 
 export interface CatalogFilters {

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
+import { TrendingTicker } from "@/components/catalog/TrendingTicker";
 import { PollsCatalog } from "@/components/polls/PollsCatalog";
 import { Footer } from "@/components/site/Footer";
+import { trendingPolls } from "@/lib/polls";
 import { listPolls, pollTotals } from "@/lib/polls/queries";
 
 export const metadata: Metadata = {
@@ -28,6 +30,11 @@ export default async function PollsPage() {
 
   return (
     <div style={{ paddingTop: "var(--ohq-nav-h)" }}>
+      {/* Nothing to tick through before anything is published. The strip draws
+          nothing rather than an empty rail. */}
+      {polls.length > 0 ? (
+        <TrendingTicker items={trendingPolls(polls)} accent="poll" />
+      ) : null}
       <PollsCatalog polls={polls} counts={counts} totalVotes={totals.votes} />
       <Footer />
     </div>

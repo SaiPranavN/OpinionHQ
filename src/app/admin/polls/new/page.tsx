@@ -1,7 +1,11 @@
 "use client";
 
 /**
- * The same composer `/polls/new` renders, pointed at Postgres.
+ * The poll composer, pointed at Postgres.
+ *
+ * This is the only route that renders it. There was a public `/polls/new`
+ * alongside it once; authoring a poll is now an editorial act, so the catalog's
+ * "Create a poll" invitation points here and is shown to editors only.
  *
  * Nothing about the flow, the validation or the duplicate check is restated
  * here — that was the point of giving the composer a publisher rather than

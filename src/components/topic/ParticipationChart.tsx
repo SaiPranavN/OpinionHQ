@@ -72,7 +72,11 @@ export function ParticipationChart({ topic }: { topic: DecoratedTopic }) {
 
 function Frame({ children }: { children: React.ReactNode }) {
   return (
-    <section className="ohq-panel flex flex-col gap-3 p-5 sm:p-7">
+    // Sized on the same terms as the two panels it shares a row with. Without
+    // a basis it took its width from its contents, so a topic with two days of
+    // history rendered a card two-thirds the width of its neighbours and left a
+    // gap down the side of the page.
+    <section className="ohq-panel flex min-w-0 flex-[1_1_320px] flex-col gap-3 p-5 sm:p-7">
       <span className="ohq-eyebrow">Daily engagement</span>
       {children}
     </section>

@@ -28,8 +28,12 @@ export function SectionPurpose({
       }`}
     >
       <span className="text-dim">{problem}</span>
+      {/* The arrow points the way the two halves are actually laid out. On a
+          phone they stack, and a rightward arrow alone on its own line points
+          at the margin. */}
       <span aria-hidden className="text-positive/60">
-        →
+        <span className="sm:hidden">↓</span>
+        <span className="hidden sm:inline">→</span>
       </span>
       <span className="font-medium text-soft">{solution}</span>
     </p>

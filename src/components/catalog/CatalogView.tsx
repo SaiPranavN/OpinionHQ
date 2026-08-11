@@ -51,10 +51,11 @@ export function CatalogView({
     category === "All" ? "" : ` in ${categoryOf(category).label}`,
     place === "any" ? "" : ` for ${placeLabel(place)}`,
   ].join("");
+  const noun = results.length === 1 ? "topic" : "topics";
   const summary =
     results.length === all.length
-      ? `${results.length} topics sorted by ${sortLabel(sort)}`
-      : `${results.length} of ${all.length} topics${scope} sorted by ${sortLabel(sort)}`;
+      ? `${results.length} ${noun} sorted by ${sortLabel(sort)}`
+      : `${results.length} of ${all.length} ${noun}${scope} sorted by ${sortLabel(sort)}`;
 
   return (
     <section className="mx-auto max-w-[1440px] px-4 pt-7 pb-[clamp(64px,8vw,110px)] sm:px-8 lg:px-14">
@@ -87,14 +88,19 @@ export function CatalogView({
         ) : null}
       </header>
 
+      {/* The search box takes a whole row to itself on a phone and shares one
+          from `sm` up. It used to sit inline at every width, which left it
+          about 40% of a 390px screen with "Search topics" already filling it. */}
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <SearchField
-          value={query}
-          onChange={setQuery}
-          index={index}
-          label="Search topics by name, category, place, tag or description"
-          placeholder="Search topics"
-        />
+        <div className="flex w-full min-w-0 sm:w-auto sm:flex-1">
+          <SearchField
+            value={query}
+            onChange={setQuery}
+            index={index}
+            label="Search topics by name, category, place, tag or description"
+            placeholder="Search topics"
+          />
+        </div>
         <PlaceFilter
           value={place}
           places={all.map((topic) => topic.place)}

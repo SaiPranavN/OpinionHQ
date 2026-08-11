@@ -4,7 +4,7 @@ import {
   arc,
   decorate,
 } from "@/lib/derive";
-import { filterAndSort } from "@/lib/topics";
+import { filterAndSort, trendingTopics } from "@/lib/topics";
 import { DEFAULT_FACET_SET, FACET_SETS } from "@/lib/facets";
 import { TEST_TOPICS } from "@/lib/test-support/fixtures";
 import { CATEGORIES } from "@/lib/taxonomy";
@@ -261,3 +261,41 @@ describe("catalog filtering", () => {
   });
 });
 
+
+describe("the trending strip's rows", () => {
+  const decorated = TEST_TOPICS.map(decorate);
+
+  it("orders by trend score and honours the limit", () => {
+    const items = trendingTopics(decorated, 2);
+    expect(items).toHaveLength(2);
+    const byId = new Map(decorated.map((t) => [t.id, t.trend]));
+    expect(byId.get(items[0]!.id)!).toBeGreaterThanOrEqual(byId.get(items[1]!.id)!);
+  });
+
+  it("carries the topic's own headline and colours, not a recomputed one", () => {
+    const top = [...decorated].sort((a, b) => b.trend - a.trend)[0]!;
+    const item = trendingTopics(decorated, 1)[0]!;
+    expect(item).toMatchObject({
+      id: top.id,
+      href: `/topics/${top.id}`,
+      title: top.name,
+      metric: top.headlineMetric,
+      metricColor: top.dominantVar,
+      count: top.participants,
+      note: top.changeLabel,
+      noteColor: top.changeColor,
+    });
+  });
+
+  it("names the count so a bare figure never stands alone", () => {
+    for (const item of trendingTopics(decorated)) {
+      expect(item.countLabel).toBe(item.count === 1 ? "participant" : "participants");
+    }
+  });
+
+  it("leaves the source list untouched", () => {
+    const before = decorated.map((t) => t.id);
+    trendingTopics(decorated);
+    expect(decorated.map((t) => t.id)).toEqual(before);
+  });
+});

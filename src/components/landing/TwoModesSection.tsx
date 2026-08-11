@@ -150,12 +150,10 @@ export function TwoModesSection({
               >
                 Vote in {pollCount} polls
               </Link>
-              <Link
-                href="/polls/new"
-                className="text-[13px] text-muted underline-offset-4 transition-colors hover:text-cream hover:underline"
-              >
-                or start your own
-              </Link>
+              {/* "or start your own" used to sit here, pointing at a public
+                  composer that no longer exists. Polls are authored from the
+                  desk now, the same as topics — and the opinions card beside
+                  this one never carried the invitation either. */}
               <span className="font-mono text-[10.5px] tracking-[0.1em] uppercase text-dim">
                 {formatNumber(pollVotes)} votes
               </span>

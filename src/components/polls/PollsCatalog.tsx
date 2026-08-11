@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { useSession } from "@/components/auth/SessionProvider";
 import { CategoryFilter } from "@/components/catalog/CategoryFilter";
 import { PollCard } from "@/components/polls/PollCard";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -29,6 +30,7 @@ export function PollsCatalog({
   counts: Map<string, number>;
   totalVotes: number;
 }) {
+  const { isEditor } = useSession();
   const [category, setCategory] = useState<CategoryFilterId>("All");
   const [sort, setSort] = useState<PollSortId>("trending");
   const [query, setQuery] = useState("");
@@ -49,10 +51,11 @@ export function PollsCatalog({
     category === "All" ? "" : ` in ${categoryOf(category).label}`,
     place === "any" ? "" : ` for ${placeLabel(place)}`,
   ].join("");
+  const noun = results.length === 1 ? "poll" : "polls";
   const summary =
     results.length === polls.length
-      ? `${results.length} polls sorted by ${pollSortLabel(sort)}`
-      : `${results.length} of ${polls.length} polls${scope} sorted by ${pollSortLabel(sort)}`;
+      ? `${results.length} ${noun} sorted by ${pollSortLabel(sort)}`
+      : `${results.length} of ${polls.length} ${noun}${scope} sorted by ${pollSortLabel(sort)}`;
 
   return (
     <section className="mx-auto max-w-[1440px] px-4 pt-7 pb-[clamp(64px,8vw,110px)] sm:px-8 lg:px-14">
@@ -69,25 +72,37 @@ export function PollsCatalog({
             region, age and occupation.
           </p>
         </div>
-        <div className="mb-1 flex flex-wrap items-center gap-2.5">
-          <Link
-            href="/polls/new"
-            className="rounded-full border border-poll/45 bg-poll/12 px-4 py-[7px] text-[13px] font-medium whitespace-nowrap text-poll-soft transition-colors duration-300 outline-none hover:bg-poll/20 focus-visible:ring-2 focus-visible:ring-poll/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
-          >
-            + Create a poll
-          </Link>
-        </div>
+        {/* Editors only, exactly as the topics catalog does it — and for the
+            same reason. The question a poll asks is the whole instrument: two
+            options that are not really opposites produce a split that means
+            nothing, so authoring sits with the desk. This is presentation, not
+            the boundary: `/admin/polls/new` guards itself and the row policies
+            refuse everyone else regardless of what is on screen. */}
+        {isEditor ? (
+          <div className="mb-1 flex flex-wrap items-center gap-2.5">
+            <Link
+              href="/admin/polls/new"
+              className="rounded-full border border-poll/45 bg-poll/12 px-4 py-[7px] text-[13px] font-medium whitespace-nowrap text-poll-soft transition-colors duration-300 outline-none hover:bg-poll/20 focus-visible:ring-2 focus-visible:ring-poll/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+            >
+              + Create a poll
+            </Link>
+          </div>
+        ) : null}
       </header>
 
+      {/* Full-width search on a phone, inline from `sm` up — see the same row
+          on the topics catalog. */}
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <SearchField
-          value={query}
-          onChange={setQuery}
-          index={index}
-          label="Search polls by question, option, category, place or tag"
-          placeholder="Search polls"
-          accent="poll"
-        />
+        <div className="flex w-full min-w-0 sm:w-auto sm:flex-1">
+          <SearchField
+            value={query}
+            onChange={setQuery}
+            index={index}
+            label="Search polls by question, option, category, place or tag"
+            placeholder="Search polls"
+            accent="poll"
+          />
+        </div>
         <PlaceFilter
           value={place}
           places={polls.map((poll) => poll.place)}

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { decoratePoll, isUsablePoll, roundTo100 } from "@/lib/derive-poll";
 import {
 } from "@/lib/derive-history";
-import { filterAndSortPolls, type PollSortId } from "@/lib/polls";
+import { filterAndSortPolls, type PollSortId, trendingPolls } from "@/lib/polls";
 import {
   TEST_POLLS,
   testDecoratedPolls,
@@ -324,3 +324,51 @@ describe("poll filtering", () => {
 
 /* --------------------------------------------------------------- history */
 
+
+describe("the trending strip's rows", () => {
+  const polls = testDecoratedPolls();
+
+  it("orders by trend score and honours the limit", () => {
+    const items = trendingPolls(polls, 2);
+    expect(items).toHaveLength(2);
+    const byId = new Map(polls.map((p) => [p.id, p.trend]));
+    expect(byId.get(items[0]!.id)!).toBeGreaterThanOrEqual(byId.get(items[1]!.id)!);
+  });
+
+  it("reads a voted poll as leader, votes and verdict", () => {
+    const voted = polls.filter((p) => !p.unvoted);
+    const top = [...voted].sort((a, b) => b.trend - a.trend)[0]!;
+    const item = trendingPolls(voted, 1)[0]!;
+    expect(item).toMatchObject({
+      id: top.id,
+      href: `/polls/${top.id}`,
+      title: top.question,
+      metric: `${top.leader.pct}% ${top.leader.name}`,
+      metricColor: top.leader.textColor,
+      count: top.total,
+      note: top.verdict,
+    });
+  });
+
+  it("says so rather than showing a leader on nought votes", () => {
+    const unvoted = polls.filter((p) => p.unvoted);
+    expect(unvoted.length).toBeGreaterThan(0);
+    for (const item of trendingPolls(unvoted)) {
+      expect(item.metric).toBe("No votes yet");
+      expect(item.count).toBe(0);
+      expect(item.countLabel).toBe("votes");
+    }
+  });
+
+  it("agrees with itself on singular and plural", () => {
+    for (const item of trendingPolls(polls)) {
+      expect(item.countLabel).toBe(item.count === 1 ? "vote" : "votes");
+    }
+  });
+
+  it("leaves the source list untouched", () => {
+    const before = polls.map((p) => p.id);
+    trendingPolls(polls);
+    expect(polls.map((p) => p.id)).toEqual(before);
+  });
+});

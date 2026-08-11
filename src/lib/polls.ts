@@ -8,8 +8,37 @@
 
 import { matchesPlaceFilter, type PlaceFilterId } from "@/lib/places";
 import type { SuggestItem } from "@/lib/suggest";
-import type { CategoryFilterId, DecoratedPoll } from "@/lib/types";
+import type { CategoryFilterId, DecoratedPoll, TickerItem } from "@/lib/types";
 
+/** Top polls by trending score, highest first. */
+export function hotPolls(polls: readonly DecoratedPoll[], limit = 6): DecoratedPoll[] {
+  return [...polls].sort((a, b) => b.trend - a.trend).slice(0, limit);
+}
+
+/**
+ * The trending strip's rows, for polls.
+ *
+ * A poll reads as leader · votes · verdict, which is the poll page's own
+ * summary line in miniature. An unvoted poll says so rather than showing its
+ * leader at 0% — with nobody voting, whichever option was authored first is
+ * not winning.
+ */
+export function trendingPolls(
+  polls: readonly DecoratedPoll[],
+  limit = 6,
+): TickerItem[] {
+  return hotPolls(polls, limit).map((poll) => ({
+    id: poll.id,
+    href: `/polls/${poll.id}`,
+    title: poll.question,
+    metric: poll.unvoted ? "No votes yet" : `${poll.leader.pct}% ${poll.leader.name}`,
+    metricColor: poll.unvoted ? "var(--color-dim)" : poll.leader.textColor,
+    count: poll.total,
+    countLabel: poll.total === 1 ? "vote" : "votes",
+    note: poll.verdict,
+    noteColor: "var(--color-muted)",
+  }));
+}
 
 export type PollSortId = "trending" | "closest" | "voted" | "recent";
 

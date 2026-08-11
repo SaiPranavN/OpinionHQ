@@ -69,7 +69,9 @@ export function AudiencePanels({ topic }: { topic: DecoratedTopic }) {
       className="flex flex-wrap gap-[clamp(14px,1.6vw,20px)]"
     >
       <figure className="ohq-panel m-0 flex min-w-0 flex-[2_1_380px] flex-col gap-[18px] p-5 sm:p-7">
-        <figcaption className="flex flex-wrap items-baseline justify-between gap-3">
+        {/* Stacked on a phone, so the title and its provenance note do not run
+            together into one line of monospace. */}
+        <figcaption className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-3">
           <span className="ohq-eyebrow">Where participants are voting from</span>
           <span className="font-mono text-[10px] tracking-[0.08em] uppercase text-dim">
             Self-reported

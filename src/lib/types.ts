@@ -725,3 +725,31 @@ export interface DecoratedTopic extends Topic {
   series: TopicDayReading[];
   facets: FacetResult[];
 }
+
+/* ------------------------------------------------------------------ ticker */
+
+/**
+ * One row of the "Trending" strip, flattened.
+ *
+ * The strip runs over both catalogs, and a topic and a poll have nothing in
+ * common at this level: a topic has a sentiment and a weekly change, a poll has
+ * a leader and a verdict. Rather than teach the component both shapes, each
+ * catalog flattens its own rows into this — so the strip draws what it is
+ * given and never has to know which section it is standing in.
+ */
+export interface TickerItem {
+  id: string;
+  href: string;
+  title: string;
+  /** The headline figure — "68% positive", "62% YES !!". */
+  metric: string;
+  /** A CSS colour for the figure. Comes from the row's own palette. */
+  metricColor: string;
+  /** The one number that counts up between items. */
+  count: number;
+  /** Follows the count — "votes", or nothing for topics. */
+  countLabel?: string;
+  /** The trailing aside: a weekly change, or a verdict. */
+  note: string;
+  noteColor: string;
+}

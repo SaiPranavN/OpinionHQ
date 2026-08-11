@@ -84,12 +84,18 @@ export function TopicHeader({ topic, context, timeline }: TopicHeaderProps) {
         </ul>
       </div>
 
-      <div className="ohq-verified flex max-w-[720px] items-start gap-[11px] px-4 py-3.5">
-        <span className="pt-0.5 font-mono text-[10px] tracking-[0.12em] whitespace-nowrap uppercase text-positive-light">
-          <span aria-hidden>✓</span> Status
-        </span>
-        <span className="text-[13.5px] leading-[1.55] text-soft">{context.explain}</span>
-      </div>
+      {/* Only when there is something to say. An editor can leave the note
+          empty, and this drew a green-ruled box holding the word "Status" and
+          nothing else — which on a page about verification reads as a claim
+          that failed to load. */}
+      {context.explain ? (
+        <div className="ohq-verified flex max-w-[720px] items-start gap-[11px] px-4 py-3.5">
+          <span className="pt-0.5 font-mono text-[10px] tracking-[0.12em] whitespace-nowrap uppercase text-positive-light">
+            <span aria-hidden>✓</span> Status
+          </span>
+          <span className="text-[13.5px] leading-[1.55] text-soft">{context.explain}</span>
+        </div>
+      ) : null}
 
       {/* Sample size is the credibility of everything below it, so it is the
           largest thing on the page after the topic name. */}

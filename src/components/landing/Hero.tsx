@@ -130,13 +130,23 @@ export function Hero({
 
         <div
           data-reveal
-          className="ohq-reveal mt-[clamp(30px,5vw,62px)] flex flex-wrap justify-center gap-[clamp(20px,4vw,52px)] font-mono text-[11.5px] tracking-[0.1em] uppercase text-dim delay-[340ms] duration-[1100ms]"
+          className="ohq-reveal mt-[clamp(30px,5vw,62px)] flex flex-wrap justify-center gap-x-6 gap-y-2 font-mono text-[11.5px] tracking-[0.1em] uppercase text-dim delay-[340ms] duration-[1100ms] sm:gap-x-[clamp(20px,4vw,52px)]"
         >
-          <span>{topicCount} live topics</span>
-          <span className="text-[#3A3A3A]">/</span>
-          <span>{pollCount} open polls</span>
-          <span className="text-[#3A3A3A]">/</span>
-          <span>{formatNumber(voteCount)} votes cast</span>
+          {/* The slashes are separators, not content, so they go when the row
+              wraps — a phone was showing "1 LIVE TOPICS / 1 OPEN POLLS /" with
+              the third figure alone on the line below and a slash pointing at
+              nothing. */}
+          <span>
+            {topicCount} live {topicCount === 1 ? "topic" : "topics"}
+          </span>
+          <span className="hidden text-[#3A3A3A] sm:inline">/</span>
+          <span>
+            {pollCount} open {pollCount === 1 ? "poll" : "polls"}
+          </span>
+          <span className="hidden text-[#3A3A3A] sm:inline">/</span>
+          <span>
+            {formatNumber(voteCount)} {voteCount === 1 ? "vote" : "votes"} cast
+          </span>
         </div>
       </div>
     </section>
