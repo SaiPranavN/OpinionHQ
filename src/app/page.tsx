@@ -80,11 +80,17 @@ export default async function LandingPage() {
         >
           {/* The empty case gets its own sentence rather than "0 topics and 22
               polls are already moving", which is both false and faintly sad.
-              A platform with nothing on it yet should say so. */}
+              A platform with nothing on it yet should say so.
+
+              The one case needed the same care and did not get it: at launch
+              this read "1 topics and 1 polls are already moving", which is the
+              first sentence a visitor sees at full display size. */}
           <h2 className="m-0 font-display text-[clamp(2.6rem,6vw,5.4rem)] leading-[0.98] font-bold tracking-[-0.028em] text-cream-bright">
             {totals.topics > 0 ? (
               <>
-                {totals.topics} topics and {pollTotals.count} polls are{" "}
+                {totals.topics} {totals.topics === 1 ? "topic" : "topics"} and{" "}
+                {pollTotals.count} {pollTotals.count === 1 ? "poll" : "polls"}{" "}
+                {totals.topics + pollTotals.count === 1 ? "is" : "are"}{" "}
                 <em>already moving.</em>
               </>
             ) : (

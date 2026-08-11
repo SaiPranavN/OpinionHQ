@@ -3,8 +3,31 @@ import path from "node:path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Standalone output keeps deployment host-agnostic (see docs/OpinionHQ-Technical-Roadmap.md §4).
-  output: "standalone",
+  /**
+   * Standalone output keeps deployment host-agnostic (roadmap §4) — but only
+   * where a host actually needs it.
+   *
+   * It bundles a server this repo can run anywhere, which is the whole point
+   * for a container. Vercel does not use it: the platform compiles its own
+   * output format, so on Vercel this is at best ignored and at worst a build
+   * path almost nobody exercises. `next start` refuses it outright — "next
+   * start does not work with output: standalone" — which is a fair warning that
+   * it is not a mode to switch on by default and hope.
+   *
+   * Turned off on Vercel, where VERCEL=1 is set during the build. Self-hosting
+   * keeps exactly what it had.
+   *
+   * WHAT THIS IS ACTUALLY FOR. The first production deploy threw React #418 —
+   * "hydration failed … this tree will be regenerated on the client" — on every
+   * page, and only on Vercel. The server HTML was byte-identical to a local
+   * production build (50,398 bytes both), the client chunk hashes matched, and
+   * the same build hydrated cleanly on localhost. Nothing was injected into the
+   * page. This flag is the one remaining difference between how Vercel builds
+   * this app and how it builds a stock Next one, so it is the first suspect
+   * rather than a proven cause — if #418 survives the next deploy, this was not
+   * it, and the note stays as one eliminated possibility.
+   */
+  output: process.env.VERCEL ? undefined : "standalone",
   reactStrictMode: true,
   /**
    * Where the build lands. `.next` unless told otherwise.
