@@ -102,6 +102,20 @@ const captcha = process.env.TURNSTILE_SECRET_KEY
 const desired: Record<string, unknown> = {
   ...smtp,
   ...captcha,
+  /**
+   * Where Supabase sends anybody it has nothing better to send.
+   *
+   * It is the fallback for every link in an auth email and the default landing
+   * spot after a callback, so leaving it on `http://localhost:3000` in
+   * production means a visitor who clicks a recovery link ends up pointed at
+   * their own machine. It was not managed here at all — it had to be changed by
+   * hand in the dashboard, which is the kind of step that gets remembered the
+   * day after launch.
+   *
+   * Driven by NEXT_PUBLIC_SITE_URL, so cutover is: set it in the environment,
+   * run this, and the project agrees with the deployment.
+   */
+  site_url: siteUrl,
   // Has to equal CODE_LENGTH. See the note at the top.
   mailer_otp_length: CODE_LENGTH,
   mailer_templates_magic_link_content: OTP_EMAIL,
