@@ -1,0 +1,22 @@
+-- =============================================================================
+-- Drops `has_password`, which cannot answer the question it was written for.
+--
+-- It read `auth.users.encrypted_password` on the assumption that an account
+-- created by a one-time code would have none. It does have one: Supabase writes
+-- a bcrypt hash of a generated secret for every account, whether or not anybody
+-- chose a password. Proved against this project's own data — an account that
+-- has never run a recovery, and whose owner was never shown a password field,
+-- carries a 60-character `$2a$` hash exactly like one that has.
+--
+-- So the function returned true for every caller. Left in place it would be
+-- worse than nothing: a gate that looks like it is protecting a step and is
+-- silently open, which is how the missing-password bug got shipped in the first
+-- place.
+--
+-- What replaced it: the callback routes on whether the SIGN-UP is unfinished
+-- (the profile details the cross-tabs need are absent) rather than on whether a
+-- password exists, and password recovery is now an explicit flow that says what
+-- it is doing instead of being inferred.
+-- =============================================================================
+
+drop function if exists public.has_password();

@@ -1,0 +1,27 @@
+node_modules/
+.next/
+# Production builds, kept out of .next so `npm run build` cannot pull the rug
+# from under a running dev server. See `distDir` in next.config.ts.
+.next-build/
+out/
+build/
+dist/
+
+*.tsbuildinfo
+next-env.d.ts
+
+.env
+.env*.local
+
+.DS_Store
+*.pem
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+coverage/
+
+# Claude Code: machine-local permission grants, not shared project config.
+.claude/settings.local.json
