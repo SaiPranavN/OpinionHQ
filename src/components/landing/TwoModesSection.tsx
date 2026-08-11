@@ -98,10 +98,10 @@ export function TwoModesSection({
                 href="/topics"
                 className="rounded-full bg-positive px-6 py-3 text-[14.5px] font-semibold text-positive-ink transition-[background,box-shadow] duration-500 ease-ohq hover:bg-[#25CC61] hover:shadow-[0_12px_36px_-10px_rgba(29,185,84,0.5)]"
               >
-                Explore {topicCount} topics
+                Explore {topicCount} {topicCount === 1 ? "topic" : "topics"}
               </Link>
               <span className="font-mono text-[10.5px] tracking-[0.1em] uppercase text-dim">
-                {formatNumber(voteCount)} votes
+                {formatNumber(voteCount)} {voteCount === 1 ? "vote" : "votes"}
               </span>
             </footer>
           </article>
@@ -148,14 +148,14 @@ export function TwoModesSection({
                 href="/polls"
                 className="rounded-full bg-poll px-6 py-3 text-[14.5px] font-semibold text-poll-ink transition-[background,box-shadow] duration-500 ease-ohq hover:bg-[#B9A2FC] hover:shadow-[0_12px_36px_-10px_rgba(167,139,250,0.5)]"
               >
-                Vote in {pollCount} polls
+                Vote in {pollCount} {pollCount === 1 ? "poll" : "polls"}
               </Link>
               {/* "or start your own" used to sit here, pointing at a public
                   composer that no longer exists. Polls are authored from the
                   desk now, the same as topics — and the opinions card beside
                   this one never carried the invitation either. */}
               <span className="font-mono text-[10.5px] tracking-[0.1em] uppercase text-dim">
-                {formatNumber(pollVotes)} votes
+                {formatNumber(pollVotes)} {pollVotes === 1 ? "vote" : "votes"}
               </span>
             </footer>
           </article>
@@ -165,7 +165,20 @@ export function TwoModesSection({
   );
 }
 
-/** Miniature of a topic result: a distribution across three positions. */
+/**
+ * Miniature of a topic result: a distribution across three positions.
+ *
+ * A DIAGRAM, AND IT HAS TO LOOK LIKE ONE. This carried "NEET UG 2026 Paper
+ * Leak — 78% Negative — of 42,847 participants" until launch day: a real and
+ * sensitive subject, an invented reading of it, and a headcount three orders of
+ * magnitude above anything this site has measured. It survived the pass that
+ * deleted `lib/sample-data` because it is written inline rather than imported,
+ * which is exactly why it was worth finding — a visitor met 42,847 participants
+ * here and 2 on the catalog one scroll later.
+ *
+ * The shape is the point and the shape is kept. The subject is now plainly an
+ * example, and no number that could be read as a count of people survives.
+ */
 function SentimentMini() {
   const rows = [
     { label: "Positive", pct: 8, color: "#1DB954" },
@@ -178,9 +191,7 @@ function SentimentMini() {
       className="m-0 flex flex-col gap-3 rounded-[16px] border border-veil/8 bg-surface-sunken p-5"
     >
       <figcaption className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="text-[13px] font-medium text-soft">
-          NEET UG 2026 Paper Leak
-        </span>
+        <span className="text-[13px] font-medium text-soft">Example topic</span>
         <span className="text-[15px] font-semibold text-negative">78% Negative</span>
       </figcaption>
       {rows.map((row, i) => (
@@ -202,24 +213,31 @@ function SentimentMini() {
         </div>
       ))}
       <figcaption className="text-[11px] text-dim">
-        of 42,847 participants · sample data
+        An illustration of the shape. Every figure on a real topic page is
+        counted from votes.
       </figcaption>
     </figure>
   );
 }
 
-/** Miniature of a poll result: one bar, two sides, a stated margin. */
+/**
+ * Miniature of a poll result: one bar, two sides, a stated margin.
+ *
+ * Same story as `SentimentMini` above, and worse: this one was not labelled at
+ * all. It read "Which exam is genuinely harder? … Narrow lead · 63,010 votes.
+ * Among 17–20s it flips: NEET leads by 9" — a headcount and a cross-tab
+ * finding, both invented, stated in the same voice a real poll page uses for
+ * measured ones.
+ */
 function PollMini() {
   return (
     <figure
-      aria-label="Example poll result: NEET UG 47 percent, JEE Advanced 53 percent"
+      aria-label="Example poll result: option A 47 percent, option B 53 percent"
       className="m-0 flex flex-col gap-3 rounded-[16px] border border-veil/8 bg-surface-sunken p-5"
     >
       <figcaption className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="text-[13px] font-medium text-soft">
-          Which exam is genuinely harder?
-        </span>
-        <span className="text-[15px] font-semibold text-poll-soft">53% JEE</span>
+        <span className="text-[13px] font-medium text-soft">Example poll</span>
+        <span className="text-[15px] font-semibold text-poll-soft">53% B</span>
       </figcaption>
       <div className="flex h-9 gap-[3px]">
         <span
@@ -236,11 +254,12 @@ function PollMini() {
         </span>
       </div>
       <div className="flex flex-wrap items-baseline justify-between gap-2 text-[11.5px]">
-        <span className="text-dim">NEET UG</span>
-        <span className="text-dim">JEE Advanced</span>
+        <span className="text-dim">Option A</span>
+        <span className="text-dim">Option B</span>
       </div>
       <figcaption className="border-t border-line pt-3 text-[11px] leading-[1.5] text-dim">
-        Narrow lead · 63,010 votes. Among 17–20s it flips: NEET leads by 9.
+        An illustration of the shape. A real poll states its own margin and
+        breaks down by region, age, occupation and gender.
       </figcaption>
     </figure>
   );
