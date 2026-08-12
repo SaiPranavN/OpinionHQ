@@ -66,6 +66,7 @@ describe("poll PDF export", () => {
       id: `r${i}`,
       pollId: poll.id,
       side: (i % 2 === 0 ? "a" : "b") as "a" | "b",
+      authorId: `tester-${i}`,
       name: `Tester ${i}`,
       initials: "T",
       text: `Reason number ${i}.`,

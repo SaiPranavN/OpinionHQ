@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { ContributionCard } from "@/components/topic/ContributionCard";
@@ -92,8 +92,30 @@ export function TopicTabs({
 
   const mostHelpful = [...allContributions].sort((a, b) => b.helpful - a.helpful).slice(0, 2);
 
+  /**
+   * `#discussion` opens the discussion tab.
+   *
+   * The "Go to discussions" button in the header is a sibling of this component
+   * and cannot reach `setTab`. Rather than lift the tab state up through the
+   * dashboard for one button, the button writes the hash and this listens —
+   * which also means a shared `/topics/x#discussion` link lands somebody on the
+   * thread rather than on the overview.
+   *
+   * Runs on mount too, for arriving with the hash already in the URL.
+   */
+  useEffect(() => {
+    const open = () => {
+      if (window.location.hash === "#discussion") setTab("discussion");
+    };
+    open();
+    window.addEventListener("hashchange", open);
+    return () => window.removeEventListener("hashchange", open);
+  }, []);
+
   return (
-    <div>
+    // `scroll-mt` clears the fixed nav, which would otherwise cover the tab row
+    // that the jump is meant to land on.
+    <div id="discussion" className="scroll-mt-[calc(var(--ohq-nav-h)+16px)]">
       <div
         role="tablist"
         aria-label="Topic sections"

@@ -1,6 +1,7 @@
 "use client";
 
 import { ExportButton } from "@/components/topic/ExportButton";
+import { GoToDiscussion } from "@/components/ui/GoToDiscussion";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
@@ -129,6 +130,11 @@ export function TopicHeader({ topic, context, timeline }: TopicHeaderProps) {
           </>
         )}
         <span className="ml-auto flex flex-wrap gap-2.5">
+          {/* First in the row and the only filled one: reading the numbers is
+              what a visitor came for, and reading what people said about them
+              is what they want next. Export and Follow are for people who have
+              already decided to stay. */}
+          <GoToDiscussion />
           <ExportButton topic={topic} context={context} timeline={timeline} />
           <button
             type="button"

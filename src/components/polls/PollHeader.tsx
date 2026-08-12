@@ -5,6 +5,7 @@ import { PollSplitBar } from "@/components/polls/PollSplitBar";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
+import { GoToDiscussion } from "@/components/ui/GoToDiscussion";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatNumber } from "@/lib/derive-poll";
 import type { DecoratedPoll, PollReason } from "@/lib/types";
@@ -152,6 +153,10 @@ export function PollHeader({
           ))}
         </ul>
         <span className="ml-auto flex flex-wrap gap-2.5">
+          {/* A split bar says who won and nothing about why. The reasons are
+              the interesting half, and they sit below three panels of
+              cross-tabs — far enough down to be missed. */}
+          <GoToDiscussion />
           <PollExportButton poll={poll} reasons={reasons} />
           <button
             type="button"

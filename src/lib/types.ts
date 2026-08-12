@@ -539,6 +539,14 @@ export interface PollReason {
   id: string;
   pollId: string;
   side: PollOptionId;
+  /**
+   * Who wrote it, so the reader can be told which one is theirs.
+   *
+   * Without this the column had no way to recognise its own author, so it
+   * prepended a second copy held in this browser and showed everybody's own
+   * reason twice. Null only for a row whose author has since been deleted.
+   */
+  authorId: string | null;
   name: string;
   initials: string;
   text: string;

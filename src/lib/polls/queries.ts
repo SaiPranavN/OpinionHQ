@@ -141,7 +141,7 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
       // recomputed — a second implementation here would drift the moment
       // somebody edits their display name.
       .select(
-        "id, option_id, body, helpful_count, created_at, profiles!user_id(display_name, initials)",
+        "id, user_id, option_id, body, helpful_count, created_at, profiles!user_id(display_name, initials)",
       )
       .eq("poll_id", pollId)
       .is("hidden_at", null)
@@ -201,6 +201,7 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
     (reasonRows as
       | {
           id: string;
+          user_id: string | null;
           option_id: string;
           body: string;
           helpful_count: number;
@@ -220,6 +221,7 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
         id: r.id,
         pollId: poll.id,
         side: slot as PollOptionId,
+        authorId: r.user_id,
         name,
         initials: author?.initials ?? "··",
         text: r.body,
