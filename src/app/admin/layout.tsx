@@ -56,7 +56,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const isAdmin = role === "admin";
 
   return (
-    <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-7 px-4 py-[clamp(24px,4vw,48px)] sm:px-8">
+    // Clears the fixed nav. The desk is rendered inside the same shell as
+    // every public page, so it needs the same allowance — without it the
+    // "Editorial desk" heading sat behind the bar at every width.
+    <div
+      className="mx-auto flex w-full max-w-[1180px] flex-col gap-7 px-4 py-[clamp(24px,4vw,48px)] sm:px-8"
+      style={{ paddingTop: "calc(var(--ohq-nav-h) + clamp(24px,4vw,48px))" }}
+    >
       <header className="flex flex-col gap-3 border-b border-veil/10 pb-6">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
           <h1 className="m-0 font-display text-[clamp(1.8rem,3.4vw,2.6rem)] leading-[1.05] font-bold tracking-[-0.025em] text-cream-bright">

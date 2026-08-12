@@ -867,7 +867,15 @@ function ErrorLine({ children }: { children: React.ReactNode }) {
  */
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <section className="mx-auto grid w-full max-w-[1120px] grid-cols-1 items-start gap-10 px-4 py-[clamp(28px,5vw,64px)] sm:px-8 lg:grid-cols-[minmax(0,1fr)_468px] lg:gap-14">
+    // `paddingTop` clears the fixed nav, which is 78px of opaque bar over the
+    // top of the page. Without it the "Sign in to OpinionHQ" heading rendered
+    // underneath it — the vertical padding here is generous enough that it
+    // looked fine on a desktop and cut the heading in half on a phone, where
+    // the clamp bottoms out at 28px.
+    <section
+      className="mx-auto grid w-full max-w-[1120px] grid-cols-1 items-start gap-10 px-4 py-[clamp(28px,5vw,64px)] sm:px-8 lg:grid-cols-[minmax(0,1fr)_468px] lg:gap-14"
+      style={{ paddingTop: "calc(var(--ohq-nav-h) + clamp(28px,5vw,64px))" }}
+    >
       <aside className="hidden flex-col gap-6 lg:sticky lg:top-[calc(var(--ohq-nav-h)+56px)] lg:flex">
         <h2 className="m-0 max-w-[13ch] font-display text-[clamp(2rem,3.2vw,2.9rem)] leading-[1.04] font-bold tracking-[-0.025em] text-balance text-cream-bright">
           An account is <em>one vote</em>.
