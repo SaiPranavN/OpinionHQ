@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   title: "Polls — pick a side",
   description:
     "Forced-choice polls on OpinionHQ. Two to four options, no middle ground, broken down by region, age and occupation.",
+  alternates: { canonical: "/polls" },
 };
 
 /**

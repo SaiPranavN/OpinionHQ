@@ -7,6 +7,7 @@ import { SessionProvider } from "@/components/auth/SessionProvider";
 import { PrototypeProvider } from "@/components/prototype/PrototypeProvider";
 import { Nav } from "@/components/site/Nav";
 import { THEME_BOOT_SCRIPT, ThemeProvider } from "@/components/site/ThemeProvider";
+import { SITE_URL } from "@/lib/site";
 
 import "./globals.css";
 
@@ -52,13 +53,51 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+const TITLE = "OpinionHQ — What does everyone really think?";
+const DESCRIPTION =
+  "Structured public opinion on the things that matter. Vote, discuss, and watch sentiment shift in real time.";
+
 export const metadata: Metadata = {
-  title: {
-    default: "OpinionHQ — What does everyone really think?",
-    template: "%s · OpinionHQ",
+  /**
+   * Every relative URL in this file resolves against this.
+   *
+   * Without it Next cannot build an absolute `og:image`, and a relative one is
+   * ignored by every platform that renders link previews — so a link shared to
+   * WhatsApp or Slack arrives as a bare grey URL. It also warns on every build.
+   */
+  metadataBase: new URL(SITE_URL),
+  title: { default: TITLE, template: "%s · OpinionHQ" },
+  description: DESCRIPTION,
+  applicationName: "OpinionHQ",
+  /**
+   * The apex is the real address; www 308s to it at the edge.
+   *
+   * Stating it anyway costs nothing and settles the question for a crawler
+   * that arrives on the wrong host — through an old link, or a redirect it did
+   * not follow. Two hostnames serving one page is how a new site splits its
+   * own ranking signal between duplicates.
+   *
+   * Pages that are one of many override this; see the topic and poll routes.
+   */
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "OpinionHQ",
+    title: TITLE,
+    description: DESCRIPTION,
+    url: "/",
+    locale: "en_IN",
   },
-  description:
-    "Structured public opinion on the things that matter. Vote, discuss, and watch sentiment shift in real time.",
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
+  /**
+   * `max-image-preview: large` is what lets the social card appear at full
+   * width in a result rather than as a thumbnail, and it has to be asked for.
+   */
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

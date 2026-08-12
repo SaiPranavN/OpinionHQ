@@ -13,6 +13,7 @@ export const metadata: Metadata = {
   title: "Explore opinions",
   description:
     "Explore active topics and see how OpinionHQ participants currently feel about them. Percentages describe OpinionHQ participants only.",
+  alternates: { canonical: "/topics" },
 };
 
 /**

@@ -29,11 +29,20 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const page = await getPollPage(slug);
-  if (!page) return { title: "Poll" };
+  if (!page) return { title: "Poll", robots: { index: false, follow: false } };
   const { poll } = page;
+  const description = `${poll.marginLabel}. ${poll.splitLabel}. ${poll.summary}`;
   return {
     title: poll.question,
-    description: `${poll.marginLabel}. ${poll.splitLabel}. ${poll.summary}`,
+    description,
+    alternates: { canonical: `/polls/${slug}` },
+    openGraph: {
+      type: "article",
+      title: poll.question,
+      description,
+      url: `/polls/${slug}`,
+    },
+    twitter: { card: "summary_large_image", title: poll.question, description },
   };
 }
 

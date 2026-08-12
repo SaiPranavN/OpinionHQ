@@ -22,11 +22,23 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const page = await getTopicPage(slug);
-  if (!page) return { title: "Topic" };
+  // Not found, and it must not be indexable. Without this the 404 inherits the
+  // layout's `index: true` and Google is invited to keep a page that is gone.
+  if (!page) return { title: "Topic", robots: { index: false, follow: false } };
   const { topic } = page;
+  const description = `${topic.headlineMetric} ${topic.sampleLabel}. ${topic.summary}`;
   return {
     title: topic.name,
-    description: `${topic.headlineMetric} ${topic.sampleLabel}. ${topic.summary}`,
+    description,
+    // Its own address, not the site root inherited from the layout.
+    alternates: { canonical: `/topics/${slug}` },
+    openGraph: {
+      type: "article",
+      title: topic.name,
+      description,
+      url: `/topics/${slug}`,
+    },
+    twitter: { card: "summary_large_image", title: topic.name, description },
   };
 }
 
