@@ -275,8 +275,30 @@ async function main() {
   const isSmtp = ([key]: [string, unknown]) =>
     key.startsWith("smtp_") || key === "rate_limit_email_sent";
 
+  /**
+   * THE SENDER IS SENT WHOLE OR NOT AT ALL.
+   *
+   * Everywhere else in this script a PATCH carries only the keys that differ,
+   * which is the polite thing to do and works fine. The SMTP block is not like
+   * the other fields: the Management API treats any write to it as "here is my
+   * mail configuration", and nulls every field the request leaves out.
+   *
+   * That is not theoretical. Rotating the Resend API key changed exactly one
+   * SMTP value, so the diff was `{smtp_pass}` and nothing else — host, port,
+   * user and sender address all still matched. The PATCH returned 200 and
+   * cleared the entire block: smtp_host null, smtp_user null, smtp_admin_email
+   * null, and the password not set either. Custom SMTP being gone then took
+   * the templates with it, because a project without it may not hold them, so
+   * the sign-in email reverted to the stock magic link and sign-up broke on a
+   * live site. One rotated key, every mail setting gone, status 200.
+   *
+   * So: if any SMTP field differs, send all of them. `smtp` is the complete
+   * desired block, and it is what goes on the wire.
+   */
+  const smtpEntries = changes.some(isSmtp) ? Object.entries(smtp) : [];
+
   const phases: [string, [string, unknown][]][] = [
-    ["sender", changes.filter(isSmtp)],
+    ["sender", smtpEntries],
     ["everything else", changes.filter((entry) => !isSmtp(entry))],
   ];
 
