@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { absolute } from "@/lib/site";
-import { supabaseServer } from "@/lib/supabase/server";
+import { supabasePublic } from "@/lib/supabase/public";
 
 /**
  * Every page worth indexing, generated from the database.
@@ -21,6 +21,15 @@ import { supabaseServer } from "@/lib/supabase/server";
  * its row policies would refuse an anonymous reader anyway, so listing it would
  * be pointing Google at a 404.
  */
+/**
+ * Rebuilt at most once an hour, and served from cache in between.
+ *
+ * THIS ONLY WORKS BECAUSE THE CLIENT BELOW HAS NO COOKIES. It was written with
+ * `supabaseServer()`, which reads `cookies()` — and a route that touches
+ * cookies is dynamic, full stop, so this line was ignored. Vercel answered
+ * every fetch with `x-vercel-cache: MISS` and a live Postgres query behind it,
+ * up to two seconds, for a file whose contents are identical for everybody.
+ */
 export const revalidate = 3600;
 
 type Row = { slug: string; last_activity_at: string | null; updated_at: string | null };
@@ -33,7 +42,7 @@ function lastModified(row: Row): Date {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = await supabaseServer();
+  const supabase = supabasePublic();
 
   const [topics, polls] = await Promise.all([
     supabase
