@@ -15,6 +15,7 @@ import "server-only";
  */
 
 import { decoratePoll } from "@/lib/derive-poll";
+import type { ReadClient } from "@/lib/supabase/public";
 import { supabaseServer } from "@/lib/supabase/server";
 import {
   rowToPoll,
@@ -42,8 +43,10 @@ const CARD_COLUMNS =
  * Cross-tabs deliberately do NOT come along: they are three group-bys per poll
  * and nothing on a card shows them.
  */
-export async function listPolls(): Promise<DecoratedPoll[]> {
-  const supabase = await supabaseServer();
+export async function listPolls(client?: ReadClient): Promise<DecoratedPoll[]> {
+  // Defaults to the session-aware client; callers that must stay
+  // cacheable pass the session-less one. See lib/supabase/public.ts.
+  const supabase = client ?? ((await supabaseServer()) as unknown as ReadClient);
 
   const [cards, options] = await Promise.all([
     supabase

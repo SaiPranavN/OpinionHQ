@@ -16,6 +16,7 @@ import "server-only";
  */
 
 import { decorate } from "@/lib/derive";
+import type { ReadClient } from "@/lib/supabase/public";
 import { supabaseServer } from "@/lib/supabase/server";
 import {
   rowToTopic,
@@ -40,8 +41,10 @@ const CARD_COLUMNS =
   "positive_count, neutral_count, negative_count, participants, written_count, " +
   "trend_score, last_activity_at, change_metric, change_value, change_direction";
 
-export async function listTopics(): Promise<DecoratedTopic[]> {
-  const supabase = await supabaseServer();
+export async function listTopics(client?: ReadClient): Promise<DecoratedTopic[]> {
+  // Defaults to the session-aware client; callers that must stay
+  // cacheable pass the session-less one. See lib/supabase/public.ts.
+  const supabase = client ?? ((await supabaseServer()) as unknown as ReadClient);
   const { data, error } = await supabase
     .from("topic_cards")
     .select(CARD_COLUMNS)

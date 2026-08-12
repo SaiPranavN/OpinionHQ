@@ -15,6 +15,7 @@ import "server-only";
  * trigger-maintained, rather than from counting `opinions`.
  */
 
+import type { ReadClient } from "@/lib/supabase/public";
 import { supabaseServer } from "@/lib/supabase/server";
 
 export interface CatalogTotals {
@@ -22,8 +23,10 @@ export interface CatalogTotals {
   votes: number;
 }
 
-export async function catalogTotals(): Promise<CatalogTotals> {
-  const supabase = await supabaseServer();
+export async function catalogTotals(client?: ReadClient): Promise<CatalogTotals> {
+  // Defaults to the session-aware client; callers that must stay
+  // cacheable pass the session-less one. See lib/supabase/public.ts.
+  const supabase = client ?? ((await supabaseServer()) as unknown as ReadClient);
 
   const [{ count: topics }, { data: stats }] = await Promise.all([
     supabase

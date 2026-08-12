@@ -10,21 +10,35 @@ import { topicCountByCategory } from "@/lib/topics";
 import { listTopics } from "@/lib/topics/queries";
 import { catalogTotals } from "@/lib/topics/totals";
 import { listPolls } from "@/lib/polls/queries";
+import { supabasePublic } from "@/lib/supabase/public";
 
 /**
- * Rendered per request, because the figures on it are claims.
+ * Rebuilt at most once a minute, then served from the edge.
  *
- * "N topics, M votes cast" used to be constants over a fixture file. They are
- * counted now, which means the page has to be able to say a small number — or
- * none — rather than a flattering one.
+ * The figures on this page are claims — "N topics, M votes cast" used to be
+ * constants over a fixture file, and they are counted now, which is why the
+ * page has to be able to say a small number rather than a flattering one.
+ * That argued for `force-dynamic`, and it was wrong for the same reason it was
+ * wrong on the sitemap: rendering the whole landing page per visitor bought
+ * accuracy nobody could perceive. This was the slowest page on the site at
+ * ~0.85s while every other route had dropped under 0.25s, because it is also
+ * the largest render — the counts were never the expensive part.
+ *
+ * A minute of staleness on "1 live topic" is not a lie anybody can act on. If
+ * these figures ever need to be exact to the second, the fix is to make them
+ * their own client-fetched component, not to re-render the landing page.
  */
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function LandingPage() {
+  // The session-less client, which is what keeps `revalidate` above from being
+  // silently ignored: touching `cookies()` makes a route dynamic regardless.
+  // Nothing on this page is specific to who is reading it.
+  const db = supabasePublic();
   const [totals, topics, polls] = await Promise.all([
-    catalogTotals(),
-    listTopics(),
-    listPolls(),
+    catalogTotals(db),
+    listTopics(db),
+    listPolls(db),
   ]);
 
   const pollTotals = {

@@ -31,3 +31,13 @@ export function supabasePublic() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
+
+/**
+ * Either flavour of server-side client.
+ *
+ * `supabaseServer()` and `supabasePublic()` build the same query surface; they
+ * differ only in whether a session rides along. Read helpers that do not care
+ * take this, so a caller that needs the route to stay cacheable can hand in
+ * the session-less one without a second copy of the query.
+ */
+export type ReadClient = ReturnType<typeof supabasePublic>;
