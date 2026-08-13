@@ -1473,6 +1473,53 @@ export type Database = {
           },
         ]
       }
+      poll_follows: {
+        Row: {
+          created_at: string
+          poll_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          poll_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          poll_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_follows_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "poll_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_follows_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_follows_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "poll_follows_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       poll_history: {
         Row: {
           event: string | null
@@ -1714,6 +1761,7 @@ export type Database = {
       }
       poll_stats: {
         Row: {
+          follower_count: number
           last_activity_at: string | null
           poll_id: string
           reason_count: number
@@ -1722,6 +1770,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          follower_count?: number
           last_activity_at?: string | null
           poll_id: string
           reason_count?: number
@@ -1730,6 +1779,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          follower_count?: number
           last_activity_at?: string | null
           poll_id?: string
           reason_count?: number

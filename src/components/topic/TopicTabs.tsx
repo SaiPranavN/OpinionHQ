@@ -144,32 +144,9 @@ export function TopicTabs({
 
       {tab === "overview" ? (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] gap-[clamp(14px,1.6vw,20px)]">
-          <div className="ohq-panel flex flex-col gap-4 p-5 sm:p-7">
-            <span className="ohq-eyebrow">Latest verified updates</span>
-            {timeline.slice(0, 2).map((event) => (
-              <div
-                key={event.id}
-                className="ohq-verified flex flex-col gap-1.5 px-4 py-3.5"
-              >
-                <span className="flex flex-wrap items-center gap-2.5">
-                  <span className="font-mono text-[9.5px] tracking-[0.12em] whitespace-nowrap uppercase text-positive-light">
-                    <span aria-hidden>✓</span> Verified update
-                  </span>
-                  <time className="font-mono text-[11px] text-dim">{event.date}</time>
-                </span>
-                <span className="text-[14.5px] font-semibold text-cream-bright">
-                  {event.title}
-                </span>
-              </div>
-            ))}
-            {timeline.length === 0 ? (
-              <p className="m-0 text-[13.5px] leading-[1.6] text-dim">
-                No verified developments have been published for this topic yet. Editors
-                add sourced updates as they are confirmed.
-              </p>
-            ) : null}
-          </div>
-
+          {/* "Latest verified updates" used to sit here. It now leads the page,
+              above the charts — a sourced fact outranks a measurement of
+              feeling. See components/topic/VerifiedUpdates.tsx. */}
           <div className="ohq-panel flex flex-col gap-4 p-5 sm:p-7">
             <span className="ohq-eyebrow">Most helpful opinions</span>
             {mostHelpful.map((opinion) => (

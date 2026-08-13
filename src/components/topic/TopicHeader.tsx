@@ -1,6 +1,7 @@
 "use client";
 
 import { ExportButton } from "@/components/topic/ExportButton";
+import { FollowButton } from "@/components/ui/FollowButton";
 import { GoToDiscussion } from "@/components/ui/GoToDiscussion";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -17,8 +18,7 @@ interface TopicHeaderProps {
 }
 
 export function TopicHeader({ topic, context, timeline }: TopicHeaderProps) {
-  const { follows, toggleFollow, toast } = usePrototype();
-  const following = follows.includes(topic.id);
+  const { toast } = usePrototype();
 
   const share = async () => {
     const summary = `${topic.name} — ${topic.headlineMetric} ${topic.sampleLabel}.`;
@@ -136,18 +136,10 @@ export function TopicHeader({ topic, context, timeline }: TopicHeaderProps) {
               already decided to stay. */}
           <GoToDiscussion />
           <ExportButton topic={topic} context={context} timeline={timeline} />
-          <button
-            type="button"
-            onClick={() => toggleFollow(topic.id)}
-            aria-pressed={following}
-            className="cursor-pointer rounded-full border px-[18px] py-[9px] text-[13px] font-medium transition-[color,border-color] duration-300 outline-none focus-visible:ring-2 focus-visible:ring-positive/60"
-            style={{
-              color: following ? "#4ED27C" : "#D6D3CD",
-              borderColor: following ? "rgba(29,185,84,0.45)" : "color-mix(in oklab, var(--color-veil) 16%, transparent)",
-            }}
-          >
-            {following ? "Following" : "Follow"}
-          </button>
+          {/* Real now: `topic_follows` with a trigger-maintained counter.
+              It used to write to this browser's localStorage, so a follow was
+              invisible on any other device and to everybody else. */}
+          <FollowButton kind="topic" id={topic.id} />
           <button
             type="button"
             onClick={share}

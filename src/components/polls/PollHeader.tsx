@@ -5,6 +5,7 @@ import { PollSplitBar } from "@/components/polls/PollSplitBar";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
+import { FollowButton } from "@/components/ui/FollowButton";
 import { GoToDiscussion } from "@/components/ui/GoToDiscussion";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatNumber } from "@/lib/derive-poll";
@@ -157,6 +158,8 @@ export function PollHeader({
               the interesting half, and they sit below three panels of
               cross-tabs — far enough down to be missed. */}
           <GoToDiscussion />
+          {/* Polls had no follow at all until `poll_follows` landed. */}
+          <FollowButton kind="poll" id={poll.id} />
           <PollExportButton poll={poll} reasons={reasons} />
           <button
             type="button"

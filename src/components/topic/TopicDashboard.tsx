@@ -1,5 +1,6 @@
 import { AudiencePanels } from "@/components/topic/AudiencePanels";
 import { TopicHeader } from "@/components/topic/TopicHeader";
+import { VerifiedUpdates } from "@/components/topic/VerifiedUpdates";
 import { TopicTabs } from "@/components/topic/TopicTabs";
 import { FacetPanel } from "@/components/topic/FacetPanel";
 import { KpiGrid } from "@/components/topic/KpiGrid";
@@ -47,6 +48,11 @@ export function TopicDashboard({
       style={{ paddingTop: "calc(var(--ohq-nav-h) + 18px)" }}
     >
       <TopicHeader topic={topic} context={context} timeline={timeline} />
+
+      {/* The sourced record before any measurement of opinion. It was at the
+          bottom of the Overview tab; see VerifiedUpdates for why that was the
+          wrong order. */}
+      <VerifiedUpdates timeline={timeline} />
 
       {/* 1 — What the numbers say. Everything measured, in one run.
           These wrappers are layout only: each panel inside is already its own

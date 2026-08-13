@@ -8,7 +8,10 @@ import { PollHeader } from "@/components/polls/PollHeader";
 import { PollHistory } from "@/components/polls/PollHistory";
 import { PollReasons } from "@/components/polls/PollReasons";
 import { PollVotePanel } from "@/components/polls/PollVotePanel";
+import { SubjectGate } from "@/components/auth/SubjectGate";
 import { Footer } from "@/components/site/Footer";
+import { getPollPreview } from "@/lib/preview";
+import { supabaseServer } from "@/lib/supabase/server";
 import { getPollPage } from "@/lib/polls/queries";
 
 /**
@@ -28,10 +31,12 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const page = await getPollPage(slug);
-  if (!page) return { title: "Poll", robots: { index: false, follow: false } };
-  const { poll } = page;
-  const description = `${poll.marginLabel}. ${poll.splitLabel}. ${poll.summary}`;
+  // From the preview — see the topic route. The description used to quote the
+  // margin and the split, which a signed-out reader is no longer shown.
+  const preview = await getPollPreview(slug);
+  if (!preview) return { title: "Poll", robots: { index: false, follow: false } };
+  const poll = { question: preview.title };
+  const description = preview.summary || preview.about;
   return {
     title: poll.question,
     description,
@@ -52,6 +57,33 @@ export default async function PollPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  // Signed out gets the question and not the answer. See the topic route for
+  // why this is a branch before the read rather than a modal over the result.
+  const {
+    data: { user },
+  } = await (await supabaseServer()).auth.getUser();
+
+  if (!user) {
+    const preview = await getPollPreview(slug);
+    if (!preview) notFound();
+    return (
+      <>
+        <SubjectGate
+          preview={preview}
+          kind="poll"
+          behind={[
+            "The split — who is ahead, by how much, and whether that is a real lead",
+            "How the split has moved since the poll opened",
+            "Where it flips: by region, age, occupation and gender",
+            "Every reason people gave for their pick, on both sides",
+            "Your own vote, counted once",
+          ]}
+        />
+        <Footer />
+      </>
+    );
+  }
+
   const page = await getPollPage(slug);
 
   // A real 404. The old route fell through to a client component because a poll
