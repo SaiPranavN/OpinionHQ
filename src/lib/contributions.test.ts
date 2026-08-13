@@ -165,8 +165,8 @@ describe("ranking", () => {
     // The boost is applied in the sort, never folded into the score. A score
     // that silently included it would look like a measurement of what readers
     // did and would not be one.
-    const a = standard({ id: "a", helpful: 50, replies: 4, saves: 2 });
-    const b = pro({ id: "b", helpful: 50, replies: 4, saves: 2 });
+    const a = standard({ id: "a", helpful: 50, replies: 4, dislikes: 2 });
+    const b = pro({ id: "b", helpful: 50, replies: 4, dislikes: 2 });
     expect(relevanceScore(a)).toBe(relevanceScore(b));
   });
 
@@ -309,14 +309,14 @@ describe("embedded interactions stay on their contribution", () => {
 describe("quality signals", () => {
   it("counts a considered reply and ignores a '+1'", () => {
     const signals = qualitySignals(
-      pro({ helpful: 20, saves: 3 }),
+      pro({ helpful: 20, dislikes: 3 }),
       [{ text: "agreed" }, { text: "This misses the service-network point entirely, which is the one that decides it." }],
       12,
       0,
     );
     expect(signals.meaningfulReplies).toBe(1);
     expect(signals.upvotes).toBe(20);
-    expect(signals.saves).toBe(3);
+    expect(signals.downvotes).toBe(3);
     expect(signals.blockParticipation).toBe(12);
   });
 

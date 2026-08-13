@@ -21,7 +21,11 @@ import { ContributionCard } from "@/components/topic/ContributionCard";
 import { AnonymousToggle } from "@/components/ui/AnonymousToggle";
 import { MediaPicker } from "@/components/ui/MediaPicker";
 import { mediaUrl } from "@/lib/media";
-import type { MediaDraft } from "@/lib/topics/contributions";
+import {
+  MAX_CONTRIBUTION_EDITS,
+  type MediaDraft,
+  type MyPublished,
+} from "@/lib/topics/contributions";
 import { isPublishable, OPTIONAL_SECTIONS, BLOCK_KIND_LABEL } from "@/lib/contributions";
 import { sentimentColor } from "@/lib/derive";
 import type {
@@ -79,25 +83,42 @@ export function ProComposer({
   topicId,
   accent,
   onClose,
+  /**
+   * The published contribution being edited, if there is one.
+   *
+   * Read back from the server rather than from a local draft, because an edit
+   * has to start from what is actually published — starting from whatever this
+   * browser still held is how somebody overwrites a version they changed on
+   * another device.
+   */
+  editing,
 }: {
   topicId: string;
   accent: string;
   onClose: () => void;
+  editing?: MyPublished | null;
 }) {
   const { publishPro, saveProDraft, discardProDraft, proDraftFor, displayName, toast } =
     usePrototype();
 
-  const saved = proDraftFor(topicId);
+  // The published version wins over a local draft when editing: the draft may
+  // predate it.
+  const saved = editing ? null : proDraftFor(topicId);
   const [sections, setSections] = useState<ProSection[]>(
-    saved && saved.length > 0
-      ? saved
-      : [{ id: nextId("s"), type: "headline", position: 0, text: "" }],
+    editing && editing.sections.length > 0
+      ? editing.sections
+      : saved && saved.length > 0
+        ? saved
+        : [{ id: nextId("s"), type: "headline", position: 0, text: "" }],
   );
-  const [vote, setVote] = useState<Sentiment>("Neutral");
+  const [vote, setVote] = useState<Sentiment>(editing?.vote ?? "Neutral");
   const [preview, setPreview] = useState(false);
-  const [anonymous, setAnonymous] = useState(false);
-  const [media, setMedia] = useState<MediaDraft[]>([]);
+  const [anonymous, setAnonymous] = useState(editing?.anonymous ?? false);
+  const [media, setMedia] = useState<MediaDraft[]>(editing?.media ?? []);
   const [publishing, setPublishing] = useState(false);
+
+  const editsLeft = editing ? MAX_CONTRIBUTION_EDITS - editing.edits : MAX_CONTRIBUTION_EDITS;
+  const outOfEdits = Boolean(editing) && editsLeft <= 0;
 
   const headline = sections.find((s) => s.type === "headline");
   const optional = sections.filter((s) => s.type !== "headline");
@@ -185,7 +206,6 @@ export function ProComposer({
       width: m.width,
       height: m.height,
     })),
-    saves: 0,
   };
 
   const ready = isPublishable(cleaned());
@@ -320,7 +340,7 @@ export function ProComposer({
       <footer className="flex flex-wrap items-center gap-3 border-t border-veil/8 pt-4">
         <button
           type="button"
-          disabled={!ready || publishing}
+          disabled={!ready || publishing || outOfEdits}
           onClick={async () => {
             setPublishing(true);
             const id = await publishPro(topicId, cleaned(), vote, anonymous, media);
@@ -331,7 +351,11 @@ export function ProComposer({
           }}
           className="cursor-pointer rounded-full bg-positive px-5 py-2.5 text-[13.5px] font-semibold text-positive-ink transition-opacity duration-300 outline-none disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-positive-light"
         >
-          {publishing ? "Publishing…" : "Publish contribution"}
+          {publishing
+            ? "Publishing…"
+            : editing
+              ? "Update contribution"
+              : "Publish contribution"}
         </button>
         <button
           type="button"
@@ -353,7 +377,15 @@ export function ProComposer({
         >
           Discard
         </button>
-        {!ready ? (
+        {/* The allowance is stated before it is spent, not discovered as a
+            refusal on the fourth save. */}
+        {editing ? (
+          <span className="ml-auto text-[12px] text-dim">
+            {outOfEdits
+              ? `Updated ${MAX_CONTRIBUTION_EDITS} times, which is the limit. You can still withdraw it.`
+              : `${editsLeft} of ${MAX_CONTRIBUTION_EDITS} updates left.`}
+          </span>
+        ) : !ready ? (
           <span className="ml-auto text-[12px] text-dim">
             A headline of at least eight characters is needed to publish.
           </span>

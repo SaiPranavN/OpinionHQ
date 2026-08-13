@@ -34,6 +34,7 @@ interface TopicTabsProps {
   opinions: Opinion[];
   replies: Record<string, OpinionReply[]>;
   myReplyVotes: Record<string, "like" | "dislike">;
+  myOpinionVotes: Record<string, "like" | "dislike">;
   timeline: TimelineEvent[];
   accent: string;
 }
@@ -44,6 +45,7 @@ export function TopicTabs({
   accent,
   replies,
   myReplyVotes,
+  myOpinionVotes,
 }: TopicTabsProps) {
   const { user } = useSession();
   const [tab, setTab] = useState<TabId>("overview");
@@ -142,7 +144,7 @@ export function TopicTabs({
               above the charts — a sourced fact outranks a measurement of
               feeling. See components/topic/VerifiedUpdates.tsx. */}
           <div className="ohq-panel flex flex-col gap-4 p-5 sm:p-7">
-            <span className="ohq-eyebrow">Most helpful opinions</span>
+            <span className="ohq-eyebrow">Most liked opinions</span>
             {mostHelpful.map((opinion) => (
               <div
                 key={opinion.id}
@@ -162,7 +164,7 @@ export function TopicTabs({
                     {opinion.vote}
                   </span>
                   <span className="ml-auto font-mono text-[10.5px] text-dim">
-                    {formatNumber(opinion.helpful)} helpful
+                    {formatNumber(opinion.helpful)} likes
                   </span>
                 </span>
                 <span className="text-[13.5px] leading-[1.6] text-muted">
@@ -229,6 +231,7 @@ export function TopicTabs({
               contribution={contribution}
               replies={replies[contribution.id] ?? []}
               myReplyVotes={myReplyVotes}
+              myVote={myOpinionVotes[contribution.id] ?? null}
               view="opinions"
               accent={accent}
             />
@@ -257,6 +260,7 @@ export function TopicTabs({
               contribution={contribution}
               replies={replies[contribution.id] ?? []}
               myReplyVotes={myReplyVotes}
+              myVote={myOpinionVotes[contribution.id] ?? null}
               view="discussion"
               accent={accent}
             />

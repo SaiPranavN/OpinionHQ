@@ -2,10 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { RevealOnScroll } from "@/components/motion/RevealOnScroll";
-import { SubjectGate } from "@/components/auth/SubjectGate";
 import { Footer } from "@/components/site/Footer";
 import { getTopicPreview } from "@/lib/preview";
-import { supabaseServer } from "@/lib/supabase/server";
 import { TopicDashboard } from "@/components/topic/TopicDashboard";
 import { getTopicPage } from "@/lib/topics/queries";
 
@@ -62,37 +60,18 @@ export default async function TopicPage({
   const { slug } = await params;
 
   /**
-   * Signed out gets the subject and not the measurement.
+   * NO SIGN-IN GATE. It was here and it has been removed.
    *
-   * The check is here rather than in a modal because a modal is decoration:
-   * the numbers would still be in the HTML. Branching before the read means
-   * the eight queries behind a dashboard never run for a visitor who cannot
-   * see it, so the gate is cheaper than the page as well as being real.
+   * The dashboard is readable by anybody: the distribution, the cross-tabs,
+   * every written opinion and the discussion under it. An account is what you
+   * need to *contribute* — vote, write, reply, publish — and each of those is
+   * refused by a row policy rather than by this file, so the rule holds for a
+   * script as well as for a browser.
+   *
+   * That is also why the read costs nothing extra: `opinion_feed` and the
+   * aggregate functions are readable by `anon`, so a signed-out visitor runs
+   * the same queries a member does and gets the same numbers.
    */
-  const {
-    data: { user },
-  } = await (await supabaseServer()).auth.getUser();
-
-  if (!user) {
-    const preview = await getTopicPreview(slug);
-    if (!preview) notFound();
-    return (
-      <>
-        <SubjectGate
-          preview={preview}
-          kind="topic"
-          behind={[
-            "The sentiment distribution — how positive, neutral and negative split",
-            "How that has moved, day by day, since the topic opened",
-            "Who took part: region, age, occupation and gender",
-            "Every written opinion, and the discussion under it",
-            "Your own vote, counted once",
-          ]}
-        />
-        <Footer />
-      </>
-    );
-  }
 
   const page = await getTopicPage(slug);
 
@@ -114,6 +93,7 @@ export default async function TopicPage({
         opinions={page.opinions}
         replies={page.replies}
         myReplyVotes={page.myReplyVotes}
+        myOpinionVotes={page.myOpinionVotes}
         timeline={page.timeline}
       />
       <Footer />

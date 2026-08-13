@@ -331,8 +331,15 @@ export interface Opinion {
    * claims are never merged into one badge (brief §14).
    */
   verifiedLabel?: string;
-  saves?: number;
-  reactions?: Partial<Record<ProReaction, number>>;
+  /** Dislikes. Likes are `helpful`, which kept its name to avoid a rename. */
+  dislikes?: number;
+  /**
+   * Republishes so far, capped at 3 by `publish_contribution`.
+   *
+   * Shown to the author so the limit is visible before it is hit, rather than
+   * discovered as a refusal on the fourth save.
+   */
+  edits?: number;
   /**
    * Posted without a name.
    *

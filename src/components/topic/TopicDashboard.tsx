@@ -29,6 +29,7 @@ export function TopicDashboard({
   timeline,
   replies,
   myReplyVotes,
+  myOpinionVotes,
 }: {
   topic: DecoratedTopic;
   context: TopicContext;
@@ -36,6 +37,7 @@ export function TopicDashboard({
   timeline: TimelineEvent[];
   replies: Record<string, OpinionReply[]>;
   myReplyVotes: Record<string, "like" | "dislike">;
+  myOpinionVotes: Record<string, "like" | "dislike">;
 }) {
   // One accent for the whole topic, resolved once and handed down. Richer
   // contributions tint with it so a card reads as belonging to *this* subject
@@ -77,6 +79,7 @@ export function TopicDashboard({
       <TopicTabs
         replies={replies}
         myReplyVotes={myReplyVotes}
+        myOpinionVotes={myOpinionVotes}
         opinions={opinions}
         timeline={timeline}
         accent={accent}

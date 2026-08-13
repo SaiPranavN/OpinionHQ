@@ -21,6 +21,7 @@ import { ASK_CATEGORIES } from "@/lib/ask/taxonomy";
 import { PROOF_KINDS } from "@/lib/ask/verification";
 import { AGE_BANDS } from "@/lib/demographics";
 import { FREE_ASKS, PRO_PRICE_INR } from "@/lib/entitlements";
+import { MAX_CONTRIBUTION_EDITS } from "@/lib/topics/contributions";
 import { MAX_COMMENT_DEPTH } from "@/lib/ask/comments";
 import { MAX_MATCHES, REPLY_CAP } from "@/lib/ask/taxonomy";
 import { MAX_POLL_OPTIONS } from "@/lib/types";
@@ -191,5 +192,25 @@ describe("Pro", () => {
     // button still works.
     const fn = sql.slice(sql.lastIndexOf("function public.is_pro"));
     expect(fn.slice(0, 600)).toContain("revoked_at is null");
+  });
+});
+
+describe("contribution edits", () => {
+  it("the composer's allowance matches the one publish_contribution enforces", () => {
+    // The composer greys out its own button at this number and the database
+    // raises past it. Two numbers describing one rule is one edit away from a
+    // button that stays enabled and then fails.
+    const fn = sql.slice(sql.lastIndexOf("function public.publish_contribution"));
+    expect(fn).toMatch(
+      new RegExp(`existing\\.edit_count >= ${MAX_CONTRIBUTION_EDITS}`),
+    );
+  });
+
+  it("withdrawing is not rate limited", () => {
+    // A cap on updates limits rewriting what people replied to. A cap on
+    // withdrawal would limit taking your own words back, which is a different
+    // thing and not one worth imposing.
+    const fn = sql.slice(sql.lastIndexOf("function public.withdraw_contribution"));
+    expect(fn.slice(0, 900)).not.toContain("edit_count");
   });
 });

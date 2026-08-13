@@ -50,8 +50,6 @@ export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
     votes,
     pollVotes,
     replies,
-    helpful,
-    saved,
     created,
     createdPolls,
     pro,
@@ -295,8 +293,6 @@ export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
           </Panel>
 
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-[clamp(12px,1.6vw,18px)]">
-            <Tally label="Marked helpful" value={helpful.length} />
-            <Tally label="Saved" value={saved.length} />
             {/* From Postgres, not `follows` in localStorage — see lib/follows.ts.
                 That array counted this browser and nothing else. */}
             <Tally label="Following" value={followCount} />

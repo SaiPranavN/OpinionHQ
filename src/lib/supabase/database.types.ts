@@ -1104,103 +1104,6 @@ export type Database = {
         }
         Relationships: []
       }
-      opinion_helpful: {
-        Row: {
-          created_at: string
-          opinion_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          opinion_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          opinion_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "opinion_helpful_opinion_id_fkey"
-            columns: ["opinion_id"]
-            isOneToOne: false
-            referencedRelation: "opinion_feed"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "opinion_helpful_opinion_id_fkey"
-            columns: ["opinion_id"]
-            isOneToOne: false
-            referencedRelation: "opinions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "opinion_helpful_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "professionals"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "opinion_helpful_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      opinion_reactions: {
-        Row: {
-          created_at: string
-          opinion_id: string
-          reaction: Database["public"]["Enums"]["pro_reaction"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          opinion_id: string
-          reaction: Database["public"]["Enums"]["pro_reaction"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          opinion_id?: string
-          reaction?: Database["public"]["Enums"]["pro_reaction"]
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "opinion_reactions_opinion_id_fkey"
-            columns: ["opinion_id"]
-            isOneToOne: false
-            referencedRelation: "opinion_feed"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "opinion_reactions_opinion_id_fkey"
-            columns: ["opinion_id"]
-            isOneToOne: false
-            referencedRelation: "opinions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "opinion_reactions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "professionals"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "opinion_reactions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       opinion_replies: {
         Row: {
           anonymous: boolean
@@ -1342,53 +1245,6 @@ export type Database = {
           },
         ]
       }
-      opinion_saves: {
-        Row: {
-          created_at: string
-          opinion_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          opinion_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          opinion_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "opinion_saves_opinion_id_fkey"
-            columns: ["opinion_id"]
-            isOneToOne: false
-            referencedRelation: "opinion_feed"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "opinion_saves_opinion_id_fkey"
-            columns: ["opinion_id"]
-            isOneToOne: false
-            referencedRelation: "opinions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "opinion_saves_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "professionals"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "opinion_saves_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       opinion_sections: {
         Row: {
           body: string | null
@@ -1434,6 +1290,56 @@ export type Database = {
           },
         ]
       }
+      opinion_votes: {
+        Row: {
+          created_at: string
+          opinion_id: string
+          user_id: string
+          vote: Database["public"]["Enums"]["reader_vote"]
+        }
+        Insert: {
+          created_at?: string
+          opinion_id: string
+          user_id: string
+          vote: Database["public"]["Enums"]["reader_vote"]
+        }
+        Update: {
+          created_at?: string
+          opinion_id?: string
+          user_id?: string
+          vote?: Database["public"]["Enums"]["reader_vote"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opinion_votes_opinion_id_fkey"
+            columns: ["opinion_id"]
+            isOneToOne: false
+            referencedRelation: "opinion_feed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinion_votes_opinion_id_fkey"
+            columns: ["opinion_id"]
+            isOneToOne: false
+            referencedRelation: "opinions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinion_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "opinion_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       opinions: {
         Row: {
           age_band: Database["public"]["Enums"]["age_band"] | null
@@ -1442,6 +1348,8 @@ export type Database = {
           author_line: string | null
           body: string
           created_at: string
+          dislike_count: number
+          edit_count: number
           edited_at: string | null
           format: Database["public"]["Enums"]["contribution_format"]
           gender: Database["public"]["Enums"]["gender"] | null
@@ -1449,17 +1357,13 @@ export type Database = {
           hidden_at: string | null
           hidden_reason: string | null
           id: string
-          insightful_count: number
           occupation: string | null
           place_id: string | null
           reply_count: number
-          save_count: number
           topic_id: string
           updated_at: string
-          useful_count: number
           verified_label: string | null
           vote: Database["public"]["Enums"]["sentiment"]
-          well_explained_count: number
         }
         Insert: {
           age_band?: Database["public"]["Enums"]["age_band"] | null
@@ -1468,6 +1372,8 @@ export type Database = {
           author_line?: string | null
           body?: string
           created_at?: string
+          dislike_count?: number
+          edit_count?: number
           edited_at?: string | null
           format?: Database["public"]["Enums"]["contribution_format"]
           gender?: Database["public"]["Enums"]["gender"] | null
@@ -1475,17 +1381,13 @@ export type Database = {
           hidden_at?: string | null
           hidden_reason?: string | null
           id?: string
-          insightful_count?: number
           occupation?: string | null
           place_id?: string | null
           reply_count?: number
-          save_count?: number
           topic_id: string
           updated_at?: string
-          useful_count?: number
           verified_label?: string | null
           vote: Database["public"]["Enums"]["sentiment"]
-          well_explained_count?: number
         }
         Update: {
           age_band?: Database["public"]["Enums"]["age_band"] | null
@@ -1494,6 +1396,8 @@ export type Database = {
           author_line?: string | null
           body?: string
           created_at?: string
+          dislike_count?: number
+          edit_count?: number
           edited_at?: string | null
           format?: Database["public"]["Enums"]["contribution_format"]
           gender?: Database["public"]["Enums"]["gender"] | null
@@ -1501,17 +1405,13 @@ export type Database = {
           hidden_at?: string | null
           hidden_reason?: string | null
           id?: string
-          insightful_count?: number
           occupation?: string | null
           place_id?: string | null
           reply_count?: number
-          save_count?: number
           topic_id?: string
           updated_at?: string
-          useful_count?: number
           verified_label?: string | null
           vote?: Database["public"]["Enums"]["sentiment"]
-          well_explained_count?: number
         }
         Relationships: [
           {
@@ -3152,22 +3052,20 @@ export type Database = {
           author_line: string | null
           body: string | null
           created_at: string | null
+          dislike_count: number | null
           display_name: string | null
+          edit_count: number | null
           edited_at: string | null
           format: Database["public"]["Enums"]["contribution_format"] | null
           helpful_count: number | null
           hidden_at: string | null
           id: string | null
           initials: string | null
-          insightful_count: number | null
           reply_count: number | null
-          save_count: number | null
           topic_id: string | null
           updated_at: string | null
-          useful_count: number | null
           verified_label: string | null
           vote: Database["public"]["Enums"]["sentiment"] | null
-          well_explained_count: number | null
         }
         Relationships: [
           {
@@ -3645,6 +3543,8 @@ export type Database = {
           author_line: string | null
           body: string
           created_at: string
+          dislike_count: number
+          edit_count: number
           edited_at: string | null
           format: Database["public"]["Enums"]["contribution_format"]
           gender: Database["public"]["Enums"]["gender"] | null
@@ -3652,17 +3552,13 @@ export type Database = {
           hidden_at: string | null
           hidden_reason: string | null
           id: string
-          insightful_count: number
           occupation: string | null
           place_id: string | null
           reply_count: number
-          save_count: number
           topic_id: string
           updated_at: string
-          useful_count: number
           verified_label: string | null
           vote: Database["public"]["Enums"]["sentiment"]
-          well_explained_count: number
         }
         SetofOptions: {
           from: "*"
@@ -3789,6 +3685,13 @@ export type Database = {
           aspect_id: string
           option_id: string
           topic_slug: string
+        }[]
+      }
+      my_opinion_votes: {
+        Args: { topic: string }
+        Returns: {
+          opinion_id: string
+          vote: Database["public"]["Enums"]["reader_vote"]
         }[]
       }
       my_poll_votes: {
@@ -4133,6 +4036,13 @@ export type Database = {
       unique_poll_slug: { Args: { input: string }; Returns: string }
       unique_topic_slug: { Args: { input: string }; Returns: string }
       unpublish_contribution: { Args: { topic_slug: string }; Returns: boolean }
+      vote_on_opinion: {
+        Args: {
+          kind: Database["public"]["Enums"]["reader_vote"]
+          opinion: string
+        }
+        Returns: Database["public"]["Enums"]["reader_vote"]
+      }
       vote_on_reply: {
         Args: {
           kind: Database["public"]["Enums"]["reader_vote"]
@@ -4140,6 +4050,7 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["reader_vote"]
       }
+      withdraw_contribution: { Args: { topic_slug: string }; Returns: boolean }
       withdraw_poll_vote: { Args: { poll_slug: string }; Returns: boolean }
       withdraw_vote: { Args: { topic_slug: string }; Returns: boolean }
     }

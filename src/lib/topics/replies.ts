@@ -75,3 +75,43 @@ export async function deleteReply(id: string): Promise<{ ok: boolean; message?: 
   // A refusal matches no rows rather than raising.
   return count ? { ok: true } : { ok: false, message: "That is not yours to delete." };
 }
+
+/* ------------------------------------------- voting on a contribution */
+
+/**
+ * Like or dislike a contribution. Pressing the same one again clears it.
+ *
+ * IT USED TO BE "HELPFUL", AND IT USED TO BE FICTION. `toggleHelpful` pushed
+ * the id into this browser's localStorage and the card rendered the database's
+ * count plus one — so the number was invisible to everyone else and gone on a
+ * cache clear, exactly like the follow counter and the contributions before it.
+ * `opinion_helpful` existed in Postgres the whole time with nothing writing to
+ * it.
+ *
+ * The toggle decision lives in `vote_on_opinion` rather than here, so two tabs
+ * pressing at once cannot land on different answers.
+ */
+export async function voteOnOpinion(
+  opinionId: string,
+  kind: Vote,
+): Promise<{ ok: true; vote: Vote | null } | { ok: false; message: string }> {
+  const { data, error } = await supabaseBrowser().rpc("vote_on_opinion", {
+    opinion: opinionId,
+    kind,
+  });
+  if (error) return { ok: false, message: readable(error.message) };
+  return { ok: true, vote: (data as Vote | null) ?? null };
+}
+
+/** This account's likes and dislikes across one topic, for first paint. */
+export async function myOpinionVotes(topicUuid: string): Promise<Record<string, Vote>> {
+  const { data, error } = await supabaseBrowser().rpc("my_opinion_votes", {
+    topic: topicUuid,
+  });
+  if (error || !data) return {};
+  const out: Record<string, Vote> = {};
+  for (const row of data as { opinion_id: string; vote: Vote }[]) {
+    out[row.opinion_id] = row.vote;
+  }
+  return out;
+}

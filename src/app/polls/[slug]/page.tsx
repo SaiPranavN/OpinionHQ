@@ -8,10 +8,8 @@ import { PollHeader } from "@/components/polls/PollHeader";
 import { PollHistory } from "@/components/polls/PollHistory";
 import { PollReasons } from "@/components/polls/PollReasons";
 import { PollVotePanel } from "@/components/polls/PollVotePanel";
-import { SubjectGate } from "@/components/auth/SubjectGate";
 import { Footer } from "@/components/site/Footer";
 import { getPollPreview } from "@/lib/preview";
-import { supabaseServer } from "@/lib/supabase/server";
 import { getPollPage } from "@/lib/polls/queries";
 
 /**
@@ -57,32 +55,16 @@ export default async function PollPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  // Signed out gets the question and not the answer. See the topic route for
-  // why this is a branch before the read rather than a modal over the result.
-  const {
-    data: { user },
-  } = await (await supabaseServer()).auth.getUser();
+  /**
+   * NO SIGN-IN GATE. It was here and it has been removed.
+   *
+   * The result is readable by anybody: the split, the movement, the cross-tabs
+   * and every reason people gave. An account is what you need to *contribute* —
+   * cast a vote, write a reason, attach a picture — and each of those is
+   * refused by a row policy rather than by this file, so the rule holds for a
+   * script as well as for a browser.
+   */
 
-  if (!user) {
-    const preview = await getPollPreview(slug);
-    if (!preview) notFound();
-    return (
-      <>
-        <SubjectGate
-          preview={preview}
-          kind="poll"
-          behind={[
-            "The split — who is ahead, by how much, and whether that is a real lead",
-            "How the split has moved since the poll opened",
-            "Where it flips: by region, age, occupation and gender",
-            "Every reason people gave for their pick, on both sides",
-            "Your own vote, counted once",
-          ]}
-        />
-        <Footer />
-      </>
-    );
-  }
 
   const page = await getPollPage(slug);
 

@@ -83,6 +83,14 @@ export interface TopicPage {
   replies: Record<string, OpinionReply[]>;
   /** The viewer's own like/dislike on each reply. Empty when signed out. */
   myReplyVotes: Record<string, "like" | "dislike">;
+  /**
+   * The viewer's own like/dislike on each contribution. Empty when signed out.
+   *
+   * Fetched here rather than per card, for the same reason the replies are: a
+   * discussion tab renders every opinion at once, and forty cards asking for
+   * their own vote is forty requests.
+   */
+  myOpinionVotes: Record<string, "like" | "dislike">;
   timeline: TimelineEvent[];
   context: TopicContext;
   /** The viewer's own vote, when they have one. */
@@ -170,8 +178,8 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
         .from("opinion_feed")
         .select(
           "id, author_id, anonymous, display_name, initials, vote, body, format, " +
-            "author_line, verified_label, helpful_count, reply_count, save_count, " +
-            "insightful_count, useful_count, well_explained_count, created_at",
+            "author_line, verified_label, helpful_count, dislike_count, reply_count, " +
+            "edit_count, created_at",
         )
         .eq("topic_id", topicId)
         .neq("body", "")
@@ -231,7 +239,8 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
   // plain select returns theirs and nobody else's, and signed out it returns
   // nothing without this file testing for a session.
   const opinionIds = opinions.map((o) => o.id);
-  const [{ data: replyRows }, { data: voteRows }] = await Promise.all([
+  const [{ data: replyRows }, { data: voteRows }, { data: opinionVoteRows }] =
+    await Promise.all([
     opinionIds.length > 0
       ? supabase
           .from("opinion_reply_feed")
@@ -244,6 +253,9 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
       : Promise.resolve({ data: null }),
     uid && opinionIds.length > 0
       ? supabase.from("opinion_reply_votes").select("reply_id, vote")
+      : Promise.resolve({ data: null }),
+    uid
+      ? supabase.rpc("my_opinion_votes", { topic: topicId })
       : Promise.resolve({ data: null }),
   ]);
 
@@ -271,6 +283,11 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
     myReplyVotes[v.reply_id] = v.vote === "dislike" ? "dislike" : "like";
   }
 
+  const myOpinionVotes: Record<string, "like" | "dislike"> = {};
+  for (const v of (opinionVoteRows as { opinion_id: string; vote: string }[] | null) ?? []) {
+    myOpinionVotes[v.opinion_id] = v.vote === "dislike" ? "dislike" : "like";
+  }
+
   return {
     topic: decorate(
       rowToTopic(card, {
@@ -295,6 +312,7 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
     opinions,
     replies,
     myReplyVotes,
+    myOpinionVotes,
     timeline: ((events as TimelineRow[] | null) ?? []).map((e) => ({
       id: e.id,
       topicId: card.slug,
@@ -338,11 +356,9 @@ interface OpinionRow {
   author_line: string | null;
   verified_label: string | null;
   helpful_count: number;
+  dislike_count: number;
   reply_count: number;
-  save_count: number;
-  insightful_count: number;
-  useful_count: number;
-  well_explained_count: number;
+  edit_count: number;
   created_at: string;
 }
 
@@ -386,12 +402,8 @@ function toOpinion(row: OpinionRow, topicSlug: string): Opinion {
     authorLine: anonymous ? undefined : (row.author_line ?? undefined),
     verifiedLabel: anonymous ? undefined : (row.verified_label ?? undefined),
     anonymous,
-    saves: row.save_count,
-    reactions: {
-      insightful: row.insightful_count,
-      useful: row.useful_count,
-      well_explained: row.well_explained_count,
-    },
+    dislikes: row.dislike_count,
+    edits: row.edit_count,
   };
 }
 

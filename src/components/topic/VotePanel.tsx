@@ -7,11 +7,18 @@
  * submit, and the draft is handed to the modal rather than discarded.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { ProComposer } from "@/components/topic/ProComposer";
 import { sentimentColor } from "@/lib/derive";
+import {
+  MAX_CONTRIBUTION_EDITS,
+  readMyPublished,
+  withdrawContribution,
+  type MyPublished,
+} from "@/lib/topics/contributions";
 import type { Sentiment } from "@/lib/types";
 
 const MAX_NOTE = 280;
@@ -34,6 +41,25 @@ export function VotePanel({ topicId, accent }: { topicId: string; accent: string
   // their flow is byte-identical to what it was.
   const [mode, setMode] = useState<"quick" | "rich">("quick");
   const hasDraft = Boolean(proDraftFor(topicId)?.length);
+
+  /**
+   * The contribution this account already has on this topic, if any.
+   *
+   * Read on mount rather than threaded down from the server query, because it
+   * is only needed once somebody is signed in and Pro — most page loads never
+   * touch it.
+   */
+  const router = useRouter();
+  const [published, setPublished] = useState<MyPublished | null>(null);
+  const [editingPro, setEditingPro] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+
+  const refreshPublished = useCallback(() => {
+    if (!pro) return;
+    readMyPublished(topicId).then(setPublished);
+  }, [pro, topicId]);
+
+  useEffect(refreshPublished, [refreshPublished]);
 
   // Seed the composer from a previously recorded vote when re-editing.
   useEffect(() => {
@@ -116,8 +142,77 @@ export function VotePanel({ topicId, accent }: { topicId: string; accent: string
         </div>
       ) : null}
 
-      {ready && pro && mode === "rich" ? (
-        <ProComposer topicId={topicId} accent={accent} onClose={() => setMode("quick")} />
+      {/* Already published, and not currently being edited: state, then the
+          two things you can do about it. */}
+      {ready && pro && published && !editingPro ? (
+        <div className="flex flex-wrap items-center gap-[18px] rounded-[14px] border p-5"
+          style={{
+            borderColor: `color-mix(in oklab, ${accent} 32%, transparent)`,
+            background: `color-mix(in oklab, ${accent} 5%, transparent)`,
+          }}
+        >
+          <span className="flex flex-col gap-1.5">
+            <span className="text-[15px] font-semibold text-cream-bright">
+              Your contribution is published
+              {published.anonymous ? (
+                <span className="ml-2 font-mono text-[10px] tracking-[0.12em] uppercase text-dim">
+                  anonymous
+                </span>
+              ) : null}
+            </span>
+            <span className="max-w-[520px] text-[13px] leading-[1.55] text-muted">
+              {published.edits >= MAX_CONTRIBUTION_EDITS
+                ? `Updated ${MAX_CONTRIBUTION_EDITS} times, which is the limit. You can still withdraw it.`
+                : `${MAX_CONTRIBUTION_EDITS - published.edits} of ${MAX_CONTRIBUTION_EDITS} updates left. Withdrawing is always available.`}
+            </span>
+          </span>
+          <span className="ml-auto flex flex-wrap gap-2.5">
+            <button
+              type="button"
+              disabled={published.edits >= MAX_CONTRIBUTION_EDITS}
+              onClick={() => {
+                setEditingPro(true);
+                setMode("rich");
+              }}
+              className="cursor-pointer rounded-full border border-veil/16 px-[18px] py-[9px] text-[13px] font-medium text-soft transition-colors hover:border-veil/40 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Update
+            </button>
+            <button
+              type="button"
+              disabled={withdrawing}
+              onClick={async () => {
+                setWithdrawing(true);
+                try {
+                  await withdrawContribution(topicId);
+                  setPublished(null);
+                  setEditingPro(false);
+                  setMode("quick");
+                  toast("Withdrawn. The contribution and your vote are both gone.");
+                  router.refresh();
+                } catch (e) {
+                  toast(e instanceof Error ? e.message : "Could not withdraw that.");
+                } finally {
+                  setWithdrawing(false);
+                }
+              }}
+              className="cursor-pointer rounded-full border border-veil/12 px-[18px] py-[9px] text-[13px] font-medium text-dim transition-colors hover:border-negative/40 hover:text-negative-light disabled:opacity-40"
+            >
+              {withdrawing ? "Withdrawing…" : "Withdraw"}
+            </button>
+          </span>
+        </div>
+      ) : ready && pro && mode === "rich" ? (
+        <ProComposer
+          topicId={topicId}
+          accent={accent}
+          editing={editingPro ? published : null}
+          onClose={() => {
+            setMode("quick");
+            setEditingPro(false);
+            refreshPublished();
+          }}
+        />
       ) : !ready ? (
         <div className="h-[220px] animate-pulse rounded-[14px] bg-veil/3" />
       ) : showComposer ? (

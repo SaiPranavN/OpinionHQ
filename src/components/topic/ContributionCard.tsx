@@ -31,16 +31,10 @@ import {
 } from "@/lib/contributions";
 import { buildThread } from "@/lib/comments/tree";
 import { formatNumber, sentimentColor, sentimentIcon } from "@/lib/derive";
-import { postReply } from "@/lib/topics/replies";
-import type { Opinion, OpinionReply, ProReaction, ProSection } from "@/lib/types";
+import { postReply, voteOnOpinion } from "@/lib/topics/replies";
+import type { Opinion, OpinionReply, ProSection } from "@/lib/types";
 
 const MAX_REPLY = 400;
-
-const REACTIONS: { id: ProReaction; label: string }[] = [
-  { id: "insightful", label: "Insightful" },
-  { id: "useful", label: "Useful" },
-  { id: "well_explained", label: "Well explained" },
-];
 
 export function ContributionCard({
   contribution,
@@ -48,6 +42,7 @@ export function ContributionCard({
   accent,
   replies: replyRows,
   myReplyVotes,
+  myVote,
 }: {
   contribution: Opinion;
   view: "opinions" | "discussion";
@@ -55,19 +50,30 @@ export function ContributionCard({
   /** Flat, from the server. Threaded here so the tree is built once per card. */
   replies: OpinionReply[];
   myReplyVotes: Record<string, "like" | "dislike">;
+  /** This reader's own like or dislike on this contribution, from the server. */
+  myVote?: "like" | "dislike" | null;
 }) {
   const router = useRouter();
-  const {
-    helpful,
-    toggleHelpful,
-    signedIn,
-    openAuth,
-    toast,
-    saved,
-    toggleSave,
-    react,
-    contributionReactions,
-  } = usePrototype();
+  const { signedIn, openAuth, toast } = usePrototype();
+
+  /**
+   * Like and dislike, held here and reconciled against the database.
+   *
+   * SEEDED FROM THE SERVER, not from localStorage. The old "Helpful" button
+   * pushed the id into this browser's store and rendered `helpful_count + 1`,
+   * so the number was the database's zero plus this tab's opinion of itself —
+   * invisible to everybody else and gone on a cache clear.
+   *
+   * The optimistic move is kept because a vote should feel instant, but the
+   * refusal path puts it back rather than leaving a lie on screen. That is the
+   * lesson the follow counter cost an afternoon to learn.
+   */
+  const [vote, setVote] = useState<"like" | "dislike" | null>(myVote ?? null);
+  const [tally, setTally] = useState({
+    like: contribution.helpful,
+    dislike: contribution.dislikes ?? 0,
+  });
+  const [voting, setVoting] = useState(false);
 
   const pro = isPro(contribution);
   // Discussion is for reading conversations, so it opens with everything
@@ -78,10 +84,6 @@ export function ContributionCard({
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [replyError, setReplyError] = useState<string | null>(null);
-
-  const marked = helpful.includes(contribution.id);
-  const isSaved = saved.includes(contribution.id);
-  const myReaction = contributionReactions[contribution.id];
 
   // Built once per card rather than per render of every node, and from the
   // server's flat list rather than from anything held in this browser — a reply
@@ -117,6 +119,44 @@ export function ContributionCard({
     // Re-reads the page rather than splicing a copy in here, which would drift
     // from what the database now holds the moment two people reply at once.
     router.refresh();
+  };
+
+  /**
+   * Cast, or take it back by pressing the same button again.
+   *
+   * The toggle decision is `vote_on_opinion`'s, not this component's, so two
+   * tabs pressing at once cannot land on different answers. What comes back is
+   * the vote the row actually holds, and the counters are recomputed from it —
+   * never incremented blindly, which is how a counter and its table drift.
+   */
+  const cast = async (kind: "like" | "dislike") => {
+    if (!signedIn) {
+      openAuth("signin");
+      return;
+    }
+    if (voting) return;
+
+    const before = vote;
+    const beforeTally = tally;
+    const next = before === kind ? null : kind;
+
+    setVoting(true);
+    setVote(next);
+    setTally({
+      like: contribution.helpful + (next === "like" ? 1 : 0),
+      dislike: (contribution.dislikes ?? 0) + (next === "dislike" ? 1 : 0),
+    });
+
+    const result = await voteOnOpinion(contribution.id, kind);
+    setVoting(false);
+
+    if (!result.ok) {
+      setVote(before);
+      setTally(beforeTally);
+      toast(result.message);
+      return;
+    }
+    setVote(result.vote);
   };
 
   const share = () => {
@@ -208,53 +248,24 @@ export function ContributionCard({
           <MediaStrip media={contribution.media} />
         ) : null}
 
-        {pro ? (
-          <div className="flex flex-wrap items-center gap-2">
-            {REACTIONS.map((reaction) => {
-              const active = myReaction === reaction.id;
-              const base = contribution.reactions?.[reaction.id] ?? 0;
-              return (
-                <button
-                  key={reaction.id}
-                  type="button"
-                  onClick={() => react(contribution.id, reaction.id)}
-                  aria-pressed={active}
-                  className="cursor-pointer rounded-full border px-3 py-[5px] text-[11.5px] font-medium transition-[color,background,border-color] duration-300 outline-none focus-visible:ring-2 focus-visible:ring-positive/50"
-                  style={{
-                    borderColor: active
-                      ? `color-mix(in oklab, ${accent} 55%, transparent)`
-                      : "color-mix(in oklab, var(--color-veil) 12%, transparent)",
-                    background: active
-                      ? `color-mix(in oklab, ${accent} 12%, transparent)`
-                      : "transparent",
-                    color: active ? accent : "var(--color-muted)",
-                  }}
-                >
-                  {reaction.label}
-                  <span className="ml-1.5 font-mono text-[10.5px] tabular-nums">
-                    {base + (active ? 1 : 0)}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-
         {/* One action row for both formats. Report and Follow live in the
             menu, because a card whose most visible affordance is "report" is
             a card that invites it. */}
         <footer className="flex flex-wrap items-center gap-x-[18px] gap-y-2 border-t border-line pt-3.5">
-          <button
-            type="button"
-            onClick={() => toggleHelpful(contribution.id)}
-            aria-pressed={marked}
-            className={`cursor-pointer text-[12.5px] transition-colors duration-300 outline-none hover:text-positive-light focus-visible:ring-2 focus-visible:ring-positive/60 ${
-              marked ? "text-positive-light" : "text-muted"
-            }`}
-          >
-            {marked ? "Marked helpful" : "Helpful"} ·{" "}
-            {formatNumber(contribution.helpful + (marked ? 1 : 0))}
-          </button>
+          <VoteButton
+            kind="like"
+            active={vote === "like"}
+            count={tally.like}
+            busy={voting}
+            onPress={() => cast("like")}
+          />
+          <VoteButton
+            kind="dislike"
+            active={vote === "dislike"}
+            count={tally.dislike}
+            busy={voting}
+            onPress={() => cast("dislike")}
+          />
 
           <button
             type="button"
@@ -262,18 +273,7 @@ export function ContributionCard({
             aria-expanded={showReplies}
             className="cursor-pointer text-[12.5px] text-muted transition-colors duration-300 outline-none hover:text-cream focus-visible:ring-2 focus-visible:ring-positive/60"
           >
-            {showReplies ? "Hide replies" : "Replies"} · {replyCount}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => toggleSave(contribution.id)}
-            aria-pressed={isSaved}
-            className={`cursor-pointer text-[12.5px] transition-colors duration-300 outline-none hover:text-cream focus-visible:ring-2 focus-visible:ring-positive/60 ${
-              isSaved ? "text-cream" : "text-muted"
-            }`}
-          >
-            {isSaved ? "Saved" : "Save"}
+            {showReplies ? "Hide comments" : "Comments"} · {replyCount}
           </button>
 
           <button
@@ -580,3 +580,45 @@ function SectionView({
 
 /* ---------------------------------------------------------------- reply */
 
+
+/**
+ * One vote button.
+ *
+ * The count sits next to the arrow and is always rendered, including at zero —
+ * hiding a nought is how a working feature comes to look unwired, which the
+ * follow button already had to learn once.
+ */
+function VoteButton({
+  kind,
+  active,
+  count,
+  busy,
+  onPress,
+}: {
+  kind: "like" | "dislike";
+  active: boolean;
+  count: number;
+  busy: boolean;
+  onPress: () => void;
+}) {
+  const like = kind === "like";
+  return (
+    <button
+      type="button"
+      onClick={onPress}
+      disabled={busy}
+      aria-pressed={active}
+      aria-label={`${like ? "Like" : "Dislike"} — ${count}`}
+      className="inline-flex cursor-pointer items-center gap-1.5 text-[12.5px] transition-colors duration-300 outline-none focus-visible:ring-2 focus-visible:ring-positive/60 disabled:cursor-default"
+      style={{
+        color: active ? (like ? "#4ED27C" : "#E2686B") : "var(--color-muted)",
+      }}
+    >
+      <span aria-hidden className="text-[11px]">
+        {like ? "▲" : "▼"}
+      </span>
+      {like ? "Like" : "Dislike"}
+      <span className="font-mono text-[11.5px] tabular-nums">{formatNumber(count)}</span>
+    </button>
+  );
+}

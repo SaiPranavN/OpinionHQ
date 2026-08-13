@@ -47,7 +47,6 @@ import {
 import type {
   Poll,
   PollOptionId,
-  ProReaction,
   ProSection,
   Sentiment,
   Topic,
@@ -124,7 +123,6 @@ interface PersistedState {
   pollVotes: Record<string, CastPollVote>;
   facetAnswers: FacetAnswers;
   follows: string[];
-  helpful: string[];
   replies: PostedReply[];
   /** Topics published from the in-app composer, newest first. */
   created: Topic[];
@@ -166,10 +164,6 @@ interface PersistedState {
    * cannot reach the wrong one by accident.
    */
   blockChoices: Record<string, string>;
-  /** Contributions this visitor saved. */
-  saved: string[];
-  /** One reaction per contribution — see `react`. */
-  contributionReactions: Record<string, ProReaction>;
 }
 
 const EMPTY: PersistedState = {
@@ -177,14 +171,11 @@ const EMPTY: PersistedState = {
   pollVotes: {},
   facetAnswers: {},
   follows: [],
-  helpful: [],
   replies: [],
   created: [],
   createdPolls: [],
   proDrafts: {},
   blockChoices: {},
-  saved: [],
-  contributionReactions: {},
 };
 
 interface PrototypeValue extends PersistedState {
@@ -208,7 +199,6 @@ interface PrototypeValue extends PersistedState {
   clearPollVote: (pollId: string) => Promise<void>;
   answerFacet: (topicId: string, facetId: string, optionId: string) => void;
   toggleFollow: (topicId: string) => void;
-  toggleHelpful: (opinionId: string) => void;
   postReply: (opinionId: string, text: string) => boolean;
   repliesFor: (opinionId: string) => PostedReply[];
 
@@ -247,9 +237,7 @@ interface PrototypeValue extends PersistedState {
   /** Answers an embedded block. Never touches topic sentiment. */
   chooseBlock: (contributionId: string, blockId: string, optionId: string) => void;
   blockChoice: (contributionId: string, blockId: string) => string | undefined;
-  toggleSave: (contributionId: string) => void;
   /** Sets or clears this visitor's reaction. One at a time. */
-  react: (contributionId: string, reaction: ProReaction) => void;
   /** Publishes a composer draft and returns the id it was given. */
   createTopic: (draft: Omit<Topic, "createdBy" | "createdAt">) => string;
   createdTopic: (id: string) => Topic | undefined;
@@ -311,7 +299,6 @@ function readStored(): PersistedState {
       pollVotes: parsed.pollVotes ?? {},
       facetAnswers: parsed.facetAnswers ?? {},
       follows: Array.isArray(parsed.follows) ? parsed.follows : [],
-      helpful: Array.isArray(parsed.helpful) ? parsed.helpful : [],
       replies: Array.isArray(parsed.replies) ? parsed.replies : [],
       created: Array.isArray(parsed.created) ? parsed.created : [],
       // Belt as well as braces: the key bump above handles the known shape
@@ -322,8 +309,6 @@ function readStored(): PersistedState {
         : [],
       proDrafts: parsed.proDrafts ?? {},
       blockChoices: parsed.blockChoices ?? {},
-      saved: Array.isArray(parsed.saved) ? parsed.saved : [],
-      contributionReactions: parsed.contributionReactions ?? {},
     };
   } catch {
     return EMPTY;
@@ -872,23 +857,6 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
     [toast],
   );
 
-  const toggleHelpful = useCallback(
-    (opinionId: string) => {
-      if (!signedIn) {
-        toast("Sign in to mark an opinion helpful.");
-        setAuthMode("signin");
-        return;
-      }
-      setState((prev) => ({
-        ...prev,
-        helpful: prev.helpful.includes(opinionId)
-          ? prev.helpful.filter((id) => id !== opinionId)
-          : [...prev.helpful, opinionId],
-      }));
-    },
-    [signedIn, toast],
-  );
-
   const postReply = useCallback(
     (opinionId: string, text: string) => {
       const body = text.trim();
@@ -1095,48 +1063,6 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
     [state.blockChoices],
   );
 
-  const toggleSave = useCallback(
-    (contributionId: string) => {
-      if (!signedIn) {
-        toast("Sign in to save this.");
-        setAuthMode("signin");
-        return;
-      }
-      setState((prev) => ({
-        ...prev,
-        saved: prev.saved.includes(contributionId)
-          ? prev.saved.filter((id) => id !== contributionId)
-          : [...prev.saved, contributionId],
-      }));
-    },
-    [signedIn, toast],
-  );
-
-  /**
-   * One reaction per person per contribution.
-   *
-   * Insightful, Useful and Well explained are not mutually exclusive as words,
-   * but letting one reader press all three turns three counts into one count
-   * printed three times. Choosing forces the reader to say which of them they
-   * actually mean, which is the only reason to have three.
-   */
-  const react = useCallback(
-    (contributionId: string, reaction: ProReaction) => {
-      if (!signedIn) {
-        toast("Sign in to react.");
-        setAuthMode("signin");
-        return;
-      }
-      setState((prev) => {
-        const next = { ...prev.contributionReactions };
-        if (next[contributionId] === reaction) delete next[contributionId];
-        else next[contributionId] = reaction;
-        return { ...prev, contributionReactions: next };
-      });
-    },
-    [signedIn, toast],
-  );
-
   const repliesFor = useCallback(
     (opinionId: string) => state.replies.filter((r) => r.opinionId === opinionId),
     [state.replies],
@@ -1169,7 +1095,6 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       clearPollVote,
       answerFacet,
       toggleFollow,
-      toggleHelpful,
       postReply,
       repliesFor,
       openUpgrade,
@@ -1183,8 +1108,6 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       proDraftFor,
       chooseBlock,
       blockChoice,
-      toggleSave,
-      react,
       createTopic,
       createdTopic,
       isIdAvailable,
@@ -1209,7 +1132,6 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       clearPollVote,
       answerFacet,
       toggleFollow,
-      toggleHelpful,
       postReply,
       repliesFor,
       openUpgrade,
@@ -1223,8 +1145,6 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       proDraftFor,
       chooseBlock,
       blockChoice,
-      toggleSave,
-      react,
       createTopic,
       createdTopic,
       isIdAvailable,

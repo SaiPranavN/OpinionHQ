@@ -11,7 +11,6 @@
 import type {
   InteractiveBlock,
   Opinion,
-  ProReaction,
   ProSection,
   ProSectionType,
   Sentiment,
@@ -122,19 +121,22 @@ export const SORTS: { id: ContributionSort; label: string }[] = [
  * so `sortContributions` can apply the Pro boost separately and visibly rather
  * than baking it into a score that reads like a neutral measurement.
  *
- * Replies and saves are weighted above helpful marks because they cost more:
- * a helpful tap is a second, a considered reply is a minute, and saving
- * something is a statement that you expect to come back to it.
+ * Replies are weighted above likes because they cost more: a like is a second
+ * and a considered reply is a minute.
+ *
+ * DISLIKES SUBTRACT, and only down to zero. A contribution people actively
+ * disagree with should not climb on the strength of the argument it started —
+ * but it should not be pushed below one nobody read at all, which is what an
+ * uncapped negative would do.
  *
  * The decay is gentle — a day-old contribution should slip, not vanish, since
  * topics here run for weeks and the best read on one is often not the newest.
  */
 export function relevanceScore(contribution: Opinion): number {
-  const engagement =
-    contribution.helpful +
-    contribution.replies * 3 +
-    (contribution.saves ?? 0) * 4 +
-    reactionTotal(contribution) * 2;
+  const engagement = Math.max(
+    contribution.helpful - (contribution.dislikes ?? 0) + contribution.replies * 3,
+    0,
+  );
   const hours = ageMinutes(contribution.time) / 60;
   return engagement / Math.pow(hours + 3, 0.35);
 }
@@ -175,12 +177,6 @@ function byBoostedRelevance(a: Opinion, b: Opinion): number {
     if (tier !== 0) return tier;
   }
   return relevanceScore(b) - relevanceScore(a);
-}
-
-export function reactionTotal(contribution: Opinion): number {
-  const reactions = contribution.reactions;
-  if (!reactions) return 0;
-  return (Object.values(reactions) as number[]).reduce((sum, n) => sum + (n || 0), 0);
 }
 
 export function sortContributions(
@@ -362,8 +358,7 @@ export function blockTotal(
 export interface QualitySignals {
   contributionId: string;
   upvotes: number;
-  saves: number;
-  reactions: Partial<Record<ProReaction, number>>;
+  downvotes: number;
   meaningfulReplies: number;
   blockParticipation: number;
   reports: number;
@@ -381,8 +376,7 @@ export function qualitySignals(
   return {
     contributionId: contribution.id,
     upvotes: contribution.helpful,
-    saves: contribution.saves ?? 0,
-    reactions: contribution.reactions ?? {},
+    downvotes: contribution.dislikes ?? 0,
     meaningfulReplies: replies.filter(
       (r) => r.text.trim().length >= MEANINGFUL_REPLY_CHARS,
     ).length,

@@ -18,7 +18,12 @@
 
 import { MEDIA_BUCKET, MEDIA_MAX_BYTES, MEDIA_TYPES } from "@/lib/media";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import type { InteractiveBlock, ProSection, Sentiment } from "@/lib/types";
+import type {
+  InteractiveBlock,
+  InteractiveKind,
+  ProSection,
+  Sentiment,
+} from "@/lib/types";
 
 export interface MediaDraft {
   path: string;
@@ -284,3 +289,165 @@ export async function clearReasonMedia(pollReasonId: string): Promise<void> {
     .eq("poll_reason_id", pollReasonId);
 }
 
+
+/* ------------------------------------------------- editing and withdrawing */
+
+/** How many times a contribution may be republished. Mirrors the SQL check. */
+export const MAX_CONTRIBUTION_EDITS = 3;
+
+export interface MyPublished {
+  id: string;
+  vote: Sentiment;
+  anonymous: boolean;
+  /** Republishes so far. At `MAX_CONTRIBUTION_EDITS` the composer refuses. */
+  edits: number;
+  sections: ProSection[];
+  media: MediaDraft[];
+}
+
+/**
+ * This account's published contribution on one topic, in composer shape.
+ *
+ * Read back rather than kept around, because "edit" has to start from what is
+ * actually published — not from a draft this browser happens to still hold,
+ * which is how somebody ends up overwriting a version they edited elsewhere.
+ *
+ * Returns null when they have none, or when the one they have is a plain
+ * opinion: turning a standard opinion into a contribution is a first publish
+ * and should not open a composer full of nothing.
+ */
+export async function readMyPublished(topicSlug: string): Promise<MyPublished | null> {
+  const supabase = supabaseBrowser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: topic } = await supabase
+    .from("topics")
+    .select("id")
+    .eq("slug", topicSlug)
+    .maybeSingle();
+  if (!topic) return null;
+
+  const { data: row } = await supabase
+    .from("opinion_feed")
+    .select("id, vote, anonymous, format, edit_count")
+    .eq("topic_id", (topic as { id: string }).id)
+    .eq("author_id", user.id)
+    .maybeSingle();
+
+  const mine = row as {
+    id: string;
+    vote: string;
+    anonymous: boolean;
+    format: string;
+    edit_count: number;
+  } | null;
+  if (!mine || mine.format !== "pro") return null;
+
+  const [{ data: sectionRows }, { data: mediaRows }] = await Promise.all([
+    supabase
+      .from("opinion_sections")
+      .select(
+        "id, type, position, body, points, " +
+          "interactive_blocks(id, kind, prompt, interactive_options(id, label, position))",
+      )
+      .eq("opinion_id", mine.id)
+      .order("position", { ascending: true }),
+    supabase
+      .from("contribution_media")
+      .select("storage_path, kind, alt, width, height")
+      .eq("opinion_id", mine.id)
+      .order("position", { ascending: true }),
+  ]);
+
+  const sections: ProSection[] = [];
+  for (const raw of (sectionRows ?? []) as unknown as {
+    id: string;
+    type: string;
+    position: number;
+    body: string | null;
+    points: string[] | null;
+    interactive_blocks: unknown;
+  }[]) {
+    if (raw.type === "key_points") {
+      sections.push({
+        id: raw.id,
+        type: "key_points",
+        position: raw.position,
+        points: raw.points ?? [],
+      });
+      continue;
+    }
+    if (raw.type === "interactive") {
+      const embed = raw.interactive_blocks;
+      const block = (Array.isArray(embed) ? embed[0] : embed) as {
+        id: string;
+        kind: string;
+        prompt: string;
+        interactive_options: { id: string; label: string; position: number }[];
+      } | null;
+      if (!block) continue;
+      sections.push({
+        id: raw.id,
+        type: "interactive",
+        position: raw.position,
+        block: {
+          id: block.id,
+          kind: block.kind as InteractiveKind,
+          prompt: block.prompt,
+          // Counts start at zero in the composer on purpose: republishing
+          // rebuilds the block, so the responses to the old one do not carry
+          // over and showing them would promise otherwise.
+          options: [...(block.interactive_options ?? [])]
+            .sort((a, b) => a.position - b.position)
+            .map((o) => ({ id: o.id, label: o.label, count: 0 })),
+        },
+      });
+      continue;
+    }
+    sections.push({
+      id: raw.id,
+      type: raw.type as "headline" | "quick_take" | "breakdown" | "final_verdict",
+      position: raw.position,
+      text: raw.body ?? "",
+    });
+  }
+
+  return {
+    id: mine.id,
+    vote: mine.vote as Sentiment,
+    anonymous: Boolean(mine.anonymous),
+    edits: Number(mine.edit_count ?? 0),
+    sections,
+    media: ((mediaRows ?? []) as {
+      storage_path: string;
+      kind: string;
+      alt: string;
+      width: number | null;
+      height: number | null;
+    }[]).map((m) => ({
+      path: m.storage_path,
+      kind: m.kind === "gif" ? "gif" : "image",
+      alt: m.alt ?? "",
+      width: m.width,
+      height: m.height,
+    })),
+  };
+}
+
+/**
+ * Takes the contribution down entirely — sections, pictures and the vote.
+ *
+ * Never rate limited. A limit on updates is a limit on rewriting what people
+ * replied to; a limit on withdrawal would be a limit on taking your own words
+ * back, which is a different thing and not one worth imposing.
+ */
+export async function withdrawContribution(topicSlug: string): Promise<boolean> {
+  const { data, error } = await supabaseBrowser().rpc("withdraw_contribution", {
+    topic_slug: topicSlug,
+  });
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}
