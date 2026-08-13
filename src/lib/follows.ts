@@ -103,17 +103,29 @@ export async function toggleFollow(
   } = await supabase.auth.getUser();
   if (!user) return { following: false, count: 0, signedIn: false };
 
-  if (kind === "topic") {
-    if (currentlyFollowing) {
-      await supabase.from("topic_follows").delete().eq("topic_id", id).eq("user_id", user.id);
-    } else {
-      await supabase.from("topic_follows").insert({ topic_id: id, user_id: user.id });
-    }
-  } else if (currentlyFollowing) {
-    await supabase.from("poll_follows").delete().eq("poll_id", id).eq("user_id", user.id);
-  } else {
-    await supabase.from("poll_follows").insert({ poll_id: id, user_id: user.id });
-  }
+  /**
+   * THE ERROR IS NOT SWALLOWED, AND IT USED TO BE.
+   *
+   * These four calls were awaited and their `error` discarded, which cost an
+   * afternoon: the button was handed `topic.id`, and `rowToTopic` sets that to
+   * the *slug* with the real key on `uuid`. Postgres refused a slug in a uuid
+   * column on every click, the refusal went nowhere, and the re-read below
+   * looked up `topic_stats` by slug, found nothing and reported zero. The
+   * symptom was a counter that ticked up and fell back — which reads as a
+   * caching problem and is nothing of the kind.
+   *
+   * A write whose failure is discarded is a write you cannot debug from the
+   * outside. It throws now.
+   */
+  const { error } = currentlyFollowing
+    ? kind === "topic"
+      ? await supabase.from("topic_follows").delete().eq("topic_id", id).eq("user_id", user.id)
+      : await supabase.from("poll_follows").delete().eq("poll_id", id).eq("user_id", user.id)
+    : kind === "topic"
+      ? await supabase.from("topic_follows").insert({ topic_id: id, user_id: user.id })
+      : await supabase.from("poll_follows").insert({ poll_id: id, user_id: user.id });
+
+  if (error) throw new Error(`Could not ${currentlyFollowing ? "unfollow" : "follow"}: ${error.message}`);
 
   return readFollowState(kind, id);
 }

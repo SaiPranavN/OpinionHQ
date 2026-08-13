@@ -22,9 +22,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { readFollowState, toggleFollow, type FollowKind, type FollowState } from "@/lib/follows";
 
 export function FollowButton({ kind, id }: { kind: FollowKind; id: string }) {
+  const { toast } = usePrototype();
   const [state, setState] = useState<FollowState | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -59,13 +61,16 @@ export function FollowButton({ kind, id }: { kind: FollowKind; id: string }) {
 
     try {
       setState(await toggleFollow(kind, id, state.following));
-    } catch {
-      // Put the number back rather than leaving a lie on screen.
+    } catch (e) {
+      // Put the number back rather than leaving a lie on screen, and say so.
+      // A counter that silently springs back is the symptom that hid this bug
+      // for a whole round of "it increments then resets".
       setState(state);
+      toast(e instanceof Error ? e.message : "Could not save that follow.");
     } finally {
       setBusy(false);
     }
-  }, [kind, id, state, busy]);
+  }, [kind, id, state, busy, toast]);
 
   const following = state?.following ?? false;
   const count = state?.count ?? 0;

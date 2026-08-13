@@ -139,7 +139,7 @@ export function TopicHeader({ topic, context, timeline }: TopicHeaderProps) {
           {/* Real now: `topic_follows` with a trigger-maintained counter.
               It used to write to this browser's localStorage, so a follow was
               invisible on any other device and to everybody else. */}
-          <FollowButton kind="topic" id={topic.id} />
+          <FollowButton kind="topic" id={topic.uuid ?? ""} />
           <button
             type="button"
             onClick={share}

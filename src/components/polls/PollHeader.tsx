@@ -159,7 +159,7 @@ export function PollHeader({
               cross-tabs — far enough down to be missed. */}
           <GoToDiscussion />
           {/* Polls had no follow at all until `poll_follows` landed. */}
-          <FollowButton kind="poll" id={poll.id} />
+          <FollowButton kind="poll" id={poll.uuid ?? ""} />
           <PollExportButton poll={poll} reasons={reasons} />
           <button
             type="button"
