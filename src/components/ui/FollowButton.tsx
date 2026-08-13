@@ -1,16 +1,23 @@
 "use client";
 
 /**
- * Follow, with the count beside it.
+ * Follow, with the follower count always beside it.
  *
- * SELF-CONTAINED ON PURPOSE. It reads its own state on mount rather than having
- * `followerCount` threaded through the decorated types, the row mappers and two
- * page queries for one button. These pages are already gated to signed-in
- * readers, so nothing here needs to be in the server HTML.
+ * ALWAYS, INCLUDING ZERO. The first version rendered the number only when it
+ * was above zero, which is the state every new topic is in — so the button
+ * read "Follow" with nothing next to it and looked like a feature that had not
+ * been wired up. A count of nought is a real answer to "how many people follow
+ * this", and hiding it is how you make a working thing look broken.
  *
- * The count is what the database says after the write, not what the click
- * assumed. A refused insert returns zero rows and no error — an optimistic
- * button would sit there reading "Following" over a row that does not exist.
+ * SELF-CONTAINED ON PURPOSE. It reads its own state on mount rather than
+ * threading `followerCount` through the decorated types, the row mappers and
+ * two page queries for one button. These pages are gated to signed-in readers,
+ * so nothing here needs to be in the server HTML.
+ *
+ * The click moves the number immediately and then takes whatever the database
+ * says. Optimism alone would be wrong — a refused insert returns zero rows and
+ * no error, so a button that trusted its own guess would sit there reading
+ * "Following" over a row that was never written.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -33,18 +40,36 @@ export function FollowButton({ kind, id }: { kind: FollowKind; id: string }) {
 
   const onClick = useCallback(async () => {
     if (!state || busy) return;
+
+    // Signed out cannot follow. These pages are gated, so this is the rare
+    // case of a session expiring while the page is open — say so rather than
+    // no-opping under the cursor.
+    if (!state.signedIn) {
+      window.location.href = `/signin?next=${encodeURIComponent(window.location.pathname)}`;
+      return;
+    }
+
     setBusy(true);
+    const optimistic: FollowState = {
+      ...state,
+      following: !state.following,
+      count: Math.max(state.count + (state.following ? -1 : 1), 0),
+    };
+    setState(optimistic);
+
     try {
       setState(await toggleFollow(kind, id, state.following));
+    } catch {
+      // Put the number back rather than leaving a lie on screen.
+      setState(state);
     } finally {
       setBusy(false);
     }
   }, [kind, id, state, busy]);
 
-  // Renders at its final size before the answer arrives, so the action row does
-  // not jump once the count lands.
   const following = state?.following ?? false;
   const count = state?.count ?? 0;
+  const label = `${count} ${count === 1 ? "follower" : "followers"}`;
 
   return (
     <button
@@ -52,21 +77,30 @@ export function FollowButton({ kind, id }: { kind: FollowKind; id: string }) {
       onClick={onClick}
       disabled={!state || busy}
       aria-pressed={following}
-      aria-label={following ? "Unfollow" : "Follow"}
-      className="ohq-press inline-flex cursor-pointer items-center gap-2 rounded-full border px-[18px] py-[9px] text-[13px] font-medium whitespace-nowrap transition-[color,border-color,background] duration-300 outline-none focus-visible:ring-2 focus-visible:ring-positive/60 disabled:cursor-default"
+      aria-label={`${following ? "Unfollow" : "Follow"} — ${label}`}
+      title={label}
+      className="ohq-press inline-flex cursor-pointer items-center gap-2.5 rounded-full border px-[18px] py-[9px] text-[13px] font-medium whitespace-nowrap transition-[color,border-color,background] duration-300 outline-none focus-visible:ring-2 focus-visible:ring-positive/60 disabled:cursor-default"
       style={{
         color: following ? "#4ED27C" : "#D6D3CD",
         borderColor: following
           ? "rgba(29,185,84,0.45)"
           : "color-mix(in oklab, var(--color-veil) 16%, transparent)",
         background: following ? "rgba(29,185,84,0.10)" : "transparent",
+        // Dimmed only until the first answer arrives. It never disappears, so
+        // the action row does not reflow when the count lands.
         opacity: state ? 1 : 0.55,
       }}
     >
+      <span aria-hidden className="text-[13px]">
+        {following ? "✓" : "+"}
+      </span>
       {following ? "Following" : "Follow"}
-      {count > 0 ? (
-        <span className="font-mono text-[11px] text-dim tabular-nums">{count}</span>
-      ) : null}
+      <span
+        aria-hidden
+        className="rounded-full bg-veil/8 px-2 py-px font-mono text-[11px] tabular-nums text-dim"
+      >
+        {count}
+      </span>
     </button>
   );
 }

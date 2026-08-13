@@ -22,7 +22,9 @@
  */
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import { readMyFollowCount } from "@/lib/follows";
 
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -51,7 +53,6 @@ export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
     replies,
     helpful,
     saved,
-    follows,
     created,
     createdPolls,
     pro,
@@ -60,6 +61,18 @@ export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
     openAuth,
   } = usePrototype();
 
+
+  /** The real number, read once on mount. */
+  const [followCount, setFollowCount] = useState(0);
+  useEffect(() => {
+    let live = true;
+    readMyFollowCount().then((n) => {
+      if (live) setFollowCount(n);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   const [section, setSection] = useState<SectionId>("opinions");
 
@@ -267,7 +280,9 @@ export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-[clamp(12px,1.6vw,18px)]">
             <Tally label="Marked helpful" value={helpful.length} />
             <Tally label="Saved" value={saved.length} />
-            <Tally label="Following" value={follows.length} />
+            {/* From Postgres, not `follows` in localStorage — see lib/follows.ts.
+                That array counted this browser and nothing else. */}
+            <Tally label="Following" value={followCount} />
             <Tally label="Created" value={created.length + createdPolls.length} />
           </div>
         </div>

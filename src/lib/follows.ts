@@ -117,3 +117,35 @@ export async function toggleFollow(
 
   return readFollowState(kind, id);
 }
+
+/**
+ * How many subjects this account follows, across topics and polls.
+ *
+ * For the activity dashboard, whose "Following" tally used to count an array
+ * in this browser's localStorage — a number that was wrong on every other
+ * device and became wrong everywhere once follows moved into Postgres.
+ *
+ * `head: true` with an exact count asks Postgres for the number and no rows.
+ * The dashboard wants a tally, not a list, and fetching every row to call
+ * `.length` on it is how a tally starts costing what a page costs.
+ */
+export async function readMyFollowCount(): Promise<number> {
+  const supabase = supabaseBrowser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return 0;
+
+  const [topics, polls] = await Promise.all([
+    supabase
+      .from("topic_follows")
+      .select("topic_id", { count: "exact", head: true })
+      .eq("user_id", user.id),
+    supabase
+      .from("poll_follows")
+      .select("poll_id", { count: "exact", head: true })
+      .eq("user_id", user.id),
+  ]);
+
+  return (topics.count ?? 0) + (polls.count ?? 0);
+}

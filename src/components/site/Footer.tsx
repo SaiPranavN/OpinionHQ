@@ -24,7 +24,7 @@ import { Brand } from "@/components/ui/Brand";
  * registered sends people to a stranger, and guessing `x.com/<brand>` is how
  * that happens.
  */
-const X_URL = "";
+const X_URL = "https://x.com/TheOpinionHQ_";
 
 const EXPLORE = [
   { href: "/topics", label: "Topics" },
