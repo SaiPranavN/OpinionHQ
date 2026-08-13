@@ -2,6 +2,7 @@
 
 import { useSession } from "@/components/auth/SessionProvider";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
+import { MediaStrip } from "@/components/ui/MediaStrip";
 import { formatNumber } from "@/lib/derive-poll";
 import type { DecoratedPoll, PollOptionId, PollReason } from "@/lib/types";
 
@@ -132,8 +133,15 @@ export function PollReasons({
                       {reason.initials}
                     </span>
                     <span className="flex min-w-0 flex-col">
-                      <span className="truncate text-[13.5px] font-semibold text-cream">
-                        {reason.name}
+                      <span className="flex items-center gap-2">
+                        <span className="truncate text-[13.5px] font-semibold text-cream">
+                          {reason.name}
+                        </span>
+                        {reason.anonymous ? (
+                          <span className="shrink-0 rounded-full border border-veil/18 px-1.5 py-[1px] font-mono text-[8.5px] tracking-[0.12em] uppercase text-dim">
+                            Anon
+                          </span>
+                        ) : null}
                       </span>
                       <span className="font-mono text-[9.5px] tracking-[0.08em] uppercase text-dim">
                         Voted {option.name} · {reason.time}
@@ -143,6 +151,9 @@ export function PollReasons({
                   <p className="m-0 text-[14px] leading-[1.65] text-pretty text-soft">
                     {reason.text}
                   </p>
+                  {reason.media && reason.media.length > 0 ? (
+                    <MediaStrip media={reason.media} />
+                  ) : null}
                   {reason.helpful > 0 ? (
                     <footer className="border-t border-line pt-3 font-mono text-[10.5px] text-dim">
                       {formatNumber(reason.helpful)} found this helpful

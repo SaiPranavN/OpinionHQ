@@ -77,7 +77,6 @@ export function TopicDashboard({
       <TopicTabs
         replies={replies}
         myReplyVotes={myReplyVotes}
-        topicId={topic.id}
         opinions={opinions}
         timeline={timeline}
         accent={accent}

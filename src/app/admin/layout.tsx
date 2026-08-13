@@ -32,6 +32,7 @@ const SECTIONS: Section[] = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/topics", label: "Topics" },
   { href: "/admin/polls", label: "Polls" },
+  { href: "/admin/suggestions", label: "Suggestions" },
   { href: "/admin/accounts", label: "Accounts", adminOnly: true },
   { href: "/admin/audit", label: "Audit", adminOnly: true },
 ];

@@ -18,6 +18,18 @@ import { supabaseServer } from "@/lib/supabase/server";
 export const metadata = { title: "Accounts · Editorial desk" };
 export const dynamic = "force-dynamic";
 
+interface ProfileRow {
+  id: string;
+  display_name: string;
+  initials: string | null;
+  username: string | null;
+  headline: string | null;
+  role: string;
+  suspended_at: string | null;
+  created_at: string;
+  subscriptions: unknown;
+}
+
 export default async function AdminAccounts() {
   const supabase = await supabaseServer();
 
@@ -28,7 +40,12 @@ export default async function AdminAccounts() {
   const [{ data: rows }, { data: me }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, display_name, initials, username, role, suspended_at, created_at, headline")
+      .select(
+        "id, display_name, initials, username, role, suspended_at, created_at, headline, " +
+          // Readable here because the subscription policy admits an admin, and
+          // only an admin ever renders this page.
+          "subscriptions(status, current_period_end, revoked_at)",
+      )
       .order("created_at", { ascending: false })
       .limit(200),
     supabase.from("profiles").select("role").eq("id", user?.id ?? "").maybeSingle(),
@@ -61,16 +78,40 @@ export default async function AdminAccounts() {
       </div>
 
       <AccountRows
-        accounts={(rows ?? []).map((r) => ({
-          id: r.id,
-          displayName: r.display_name,
-          initials: r.initials ?? "?",
-          username: r.username,
-          headline: r.headline ?? "",
-          role: r.role as "member" | "editor" | "admin",
-          suspended: Boolean(r.suspended_at),
-          createdAt: r.created_at,
-        }))}
+        // Through `unknown`: PostgREST types an embedded select as a union that
+        // includes a parse-error shape, and the generated types cannot narrow
+        // it here. Every read below is defensive anyway. `SessionProvider` does
+        // the same thing for the same query.
+        accounts={((rows ?? []) as unknown as ProfileRow[]).map((r) => {
+          // An embedded one-to-one comes back as an object or a 1-length array
+          // depending on how the relationship was inferred. Take either.
+          const raw = r.subscriptions;
+          const sub = (Array.isArray(raw) ? raw[0] : raw) as {
+            status?: string;
+            current_period_end?: string | null;
+            revoked_at?: string | null;
+          } | null;
+
+          return {
+            id: r.id,
+            displayName: r.display_name,
+            initials: r.initials ?? "?",
+            username: r.username,
+            headline: r.headline ?? "",
+            role: r.role as "member" | "editor" | "admin",
+            suspended: Boolean(r.suspended_at),
+            // The same three conditions `is_pro()` applies, because a desk that
+            // disagreed with the database about who is a member would offer
+            // "Revoke" against an account that has nothing to revoke.
+            pro: Boolean(
+              sub &&
+                !sub.revoked_at &&
+                (sub.status === "active" || sub.status === "trialing") &&
+                (!sub.current_period_end || new Date(sub.current_period_end) > new Date()),
+            ),
+            createdAt: r.created_at,
+          };
+        })}
         selfId={user?.id ?? ""}
       />
     </div>

@@ -6,6 +6,7 @@ import { MetricChange } from "@/components/ui/MetricChange";
 import { SentimentBar } from "@/components/ui/SentimentBar";
 import { SentimentLegend } from "@/components/ui/SentimentLegend";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { SuggestedBy } from "@/components/ui/SuggestedBy";
 import { formatNumber } from "@/lib/derive";
 import type { DecoratedTopic } from "@/lib/types";
 
@@ -47,6 +48,7 @@ export function TopicCard({ topic }: { topic: DecoratedTopic }) {
         <p className="m-0 line-clamp-2 text-[12.5px] leading-[1.5] font-light text-muted">
           {topic.summary}
         </p>
+        <SuggestedBy name={topic.suggestedBy} />
       </div>
 
       {/* Headline metric — the strongest element after the title */}

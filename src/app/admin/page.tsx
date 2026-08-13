@@ -28,14 +28,17 @@ export default async function AdminOverview() {
     supabase.from("profiles").select("*", HEAD),
     supabase.from("credentials").select("*", HEAD).eq("status", "pending"),
     supabase.from("topic_requests").select("*", HEAD).is("topic_id", null).is("declined_at", null),
-    supabase.from("opinions").select("*", HEAD),
-  ]).then(([a, b, c, d, e, f]) => ({
+    supabase.from("poll_requests").select("*", HEAD).is("poll_id", null).is("declined_at", null),
+    // `opinion_feed`, not `opinions` — clients have no direct read on the table
+    // any more, and an editor's session is a client like any other.
+    supabase.from("opinion_feed").select("*", HEAD),
+  ]).then(([a, b, c, d, e, f, g]) => ({
     published: a.count ?? 0,
     drafts: b.count ?? 0,
     accounts: c.count ?? 0,
     pendingProof: d.count ?? 0,
-    openRequests: e.count ?? 0,
-    opinions: f.count ?? 0,
+    openRequests: (e.count ?? 0) + (f.count ?? 0),
+    opinions: g.count ?? 0,
   }));
 
   const { published, drafts, accounts, pendingProof, openRequests, opinions } = counts;

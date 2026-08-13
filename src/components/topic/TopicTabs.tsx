@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { usePrototype } from "@/components/prototype/PrototypeProvider";
+import { useSession } from "@/components/auth/SessionProvider";
 import { ContributionCard } from "@/components/topic/ContributionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { safeExternalUrl } from "@/lib/safe-url";
@@ -31,7 +31,6 @@ const TABS: { id: TabId; label: string }[] = [
 ];
 
 interface TopicTabsProps {
-  topicId: string;
   opinions: Opinion[];
   replies: Record<string, OpinionReply[]>;
   myReplyVotes: Record<string, "like" | "dislike">;
@@ -40,44 +39,39 @@ interface TopicTabsProps {
 }
 
 export function TopicTabs({
-  topicId,
   opinions,
   timeline,
   accent,
   replies,
   myReplyVotes,
 }: TopicTabsProps) {
-  const { votes, displayName, contributionsFor } = usePrototype();
+  const { user } = useSession();
   const [tab, setTab] = useState<TabId>("overview");
   const [filter, setFilter] = useState<ContributionFilter>("All");
   const [sort, setSort] = useState<ContributionSort>("relevant");
 
-  const myVote = votes[topicId];
-  const mine = contributionsFor(topicId);
-
   /**
-   * The one list. Fixture opinions, this visitor's Pro contributions and this
-   * visitor's own written note, merged before anything reads it — which is why
-   * a Pro post cannot end up in a feed of its own: there is only one array and
-   * both tabs render it.
+   * The one list, and now it is just the server's.
+   *
+   * IT USED TO MERGE THREE SOURCES: the server's opinions, this browser's Pro
+   * contributions, and a hand-built card for the visitor's own written note.
+   * The second is gone because contributions are in Postgres and come back with
+   * everything else. The third is gone because it was a duplicate — the server
+   * feed already contains the visitor's own opinion, so anyone signed in who
+   * had written one saw it twice, once from the database and once synthesised
+   * here from the local vote cache.
+   *
+   * Marking a card as the reader's own is now a comparison against the author
+   * id the feed already carries, which works for anonymous posts too: the view
+   * returns your own id and nobody else's.
    */
-  const allContributions = useMemo<Opinion[]>(() => {
-    const base = [...mine, ...opinions];
-    if (!myVote?.note) return base;
-    const name = displayName || "You";
-    const own: Opinion = {
-      id: `${topicId}-mine`,
-      topicId,
-      name: `${name} (you)`,
-      initials: name.slice(0, 2).toUpperCase(),
-      vote: myVote.vote,
-      text: myVote.note,
-      time: "Just now",
-      helpful: 0,
-      replies: 0,
-    };
-    return [own, ...base];
-  }, [opinions, mine, myVote, displayName, topicId]);
+  const allContributions = useMemo<Opinion[]>(
+    () =>
+      opinions.map((o) =>
+        user && o.authorId === user.id ? { ...o, name: `${o.name} (you)` } : o,
+      ),
+    [opinions, user],
+  );
 
   const shown = useMemo(
     () => sortContributions(filterContributions(allContributions, filter), sort),

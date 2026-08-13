@@ -4,6 +4,7 @@ import { PollSplitBar } from "@/components/polls/PollSplitBar";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { PlaceChip } from "@/components/ui/PlaceChip";
 import { formatNumber } from "@/lib/derive-poll";
+import { SuggestedBy } from "@/components/ui/SuggestedBy";
 import type { DecoratedPoll } from "@/lib/types";
 
 /** Whole card is one link, same interaction contract as the topic cards. */
@@ -62,6 +63,8 @@ export function PollCard({ poll }: { poll: DecoratedPoll }) {
       <p className="m-0 line-clamp-2 text-[12.5px] leading-[1.5] font-light text-muted">
         {poll.summary}
       </p>
+
+      <SuggestedBy name={poll.suggestedBy} />
 
       <div className="mt-auto flex flex-col gap-2.5 pt-1">
         <PollSplitBar poll={poll} height={28} />

@@ -21,6 +21,7 @@ import { useMemo, useState } from "react";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { ReplyThread } from "@/components/topic/ReplyThread";
 import { InteractiveBlockView } from "@/components/topic/InteractiveBlockView";
+import { MediaStrip } from "@/components/ui/MediaStrip";
 import {
   collapsedSections,
   hasMoreToRead,
@@ -199,6 +200,13 @@ export function ContributionCard({
             {contribution.text}
           </p>
         )}
+
+        {/* After the argument, before the reactions. A picture above the text
+            would be read first and would set the frame for everything under
+            it, which is not what an illustration is for. */}
+        {contribution.media && contribution.media.length > 0 ? (
+          <MediaStrip media={contribution.media} />
+        ) : null}
 
         {pro ? (
           <div className="flex flex-wrap items-center gap-2">
@@ -440,10 +448,22 @@ function Header({
               {contribution.verifiedLabel}
             </span>
           ) : null}
+          {/* Said out loud rather than left to be inferred from a missing name.
+              A reader deciding how much weight to give an argument is entitled
+              to know that nobody is standing behind it. */}
+          {contribution.anonymous ? (
+            <span className="rounded-full border border-veil/18 px-2 py-[2px] font-mono text-[9px] tracking-[0.12em] uppercase text-dim">
+              Anonymous
+            </span>
+          ) : null}
         </span>
         <span className="font-mono text-[10px] tracking-[0.08em] uppercase text-dim">
-          {pro ? contribution.authorLine || "Pro contributor" : "Participant opinion"} ·{" "}
-          {contribution.time}
+          {contribution.anonymous
+            ? "Name withheld"
+            : pro
+              ? contribution.authorLine || "Pro contributor"
+              : "Participant opinion"}{" "}
+          · {contribution.time}
         </span>
       </span>
 

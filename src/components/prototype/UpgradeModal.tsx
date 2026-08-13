@@ -18,10 +18,11 @@
  * says so where you cannot miss it.
  */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { Brand } from "@/components/ui/Brand";
 import { FEATURE_COPY, PRO_PLAN, type ProFeature } from "@/lib/entitlements";
+import { offerDeadline, offerRemaining, readProState, type ProState } from "@/lib/pro";
 
 export function UpgradeModal({
   feature,
@@ -33,6 +34,26 @@ export function UpgradeModal({
   onCancel: () => void;
 }) {
   const open = feature !== null;
+
+  /**
+   * The deadline and the price, from `pro_offer`.
+   *
+   * Fetched when the sheet opens rather than at mount, because most sessions
+   * never open it and this is the panel's only network call.
+   */
+  const [offer, setOffer] = useState<ProState | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    let live = true;
+    readProState().then((s) => {
+      if (live) setOffer(s);
+    });
+    return () => {
+      live = false;
+    };
+  }, [open]);
+
+  const remaining = offerRemaining(offer?.freeUntil ?? null);
 
   useEffect(() => {
     if (!open) return;
@@ -76,12 +97,33 @@ export function UpgradeModal({
           <p className="m-0 text-[13.5px] leading-[1.6] text-muted">{copy.blurb}</p>
         </header>
 
+        {/* The free window is the headline while it is open, and the price is
+            the small print. Once it closes the two swap round on their own,
+            because both come from `pro_offer` rather than from this file. */}
         <div className="flex flex-wrap items-baseline gap-2 rounded-[14px] border border-private/28 bg-private/6 px-4 py-3.5">
-          <span className="font-display font-semibold text-[28px] tracking-[-0.02em] leading-none text-cream-bright">
-            {PRO_PLAN.price}
-          </span>
-          <span className="text-[13px] text-muted">{PRO_PLAN.period}</span>
-          <span className="ml-auto text-[12px] text-dim">Cancel any time</span>
+          {open && offer?.offerOpen ? (
+            <>
+              <span className="font-display font-semibold text-[28px] leading-none tracking-[-0.02em] text-cream-bright">
+                Free
+              </span>
+              <span className="text-[13px] text-muted">
+                until {offerDeadline(offer.freeUntil)}, then ₹{offer.priceInr} a month
+              </span>
+              {remaining ? (
+                <span className="ml-auto font-mono text-[11px] tracking-[0.06em] text-positive-light">
+                  {remaining}
+                </span>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <span className="font-display font-semibold text-[28px] leading-none tracking-[-0.02em] text-cream-bright">
+                ₹{offer?.priceInr ?? 99}
+              </span>
+              <span className="text-[13px] text-muted">per month</span>
+              <span className="ml-auto text-[12px] text-dim">Cancel any time</span>
+            </>
+          )}
         </div>
 
         <section className="flex flex-col gap-2.5">
@@ -120,7 +162,7 @@ export function UpgradeModal({
             onClick={onSubscribe}
             className="cursor-pointer rounded-full bg-positive px-6 py-3 text-[14px] font-semibold text-positive-ink transition-[background,box-shadow] duration-300 outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light"
           >
-            Start Pro
+            {offer?.offerOpen === false ? "Start Pro" : "Start Pro — free"}
           </button>
           <button
             type="button"
@@ -132,11 +174,11 @@ export function UpgradeModal({
         </div>
 
         <p className="m-0 rounded-[12px] border border-veil/8 bg-veil/2 px-3.5 py-3 text-[11.5px] leading-[1.55] text-dim">
-          <strong className="font-medium text-muted">Prototype.</strong> No payment is
-          taken and no card details are asked for or stored. Pressing Start Pro flips a
-          flag in this browser so the Pro flows can be walked. In production this is a
-          checkout and a subscription record on the server — <Brand /> never sees a card
-          number either way.
+          <strong className="font-medium text-muted">No card, and nothing to cancel.</strong>{" "}
+          The launch period is free for everyone, so there is no payment to take
+          and no details to store. Your membership is a record on the server that
+          simply expires when the offer does — nothing starts charging on its own,
+          and <Brand /> will ask before it ever does.
         </p>
       </div>
     </div>

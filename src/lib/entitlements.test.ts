@@ -67,11 +67,16 @@ describe("what stays free", () => {
   it("says on the sheet what the free tier covers", () => {
     // A subscribe sheet that only lists what you are missing is selling the
     // fear. This one has to name the free tier, in the plan itself.
+    //
+    // IT USED TO REQUIRE "answering" AND THE FREE-ASK COUNT. Both described
+    // Ask Verified, which is parked and not reachable in the product — so the
+    // sheet listing them was advertising something nobody can use. The three
+    // below are the free actions that actually exist.
     expect(PRO_PLAN.freeForever.length).toBeGreaterThanOrEqual(3);
     const text = PRO_PLAN.freeForever.join(" ").toLowerCase();
     expect(text).toContain("reading");
-    expect(text).toContain("answering");
-    expect(text).toContain(String(FREE_ASKS));
+    expect(text).toContain("voting");
+    expect(text).toContain("replying");
   });
 
   it("promises cancellation leaves published work alone", () => {

@@ -87,7 +87,7 @@ const SessionContext = createContext<SessionValue | null>(null);
 const ACCOUNT_QUERY =
   "id, display_name, initials, username, headline, role, suspended_at, " +
   "profile_private(dob, mobile, occupation, gender, country, state, city, place_id), " +
-  "subscriptions(status, current_period_end)";
+  "subscriptions(status, current_period_end, revoked_at)";
 
 type PrivateRow = {
   dob: string | null;
@@ -130,9 +130,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // here. The reads below are all defensive anyway.
     const row = data as unknown as Record<string, unknown>;
     const priv = one<PrivateRow>(row.profile_private as PrivateRow | PrivateRow[] | null);
-    const sub = one<{ status: string; current_period_end: string | null }>(
-      row.subscriptions as never,
-    );
+    const sub = one<{
+      status: string;
+      current_period_end: string | null;
+      revoked_at: string | null;
+    }>(row.subscriptions as never);
 
     setAccount({
       id: row.id as string,
@@ -142,8 +144,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       headline: (row.headline as string) ?? "",
       role: (row.role as Account["role"]) ?? "member",
       suspended: Boolean(row.suspended_at),
+      // The three conditions `is_pro()` applies, in the same order, including
+      // the revocation check. This is a mirror of a SQL function and it will
+      // drift if that function changes — the row policies are what actually
+      // enforce any of it, so a stale answer here shows a button that the
+      // database then refuses, rather than letting anything through.
       pro:
         sub !== null &&
+        !sub.revoked_at &&
         (sub.status === "active" || sub.status === "trialing") &&
         (!sub.current_period_end || new Date(sub.current_period_end) > new Date()),
       details: {

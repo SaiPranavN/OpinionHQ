@@ -37,6 +37,7 @@ export interface PollCardRow {
   reason_count: number;
   trend_score: number;
   last_activity_at: string | null;
+  suggested_by_name?: string | null;
 }
 
 export interface PollOptionRow {
@@ -228,6 +229,7 @@ export function rowToPoll(
     id: row.slug,
     uuid: row.id,
     question: row.question,
+    ...(row.suggested_by_name ? { suggestedBy: row.suggested_by_name } : {}),
     cat: row.category_id as CategoryId,
     place: row.place_id as PlaceId,
     status: row.status as StatusId,

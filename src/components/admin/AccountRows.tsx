@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { deleteAccount, setRole, setSuspended, type AccountRole } from "@/lib/admin/accounts";
+import { grantPro, revokePro } from "@/lib/pro";
 
 export interface AdminAccountRow {
   id: string;
@@ -26,6 +27,8 @@ export interface AdminAccountRow {
   headline: string;
   role: AccountRole;
   suspended: boolean;
+  /** A live subscription. Not a role — see the account hierarchy migration. */
+  pro: boolean;
   createdAt: string;
 }
 
@@ -144,6 +147,48 @@ export function AccountRows({
                         className="cursor-pointer rounded-full border border-veil/16 px-3.5 py-1.5 text-[12px] font-medium text-cream transition-colors hover:border-veil/40 disabled:cursor-not-allowed disabled:text-dim"
                       >
                         {account.suspended ? "Restore" : "Suspend"}
+                      </button>
+
+                      {/* Pro is not on the role ladder, so it gets its own
+                          control rather than a fourth option in that select.
+                          Revoking sticks: `revoked_at` is what stops the
+                          account simply pressing Start Pro again a minute
+                          later, and only Grant clears it. Neither touches
+                          anything they published. */}
+                      <button
+                        type="button"
+                        disabled={working}
+                        onClick={() =>
+                          run(account.id, async () => {
+                            try {
+                              if (account.pro) {
+                                await revokePro(account.id, "revoked from the accounts desk");
+                              } else {
+                                await grantPro(account.id, "granted from the accounts desk");
+                              }
+                              return { ok: true };
+                            } catch (e) {
+                              return {
+                                ok: false,
+                                message: e instanceof Error ? e.message : "That did not work.",
+                              };
+                            }
+                          })
+                        }
+                        title={
+                          account.pro
+                            ? "Ends Pro and blocks self-service restart. Published work is untouched."
+                            : "Grants Pro and clears any earlier revocation."
+                        }
+                        className="cursor-pointer rounded-full border px-3.5 py-1.5 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                        style={{
+                          borderColor: account.pro
+                            ? "rgba(198,120,221,0.4)"
+                            : "color-mix(in oklab, var(--color-veil) 14%, transparent)",
+                          color: account.pro ? "#C678DD" : "#A8A49E",
+                        }}
+                      >
+                        {account.pro ? "Revoke Pro" : "Grant Pro"}
                       </button>
 
                       <button

@@ -642,6 +642,74 @@ export type Database = {
         }
         Relationships: []
       }
+      contribution_media: {
+        Row: {
+          alt: string
+          created_at: string
+          height: number | null
+          id: string
+          kind: Database["public"]["Enums"]["media_kind"]
+          opinion_id: string | null
+          poll_reason_id: string | null
+          position: number
+          storage_path: string
+          width: number | null
+        }
+        Insert: {
+          alt?: string
+          created_at?: string
+          height?: number | null
+          id?: string
+          kind?: Database["public"]["Enums"]["media_kind"]
+          opinion_id?: string | null
+          poll_reason_id?: string | null
+          position?: number
+          storage_path: string
+          width?: number | null
+        }
+        Update: {
+          alt?: string
+          created_at?: string
+          height?: number | null
+          id?: string
+          kind?: Database["public"]["Enums"]["media_kind"]
+          opinion_id?: string | null
+          poll_reason_id?: string | null
+          position?: number
+          storage_path?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contribution_media_opinion_id_fkey"
+            columns: ["opinion_id"]
+            isOneToOne: false
+            referencedRelation: "opinion_feed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contribution_media_opinion_id_fkey"
+            columns: ["opinion_id"]
+            isOneToOne: false
+            referencedRelation: "opinions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contribution_media_poll_reason_id_fkey"
+            columns: ["poll_reason_id"]
+            isOneToOne: false
+            referencedRelation: "poll_reason_feed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contribution_media_poll_reason_id_fkey"
+            columns: ["poll_reason_id"]
+            isOneToOne: false
+            referencedRelation: "poll_reasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credential_submissions: {
         Row: {
           credential_id: string
@@ -1057,6 +1125,13 @@ export type Database = {
             foreignKeyName: "opinion_helpful_opinion_id_fkey"
             columns: ["opinion_id"]
             isOneToOne: false
+            referencedRelation: "opinion_feed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinion_helpful_opinion_id_fkey"
+            columns: ["opinion_id"]
+            isOneToOne: false
             referencedRelation: "opinions"
             referencedColumns: ["id"]
           },
@@ -1100,6 +1175,13 @@ export type Database = {
             foreignKeyName: "opinion_reactions_opinion_id_fkey"
             columns: ["opinion_id"]
             isOneToOne: false
+            referencedRelation: "opinion_feed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinion_reactions_opinion_id_fkey"
+            columns: ["opinion_id"]
+            isOneToOne: false
             referencedRelation: "opinions"
             referencedColumns: ["id"]
           },
@@ -1121,6 +1203,7 @@ export type Database = {
       }
       opinion_replies: {
         Row: {
+          anonymous: boolean
           author_id: string
           body: string
           created_at: string
@@ -1135,6 +1218,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          anonymous?: boolean
           author_id: string
           body: string
           created_at?: string
@@ -1149,6 +1233,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          anonymous?: boolean
           author_id?: string
           body?: string
           created_at?: string
@@ -1181,6 +1266,13 @@ export type Database = {
             foreignKeyName: "opinion_replies_opinion_id_fkey"
             columns: ["opinion_id"]
             isOneToOne: false
+            referencedRelation: "opinion_feed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinion_replies_opinion_id_fkey"
+            columns: ["opinion_id"]
+            isOneToOne: false
             referencedRelation: "opinions"
             referencedColumns: ["id"]
           },
@@ -1189,6 +1281,13 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "opinion_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinion_replies_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "opinion_reply_feed"
             referencedColumns: ["id"]
           },
         ]
@@ -1218,6 +1317,13 @@ export type Database = {
             columns: ["reply_id"]
             isOneToOne: false
             referencedRelation: "opinion_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinion_reply_votes_reply_id_fkey"
+            columns: ["reply_id"]
+            isOneToOne: false
+            referencedRelation: "opinion_reply_feed"
             referencedColumns: ["id"]
           },
           {
@@ -1253,6 +1359,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "opinion_saves_opinion_id_fkey"
+            columns: ["opinion_id"]
+            isOneToOne: false
+            referencedRelation: "opinion_feed"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "opinion_saves_opinion_id_fkey"
             columns: ["opinion_id"]
@@ -1309,6 +1422,13 @@ export type Database = {
             foreignKeyName: "opinion_sections_opinion_id_fkey"
             columns: ["opinion_id"]
             isOneToOne: false
+            referencedRelation: "opinion_feed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinion_sections_opinion_id_fkey"
+            columns: ["opinion_id"]
+            isOneToOne: false
             referencedRelation: "opinions"
             referencedColumns: ["id"]
           },
@@ -1317,6 +1437,7 @@ export type Database = {
       opinions: {
         Row: {
           age_band: Database["public"]["Enums"]["age_band"] | null
+          anonymous: boolean
           author_id: string
           author_line: string | null
           body: string
@@ -1342,6 +1463,7 @@ export type Database = {
         }
         Insert: {
           age_band?: Database["public"]["Enums"]["age_band"] | null
+          anonymous?: boolean
           author_id: string
           author_line?: string | null
           body?: string
@@ -1367,6 +1489,7 @@ export type Database = {
         }
         Update: {
           age_band?: Database["public"]["Enums"]["age_band"] | null
+          anonymous?: boolean
           author_id?: string
           author_line?: string | null
           body?: string
@@ -1622,6 +1745,13 @@ export type Database = {
             foreignKeyName: "poll_reason_helpful_reason_id_fkey"
             columns: ["reason_id"]
             isOneToOne: false
+            referencedRelation: "poll_reason_feed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_reason_helpful_reason_id_fkey"
+            columns: ["reason_id"]
+            isOneToOne: false
             referencedRelation: "poll_reasons"
             referencedColumns: ["id"]
           },
@@ -1643,6 +1773,7 @@ export type Database = {
       }
       poll_reasons: {
         Row: {
+          anonymous: boolean
           body: string
           created_at: string
           helpful_count: number
@@ -1655,6 +1786,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          anonymous?: boolean
           body: string
           created_at?: string
           helpful_count?: number
@@ -1667,6 +1799,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          anonymous?: boolean
           body?: string
           created_at?: string
           helpful_count?: number
@@ -1755,6 +1888,111 @@ export type Database = {
             columns: ["poll_id"]
             isOneToOne: false
             referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_requests: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          decline_note: string | null
+          declined_at: string | null
+          id: string
+          option_labels: string[]
+          place_id: string | null
+          poll_id: string | null
+          question: string
+          rationale: string
+          requested_by: string
+          reviewed_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          decline_note?: string | null
+          declined_at?: string | null
+          id?: string
+          option_labels?: string[]
+          place_id?: string | null
+          poll_id?: string | null
+          question: string
+          rationale?: string
+          requested_by: string
+          reviewed_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          decline_note?: string | null
+          declined_at?: string | null
+          id?: string
+          option_labels?: string[]
+          place_id?: string | null
+          poll_id?: string | null
+          question?: string
+          rationale?: string
+          requested_by?: string
+          reviewed_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_requests_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_requests_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_requests_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "poll_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_requests_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "poll_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "poll_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1908,6 +2146,7 @@ export type Database = {
           slug: string
           spread: number | null
           status: Database["public"]["Enums"]["artifact_status"]
+          suggested_by: string | null
           summary: string
           tags: string[]
           updated_at: string
@@ -1926,6 +2165,7 @@ export type Database = {
           slug: string
           spread?: number | null
           status?: Database["public"]["Enums"]["artifact_status"]
+          suggested_by?: string | null
           summary?: string
           tags?: string[]
           updated_at?: string
@@ -1944,6 +2184,7 @@ export type Database = {
           slug?: string
           spread?: number | null
           status?: Database["public"]["Enums"]["artifact_status"]
+          suggested_by?: string | null
           summary?: string
           tags?: string[]
           updated_at?: string
@@ -1977,7 +2218,42 @@ export type Database = {
             referencedRelation: "places"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "polls_suggested_by_fkey"
+            columns: ["suggested_by"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "polls_suggested_by_fkey"
+            columns: ["suggested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      pro_offer: {
+        Row: {
+          free_until: string
+          id: boolean
+          price_inr: number
+          updated_at: string
+        }
+        Insert: {
+          free_until: string
+          id?: boolean
+          price_inr?: number
+          updated_at?: string
+        }
+        Update: {
+          free_until?: string
+          id?: boolean
+          price_inr?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       professional_stats: {
         Row: {
@@ -2234,6 +2510,7 @@ export type Database = {
           plan: string
           provider: string | null
           provider_ref: string | null
+          revoked_at: string | null
           status: Database["public"]["Enums"]["subscription_status"]
           updated_at: string
           user_id: string
@@ -2245,6 +2522,7 @@ export type Database = {
           plan?: string
           provider?: string | null
           provider_ref?: string | null
+          revoked_at?: string | null
           status: Database["public"]["Enums"]["subscription_status"]
           updated_at?: string
           user_id: string
@@ -2256,6 +2534,7 @@ export type Database = {
           plan?: string
           provider?: string | null
           provider_ref?: string | null
+          revoked_at?: string | null
           status?: Database["public"]["Enums"]["subscription_status"]
           updated_at?: string
           user_id?: string
@@ -2771,6 +3050,7 @@ export type Database = {
           published_at: string | null
           slug: string
           status: Database["public"]["Enums"]["artifact_status"]
+          suggested_by: string | null
           summary: string
           tags: string[]
           updated_at: string
@@ -2788,6 +3068,7 @@ export type Database = {
           published_at?: string | null
           slug: string
           status?: Database["public"]["Enums"]["artifact_status"]
+          suggested_by?: string | null
           summary?: string
           tags?: string[]
           updated_at?: string
@@ -2805,6 +3086,7 @@ export type Database = {
           published_at?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["artifact_status"]
+          suggested_by?: string | null
           summary?: string
           tags?: string[]
           updated_at?: string
@@ -2845,10 +3127,112 @@ export type Database = {
             referencedRelation: "places"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "topics_suggested_by_fkey"
+            columns: ["suggested_by"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "topics_suggested_by_fkey"
+            columns: ["suggested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
+      opinion_feed: {
+        Row: {
+          anonymous: boolean | null
+          author_id: string | null
+          author_line: string | null
+          body: string | null
+          created_at: string | null
+          display_name: string | null
+          edited_at: string | null
+          format: Database["public"]["Enums"]["contribution_format"] | null
+          helpful_count: number | null
+          hidden_at: string | null
+          id: string | null
+          initials: string | null
+          insightful_count: number | null
+          reply_count: number | null
+          save_count: number | null
+          topic_id: string | null
+          updated_at: string | null
+          useful_count: number | null
+          verified_label: string | null
+          vote: Database["public"]["Enums"]["sentiment"] | null
+          well_explained_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opinions_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topic_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinions_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opinion_reply_feed: {
+        Row: {
+          anonymous: boolean | null
+          author_id: string | null
+          body: string | null
+          created_at: string | null
+          depth: number | null
+          dislikes: number | null
+          display_name: string | null
+          hidden_at: string | null
+          id: string | null
+          initials: string | null
+          likes: number | null
+          opinion_id: string | null
+          parent_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opinion_replies_opinion_id_fkey"
+            columns: ["opinion_id"]
+            isOneToOne: false
+            referencedRelation: "opinion_feed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinion_replies_opinion_id_fkey"
+            columns: ["opinion_id"]
+            isOneToOne: false
+            referencedRelation: "opinions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinion_replies_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "opinion_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinion_replies_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "opinion_reply_feed"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       poll_cards: {
         Row: {
           category_id: string | null
@@ -2862,6 +3246,8 @@ export type Database = {
           reason_count: number | null
           slug: string | null
           status: Database["public"]["Enums"]["artifact_status"] | null
+          suggested_by: string | null
+          suggested_by_name: string | null
           summary: string | null
           tags: string[] | null
           total_votes: number | null
@@ -2881,6 +3267,58 @@ export type Database = {
             columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "polls_suggested_by_fkey"
+            columns: ["suggested_by"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "polls_suggested_by_fkey"
+            columns: ["suggested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_reason_feed: {
+        Row: {
+          anonymous: boolean | null
+          body: string | null
+          created_at: string | null
+          display_name: string | null
+          helpful_count: number | null
+          hidden_at: string | null
+          id: string | null
+          initials: string | null
+          option_id: string | null
+          poll_id: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_reasons_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "poll_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_reasons_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "poll_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_reasons_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
             referencedColumns: ["id"]
           },
         ]
@@ -2921,6 +3359,8 @@ export type Database = {
           reply_count: number | null
           slug: string | null
           status: Database["public"]["Enums"]["artifact_status"] | null
+          suggested_by: string | null
+          suggested_by_name: string | null
           summary: string | null
           tags: string[] | null
           trend_score: number | null
@@ -2940,6 +3380,20 @@ export type Database = {
             columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topics_suggested_by_fkey"
+            columns: ["suggested_by"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "topics_suggested_by_fkey"
+            columns: ["suggested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2971,6 +3425,61 @@ export type Database = {
         Args: { set_id: string; target_topic: string }
         Returns: number
       }
+      approve_poll_request: {
+        Args: { request: string }
+        Returns: {
+          about: string
+          archived_at: string | null
+          category_id: string
+          closes_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          place_id: string
+          published_at: string | null
+          question: string
+          slug: string
+          spread: number | null
+          status: Database["public"]["Enums"]["artifact_status"]
+          suggested_by: string | null
+          summary: string
+          tags: string[]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "polls"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      approve_topic_request: {
+        Args: { request: string }
+        Returns: {
+          about: string
+          archived_at: string | null
+          category_id: string
+          created_at: string
+          created_by: string | null
+          facet_set_id: string | null
+          id: string
+          name: string
+          place_id: string
+          published_at: string | null
+          slug: string
+          status: Database["public"]["Enums"]["artifact_status"]
+          suggested_by: string | null
+          summary: string
+          tags: string[]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "topics"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       archive_poll: {
         Args: { target: string }
         Returns: {
@@ -2987,6 +3496,7 @@ export type Database = {
           slug: string
           spread: number | null
           status: Database["public"]["Enums"]["artifact_status"]
+          suggested_by: string | null
           summary: string
           tags: string[]
           updated_at: string
@@ -3035,6 +3545,7 @@ export type Database = {
           slug: string
           spread: number | null
           status: Database["public"]["Enums"]["artifact_status"]
+          suggested_by: string | null
           summary: string
           tags: string[]
           updated_at: string
@@ -3072,6 +3583,7 @@ export type Database = {
           published_at: string | null
           slug: string
           status: Database["public"]["Enums"]["artifact_status"]
+          suggested_by: string | null
           summary: string
           tags: string[]
           updated_at: string
@@ -3121,12 +3633,14 @@ export type Database = {
       }
       cast_vote: {
         Args: {
+          anonymous?: boolean
           body?: string
           topic_slug: string
           vote: Database["public"]["Enums"]["sentiment"]
         }
         Returns: {
           age_band: Database["public"]["Enums"]["age_band"] | null
+          anonymous: boolean
           author_id: string
           author_line: string | null
           body: string
@@ -3162,14 +3676,62 @@ export type Database = {
         Args: { target: Database["public"]["Enums"]["account_role"] }
         Returns: boolean
       }
+      decline_poll_request: {
+        Args: { note?: string; request: string }
+        Returns: {
+          category_id: string | null
+          created_at: string
+          decline_note: string | null
+          declined_at: string | null
+          id: string
+          option_labels: string[]
+          place_id: string | null
+          poll_id: string | null
+          question: string
+          rationale: string
+          requested_by: string
+          reviewed_by: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "poll_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      decline_topic_request: {
+        Args: { note?: string; request: string }
+        Returns: {
+          category_id: string | null
+          created_at: string
+          decline_note: string | null
+          declined_at: string | null
+          id: string
+          name: string
+          place_id: string | null
+          rationale: string
+          requested_by: string
+          reviewed_by: string | null
+          topic_id: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "topic_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       delete_account: {
         Args: { reason?: string; target: string }
         Returns: undefined
       }
       email_for_username: { Args: { handle: string }; Returns: string }
       explain_poll_vote: {
-        Args: { poll_slug: string; reason: string }
+        Args: { anonymous?: boolean; poll_slug: string; reason: string }
         Returns: {
+          anonymous: boolean
           body: string
           created_at: string
           helpful_count: number
@@ -3184,6 +3746,27 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "poll_reasons"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      grant_pro: {
+        Args: { reason?: string; target: string }
+        Returns: {
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_end: string | null
+          plan: string
+          provider: string | null
+          provider_ref: string | null
+          revoked_at: string | null
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "subscriptions"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -3216,6 +3799,19 @@ export type Database = {
           updated_at: string
         }[]
       }
+      my_pro_state: {
+        Args: never
+        Returns: {
+          free_until: string
+          offer_open: boolean
+          period_end: string
+          plan: string
+          price_inr: number
+          pro: boolean
+          revoked: boolean
+          status: string
+        }[]
+      }
       my_reply_votes: {
         Args: { opinion: string }
         Returns: {
@@ -3232,6 +3828,11 @@ export type Database = {
           vote: Database["public"]["Enums"]["sentiment"]
         }[]
       }
+      opinion_is_visible: { Args: { oid: string }; Returns: boolean }
+      owns_block: { Args: { bid: string }; Returns: boolean }
+      owns_opinion: { Args: { oid: string }; Returns: boolean }
+      owns_poll_reason: { Args: { rid: string }; Returns: boolean }
+      owns_section: { Args: { sid: string }; Returns: boolean }
       place_covers: {
         Args: { filter_id: string; place_id: string }
         Returns: boolean
@@ -3261,6 +3862,17 @@ export type Database = {
           slot: Database["public"]["Enums"]["option_slot"]
         }[]
       }
+      poll_reason_is_visible: { Args: { rid: string }; Returns: boolean }
+      publish_contribution: {
+        Args: {
+          anonymous?: boolean
+          media?: Json
+          sections: Json
+          topic_slug: string
+          vote: Database["public"]["Enums"]["sentiment"]
+        }
+        Returns: string
+      }
       publish_poll: {
         Args: { target: string }
         Returns: {
@@ -3277,6 +3889,7 @@ export type Database = {
           slug: string
           spread: number | null
           status: Database["public"]["Enums"]["artifact_status"]
+          suggested_by: string | null
           summary: string
           tags: string[]
           updated_at: string
@@ -3298,8 +3911,14 @@ export type Database = {
         Returns: undefined
       }
       reply_to_opinion: {
-        Args: { body: string; opinion: string; parent?: string }
+        Args: {
+          anonymous?: boolean
+          body: string
+          opinion: string
+          parent?: string
+        }
         Returns: {
+          anonymous: boolean
           author_id: string
           body: string
           created_at: string
@@ -3336,6 +3955,7 @@ export type Database = {
           slug: string
           spread: number | null
           status: Database["public"]["Enums"]["artifact_status"]
+          suggested_by: string | null
           summary: string
           tags: string[]
           updated_at: string
@@ -3372,6 +3992,27 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "credentials"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      revoke_pro: {
+        Args: { reason?: string; target: string }
+        Returns: {
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_end: string | null
+          plan: string
+          provider: string | null
+          provider_ref: string | null
+          revoked_at: string | null
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "subscriptions"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -3424,6 +4065,49 @@ export type Database = {
         }
       }
       slug_available: { Args: { candidate: string }; Returns: boolean }
+      slugify: { Args: { input: string }; Returns: string }
+      start_pro: {
+        Args: never
+        Returns: {
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_end: string | null
+          plan: string
+          provider: string | null
+          provider_ref: string | null
+          revoked_at: string | null
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "subscriptions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      stop_pro: {
+        Args: never
+        Returns: {
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_end: string | null
+          plan: string
+          provider: string | null
+          provider_ref: string | null
+          revoked_at: string | null
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "subscriptions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       toggle_reason_helpful: { Args: { reason: string }; Returns: boolean }
       topic_audience: {
         Args: { target: string }
@@ -3446,6 +4130,9 @@ export type Database = {
       }
       topic_demographic_opt_in: { Args: { target: string }; Returns: number }
       topic_gender_opt_in: { Args: { target: string }; Returns: number }
+      unique_poll_slug: { Args: { input: string }; Returns: string }
+      unique_topic_slug: { Args: { input: string }; Returns: string }
+      unpublish_contribution: { Args: { topic_slug: string }; Returns: boolean }
       vote_on_reply: {
         Args: {
           kind: Database["public"]["Enums"]["reader_vote"]
@@ -3466,6 +4153,10 @@ export type Database = {
         | "topic_deleted"
         | "poll_deleted"
         | "credential_reviewed"
+        | "pro_granted"
+        | "pro_revoked"
+        | "suggestion_approved"
+        | "suggestion_declined"
       age_band: "Under 17" | "17–20" | "21–24" | "25–30" | "31 and over"
       artifact_status:
         | "Proposed"
@@ -3499,6 +4190,7 @@ export type Database = {
         | "scenario"
         | "agree_challenge"
         | "verdict"
+      media_kind: "image" | "gif"
       option_slot: "a" | "b" | "c" | "d"
       place_level: "world" | "country" | "state" | "city"
       pro_reaction: "insightful" | "useful" | "well_explained"
@@ -3682,6 +4374,10 @@ export const Constants = {
         "topic_deleted",
         "poll_deleted",
         "credential_reviewed",
+        "pro_granted",
+        "pro_revoked",
+        "suggestion_approved",
+        "suggestion_declined",
       ],
       age_band: ["Under 17", "17–20", "21–24", "25–30", "31 and over"],
       artifact_status: [
@@ -3719,6 +4415,7 @@ export const Constants = {
         "agree_challenge",
         "verdict",
       ],
+      media_kind: ["image", "gif"],
       option_slot: ["a", "b", "c", "d"],
       place_level: ["world", "country", "state", "city"],
       pro_reaction: ["insightful", "useful", "well_explained"],

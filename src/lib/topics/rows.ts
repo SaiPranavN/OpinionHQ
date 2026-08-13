@@ -45,6 +45,7 @@ export interface TopicCardRow {
   change_metric: string | null;
   change_value: number | string | null;
   change_direction: string | null;
+  suggested_by_name?: string | null;
 }
 
 /**
@@ -157,6 +158,7 @@ export function rowToTopic(
     id: row.slug,
     uuid: row.id,
     name: row.name,
+    ...(row.suggested_by_name ? { suggestedBy: row.suggested_by_name } : {}),
     cat: row.category_id as CategoryId,
     place: row.place_id as PlaceId,
     status: row.status as StatusId,

@@ -27,11 +27,21 @@ import {
   type DailyRow,
   type PollOptionRow,
 } from "@/lib/polls/rows";
-import type { DecoratedPoll, PollOptionId, PollReason } from "@/lib/types";
+import { toMedia, type MediaRow } from "@/lib/media";
+import type {
+  ContributionMedia,
+  DecoratedPoll,
+  PollOptionId,
+  PollReason,
+} from "@/lib/types";
+
+/** `in ()` with an empty list is a syntax error, so it gets a uuid nothing has. */
+const EMPTY_UUID = "00000000-0000-0000-0000-000000000000";
 
 const CARD_COLUMNS =
   "id, slug, question, category_id, place_id, status, summary, tags, closes_at, " +
-  "published_at, updated_at, total_votes, reason_count, trend_score, last_activity_at";
+  "published_at, updated_at, total_votes, reason_count, trend_score, last_activity_at, " +
+  "suggested_by_name";
 
 /**
  * The catalog.
@@ -75,11 +85,6 @@ export async function listPolls(client?: ReadClient): Promise<DecoratedPoll[]> {
     // dropping it costs that poll rather than the whole catalog.
     .filter((poll) => poll.options.length >= 2)
     .map(decoratePoll);
-}
-
-interface Author {
-  display_name: string;
-  initials: string | null;
 }
 
 export interface PollPage {
@@ -128,26 +133,22 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
     // From the votes themselves. `poll_history` was meant to be filled by a
     // scheduled job that never existed, so the chart had nothing to draw.
     supabase.rpc("poll_daily_series", { target: pollId }).then((r) => r.data),
+    // THROUGH `poll_reason_feed`, NOT `poll_reasons`. The view is the only read
+    // path clients have and it is what removes the author from an anonymous
+    // reason — name, initials and account id — before any of it arrives here.
+    //
+    // It also ends a long-standing trap. Embedding `profiles` from
+    // `poll_reasons` was ambiguous, because PostgREST can reach it two ways:
+    // directly through `user_id`, and around through `poll_id → polls.created_by`.
+    // The unqualified form failed with "more than one relationship was found",
+    // the error was discarded, and the page rendered an empty reasons list —
+    // so every written reason looked lost while sitting in the table. The view
+    // resolves the join once, server-side, and there is no embed left to get
+    // wrong.
     supabase
-      .from("poll_reasons")
-      // `!user_id` NAMES THE RELATIONSHIP, and it has to.
-      //
-      // PostgREST can reach `profiles` from `poll_reasons` two ways — directly
-      // through `user_id`, and around through `poll_id → polls.created_by` —
-      // so an unqualified embed is ambiguous and the whole query fails with
-      // "more than one relationship was found". The failure was silent: the
-      // error was discarded and the page rendered an empty reasons list, so
-      // every written reason looked lost the moment somebody refreshed. They
-      // were in the table the whole time.
-      //
-      // `initials` is a generated column, so the monogram is read rather than
-      // recomputed — a second implementation here would drift the moment
-      // somebody edits their display name.
-      .select(
-        "id, user_id, option_id, body, helpful_count, created_at, profiles!user_id(display_name, initials)",
-      )
+      .from("poll_reason_feed")
+      .select("id, user_id, anonymous, display_name, initials, option_id, body, helpful_count, created_at")
       .eq("poll_id", pollId)
-      .is("hidden_at", null)
       .order("helpful_count", { ascending: false })
       .limit(100)
       .then((r) => r.data),
@@ -205,11 +206,13 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
       | {
           id: string;
           user_id: string | null;
+          anonymous: boolean;
+          display_name: string | null;
+          initials: string | null;
           option_id: string;
           body: string;
           helpful_count: number;
           created_at: string;
-          profiles: Author | Author[] | null;
         }[]
       | null) ?? []
   ).flatMap((r) => {
@@ -217,19 +220,22 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
     // A reason whose option was deleted has nothing to sit under. Dropped
     // rather than shown against the wrong side.
     if (!slot) return [];
-    const author = one<Author>(r.profiles);
-    const name = author?.display_name ?? "A participant";
+    const hidden = Boolean(r.anonymous);
     return [
       {
         id: r.id,
         pollId: poll.id,
         side: slot as PollOptionId,
+        // Null for everyone but the author when anonymous, which is exactly
+        // what `PollReasons` needs to mark a reason as theirs without telling
+        // anybody else whose it is.
         authorId: r.user_id,
-        name,
-        initials: author?.initials ?? "··",
+        name: hidden ? "Anonymous" : (r.display_name ?? "A participant"),
+        initials: hidden ? "··" : (r.initials ?? "··"),
         text: r.body,
         time: relativeOf(r.created_at),
         helpful: r.helpful_count,
+        anonymous: hidden,
       },
     ];
   });
@@ -240,15 +246,36 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
         | null)
     : null;
 
+  const reasonIds = reasons.map((r) => r.id);
+
   // Which reasons the viewer marked helpful. Own-row-only by policy, so this
   // returns their marks and nobody else's — signed out, it returns nothing.
-  const { data: helpfulRows } = uid
-    ? await supabase
-        .from("poll_reason_helpful")
-        .select("reason_id")
-        .eq("user_id", uid)
-        .in("reason_id", reasons.length > 0 ? reasons.map((r) => r.id) : ["00000000-0000-0000-0000-000000000000"])
-    : { data: null };
+  const [{ data: helpfulRows }, { data: mediaRows }] = await Promise.all([
+    uid
+      ? supabase
+          .from("poll_reason_helpful")
+          .select("reason_id")
+          .eq("user_id", uid)
+          .in("reason_id", reasonIds.length > 0 ? reasonIds : [EMPTY_UUID])
+      : Promise.resolve({ data: null }),
+    reasonIds.length > 0
+      ? supabase
+          .from("contribution_media")
+          .select("id, poll_reason_id, storage_path, kind, alt, width, height")
+          .in("poll_reason_id", reasonIds)
+          .order("position", { ascending: true })
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const byReason: Record<string, ContributionMedia[]> = {};
+  for (const row of (mediaRows as MediaRow[] | null) ?? []) {
+    if (!row.poll_reason_id) continue;
+    (byReason[row.poll_reason_id] ??= []).push(toMedia(row));
+  }
+  for (const reason of reasons) {
+    const pictures = byReason[reason.id];
+    if (pictures) reason.media = pictures;
+  }
 
   return {
     poll: decoratePoll(poll),

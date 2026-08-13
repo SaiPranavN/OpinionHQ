@@ -115,13 +115,12 @@ export const SORTS: { id: ContributionSort; label: string }[] = [
 ];
 
 /**
- * Relevance.
+ * Relevance — how much a contribution has earned its place.
  *
- * NOTE WHAT IS NOT AN INPUT: the format. A Pro subscription buys better
- * publishing tools, not a better position, and the moment ranking reads
- * `format` the feed stops being a record of what people think and becomes a
- * list of who paid. A well-argued standard opinion with real engagement
- * outranks a quiet Pro post, and a test in `derive.test.ts` holds that.
+ * Engagement only. Format is deliberately not in this number, because this is
+ * the measure of what readers actually did with a post, and it stays that way
+ * so `sortContributions` can apply the Pro boost separately and visibly rather
+ * than baking it into a score that reads like a neutral measurement.
  *
  * Replies and saves are weighted above helpful marks because they cost more:
  * a helpful tap is a second, a considered reply is a minute, and saving
@@ -138,6 +137,44 @@ export function relevanceScore(contribution: Opinion): number {
     reactionTotal(contribution) * 2;
   const hours = ageMinutes(contribution.time) / 60;
   return engagement / Math.pow(hours + 3, 0.35);
+}
+
+/**
+ * PRO CONTRIBUTIONS SORT ABOVE STANDARD ONES IN THE DEFAULT FEED.
+ *
+ * This reverses what this file used to say, and the previous rule was argued
+ * for at length, so here is the change and its cost stated plainly rather than
+ * quietly deleted:
+ *
+ *   Until now, ranking never read `format`. The reasoning was that the moment
+ *   it does, the feed stops being a record of what people think and becomes a
+ *   list of who paid. That reasoning has not become wrong. It has been
+ *   overruled as a product decision, because Pro has to be visibly worth
+ *   subscribing to and placement is what people are buying.
+ *
+ * WHAT IT COSTS, so nobody has to discover it in production: a brand-new Pro
+ * contribution with no engagement at all now sits above the best-argued
+ * standard opinion on the page. On a busy topic with many members, the
+ * community's strongest reply can end up below a stack of quiet Pro posts.
+ *
+ * TO SOFTEN IT, change `PRO_FIRST` to false and multiply the score instead —
+ * `relevanceScore(c) * (isPro(c) ? 2.5 : 1)` gives Pro a real lift that a
+ * genuinely popular standard opinion can still beat. That is one line here and
+ * nothing anywhere else, which is the reason the boost lives in the sort rather
+ * than inside `relevanceScore`.
+ *
+ * The explicit sorts are untouched. Somebody who asks for "most upvoted" is
+ * asking a factual question and gets a factual answer.
+ */
+export const PRO_FIRST = true;
+
+/** Pro first, then by what readers did with it. */
+function byBoostedRelevance(a: Opinion, b: Opinion): number {
+  if (PRO_FIRST) {
+    const tier = Number(isPro(b)) - Number(isPro(a));
+    if (tier !== 0) return tier;
+  }
+  return relevanceScore(b) - relevanceScore(a);
 }
 
 export function reactionTotal(contribution: Opinion): number {
@@ -159,8 +196,28 @@ export function sortContributions(
     case "newest":
       return copy.sort((a, b) => ageMinutes(a.time) - ageMinutes(b.time));
     case "relevant":
-      return copy.sort((a, b) => relevanceScore(b) - relevanceScore(a));
+      return copy.sort(byBoostedRelevance);
   }
+}
+
+/**
+ * The same boost, for replies under a contribution.
+ *
+ * Replies carry no `format` of their own — a reply is a reply — so the lift
+ * follows the person: a reply written by a Pro member rises within its thread.
+ * Threading is preserved regardless, since reordering across depth levels would
+ * detach answers from what they answer.
+ */
+export function sortReplies<T extends { proAuthor?: boolean; likes?: number }>(
+  replies: T[],
+): T[] {
+  return [...replies].sort((a, b) => {
+    if (PRO_FIRST) {
+      const tier = Number(Boolean(b.proAuthor)) - Number(Boolean(a.proAuthor));
+      if (tier !== 0) return tier;
+    }
+    return (b.likes ?? 0) - (a.likes ?? 0);
+  });
 }
 
 /* --------------------------------------------------------------- filters */

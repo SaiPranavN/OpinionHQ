@@ -29,6 +29,7 @@ const X_URL = "https://x.com/TheOpinionHQ_";
 const EXPLORE = [
   { href: "/topics", label: "Topics" },
   { href: "/polls", label: "Polls" },
+  { href: "/pro", label: "Pro" },
 ];
 
 const ABOUT = [

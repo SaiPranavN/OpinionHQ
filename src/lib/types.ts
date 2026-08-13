@@ -155,6 +155,14 @@ export interface Topic {
   /** Set on topics created in-app by a participant rather than by an editor. */
   createdBy?: string;
   createdAt?: string;
+  /**
+   * Whoever suggested this subject, once an editor approved it.
+   *
+   * The display name rather than the id: the card prints it and nothing links
+   * to a profile page, because there are no profile pages. Absent on editorial
+   * subjects, which is most of them.
+   */
+  suggestedBy?: string;
   /** One or two lines for the card: what it is and why people are talking. */
   summary: string;
   /** Longer editor-written context shown under the name on the dashboard. */
@@ -325,6 +333,29 @@ export interface Opinion {
   verifiedLabel?: string;
   saves?: number;
   reactions?: Partial<Record<ProReaction, number>>;
+  /**
+   * Posted without a name.
+   *
+   * When true, `authorId`, `name`, `initials`, `authorLine` and `verifiedLabel`
+   * have already been stripped by the `opinion_feed` view before they reached
+   * this process — for everyone except the author, who still gets their own id
+   * back so the card can be marked as theirs. Nothing here re-hides anything;
+   * by the time a component sees this flag the identity is already gone.
+   */
+  anonymous?: boolean;
+  /** Images and GIFs attached to a Pro contribution. */
+  media?: ContributionMedia[];
+}
+
+/** One picture on a contribution or a poll reason. Pro only. */
+export interface ContributionMedia {
+  id: string;
+  /** Public URL, resolved from the storage path at read time. */
+  url: string;
+  kind: "image" | "gif";
+  alt: string;
+  width: number | null;
+  height: number | null;
 }
 
 /** A single-level reply under a written opinion (brief §9). */
@@ -466,6 +497,8 @@ export interface Poll {
   uuid?: string;
   /** The choice itself, phrased as a question. */
   question: string;
+  /** Whoever suggested it, once an editor approved it. See `Topic.suggestedBy`. */
+  suggestedBy?: string;
   cat: CategoryId;
   /**
    * Where this applies. Part of the duplicate signature (`lib/signature.ts`):
@@ -552,6 +585,17 @@ export interface PollReason {
   text: string;
   time: string;
   helpful: number;
+  /**
+   * Written without a name. Pro only.
+   *
+   * When true the identity was already removed by `poll_reason_feed` — for
+   * everyone except the author, who still gets their own `authorId` back so the
+   * column can mark the reason as theirs without telling anybody else whose
+   * it is.
+   */
+  anonymous?: boolean;
+  /** Images and GIFs attached to the reason. Pro only. */
+  media?: ContributionMedia[];
 }
 
 /**

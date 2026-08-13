@@ -148,21 +148,41 @@ describe("pro sections", () => {
 
 /* --------------------------------------------------------------- ranking */
 
-describe("ranking is blind to format", () => {
-  it("puts a well-received standard opinion above a quiet Pro one", () => {
-    // THE RULE THE WHOLE FEATURE TURNS ON. Pro buys better publishing tools,
-    // not a better position. The day this test fails, the feed has stopped
-    // being a record of what people think and become a list of who paid.
+describe("ranking", () => {
+  it("puts a quiet Pro contribution above a well-received standard one", () => {
+    // THIS TEST IS THE REVERSE OF WHAT IT USED TO ASSERT, and the inversion is
+    // the product decision, not a regression: Pro buys placement now. The cost
+    // is exactly what this case demonstrates — 900 helpful marks and 40 replies
+    // lose to a Pro post nobody has engaged with — and it is written as the
+    // assertion so that anybody who dislikes it can see the trade in one place
+    // and flip `PRO_FIRST`.
     const loud = standard({ helpful: 900, replies: 40 });
     const quiet = pro({ helpful: 12, replies: 0 });
-    expect(relevanceScore(loud)).toBeGreaterThan(relevanceScore(quiet));
-    expect(sortContributions([quiet, loud], "relevant")[0]!.id).toBe(loud.id);
+    expect(sortContributions([loud, quiet], "relevant")[0]!.id).toBe(quiet.id);
   });
 
-  it("scores two identical contributions identically whatever their format", () => {
+  it("keeps relevanceScore itself a pure engagement measure", () => {
+    // The boost is applied in the sort, never folded into the score. A score
+    // that silently included it would look like a measurement of what readers
+    // did and would not be one.
     const a = standard({ id: "a", helpful: 50, replies: 4, saves: 2 });
     const b = pro({ id: "b", helpful: 50, replies: 4, saves: 2 });
     expect(relevanceScore(a)).toBe(relevanceScore(b));
+  });
+
+  it("ranks Pro against Pro on engagement alone", () => {
+    const busy = pro({ id: "busy", helpful: 200, replies: 10 });
+    const idle = pro({ id: "idle", helpful: 1, replies: 0 });
+    expect(sortContributions([idle, busy], "relevant")[0]!.id).toBe("busy");
+  });
+
+  it("leaves the explicit sorts factual", () => {
+    // Somebody who asks for "most upvoted" is asking a question of fact and
+    // gets an answer of fact, whoever is paying.
+    const loud = standard({ id: "loud", helpful: 900, replies: 40 });
+    const quiet = pro({ id: "quiet", helpful: 12, replies: 0 });
+    expect(sortContributions([quiet, loud], "upvoted")[0]!.id).toBe("loud");
+    expect(sortContributions([quiet, loud], "discussed")[0]!.id).toBe("loud");
   });
 
   it("orders by upvotes, replies and age when asked to", () => {

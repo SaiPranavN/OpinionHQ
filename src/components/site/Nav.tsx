@@ -21,6 +21,7 @@ const LINKS = [
   { href: "/", label: "Home" },
   { href: "/topics", label: "Topics" },
   { href: "/polls", label: "Polls" },
+  { href: "/pro", label: "Pro" },
   { href: "/#how", label: "How it works" },
   { href: "/#facts", label: "Why it’s different" },
 ] as const;

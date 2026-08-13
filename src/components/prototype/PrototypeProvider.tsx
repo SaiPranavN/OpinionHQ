@@ -30,6 +30,13 @@ import { Toast } from "@/components/prototype/Toast";
 import { UpgradeModal } from "@/components/prototype/UpgradeModal";
 import { isPublishable } from "@/lib/contributions";
 import type { ProFeature } from "@/lib/entitlements";
+import { startPro, stopPro } from "@/lib/pro";
+import {
+  attachReasonMedia,
+  clearReasonMedia,
+  publishContribution,
+  type MediaDraft,
+} from "@/lib/topics/contributions";
 import { isUsablePoll } from "@/lib/derive-poll";
 import {
   checkPollDuplicate,
@@ -38,7 +45,6 @@ import {
   type PollSignatureInput,
 } from "@/lib/signature";
 import type {
-  Opinion,
   Poll,
   PollOptionId,
   ProReaction,
@@ -128,17 +134,28 @@ interface PersistedState {
   /* ------------------------------------------------------------ Pro ---- */
 
   /**
-   * Whether this account can build Pro contributions.
+   * `pro` AND `contributions` ARE GONE FROM THIS STORE.
    *
-   * Instant in this build, exactly like verification in Ask Verified: a
-   * billing flow between the reviewer and the workflow they are trying to walk
-   * teaches nothing. In production this is a subscription state read from the
-   * server, and nothing about the composer changes.
+   * Both used to live here. `pro` was a boolean anybody could set from a
+   * console, and it was per-device — subscribing on a phone left the laptop
+   * unsubscribed. `contributions` was worse: somebody would spend twenty
+   * minutes on a structured argument and it existed on that one browser until
+   * the cache was cleared, readable by nobody else.
+   *
+   * Membership now comes from `is_pro()` through `SessionProvider`, and
+   * published contributions come back from the server with every other opinion
+   * on the topic. Neither belongs in localStorage and neither is here.
    */
-  pro: boolean;
-  /** Pro contributions this visitor published, newest first. */
-  contributions: Opinion[];
-  /** Unpublished section drafts, keyed by topic. Survives a reload. */
+
+  /**
+   * Unpublished section drafts, keyed by topic.
+   *
+   * The one Pro-adjacent thing still stored locally, and deliberately: this is
+   * text somebody is part-way through typing, not a record of anything. Putting
+   * half-written paragraphs on the server would mean uploading every keystroke
+   * of something the author has not decided to say yet. It is discarded the
+   * moment the contribution publishes.
+   */
   proDrafts: Record<string, ProSection[]>;
   /**
    * Responses to embedded interactive blocks, keyed `contributionId:blockId`.
@@ -164,8 +181,6 @@ const EMPTY: PersistedState = {
   replies: [],
   created: [],
   createdPolls: [],
-  pro: false,
-  contributions: [],
   proDrafts: {},
   blockChoices: {},
   saved: [],
@@ -183,7 +198,13 @@ interface PrototypeValue extends PersistedState {
   submitVote: (topicId: string, vote: Sentiment, note: string) => void;
   clearVote: (topicId: string) => void;
   /** Records a poll pick, opening the auth sheet first if signed out. */
-  submitPollVote: (pollId: string, side: PollOptionId, reason: string) => Promise<void>;
+  submitPollVote: (
+    pollId: string,
+    side: PollOptionId,
+    reason: string,
+    anonymous?: boolean,
+    media?: MediaDraft[],
+  ) => Promise<void>;
   clearPollVote: (pollId: string) => Promise<void>;
   answerFacet: (topicId: string, facetId: string, optionId: string) => void;
   toggleFollow: (topicId: string) => void;
@@ -200,14 +221,26 @@ interface PrototypeValue extends PersistedState {
    * there is one sheet, one price and one place to change either.
    */
   openUpgrade: (feature: ProFeature) => void;
-  subscribePro: () => void;
-  cancelPro: () => void;
-  /** Pro contributions this visitor published on one topic, newest first. */
-  contributionsFor: (topicId: string) => Opinion[];
+  /** True while `is_pro()` says so. Read from the session, never from this store. */
+  pro: boolean;
+  subscribePro: () => Promise<void>;
+  cancelPro: () => Promise<void>;
   /** Publishes a section draft as a contribution. Returns its id. */
-  publishPro: (topicId: string, sections: ProSection[], vote: Sentiment) => string | null;
+  publishPro: (
+    topicId: string,
+    sections: ProSection[],
+    vote: Sentiment,
+    anonymous?: boolean,
+    media?: MediaDraft[],
+  ) => Promise<string | null>;
   /** Rewrites an already-published contribution (brief §5). */
-  editPro: (contributionId: string, sections: ProSection[]) => void;
+  editPro: (
+    topicId: string,
+    sections: ProSection[],
+    vote: Sentiment,
+    anonymous?: boolean,
+    media?: MediaDraft[],
+  ) => Promise<void>;
   saveProDraft: (topicId: string, sections: ProSection[]) => void;
   discardProDraft: (topicId: string) => void;
   proDraftFor: (topicId: string) => ProSection[] | undefined;
@@ -287,13 +320,6 @@ function readStored(): PersistedState {
       createdPolls: Array.isArray(parsed.createdPolls)
         ? parsed.createdPolls.filter(isUsablePoll)
         : [],
-      pro: Boolean(parsed.pro),
-      // A stored contribution with no sections would render as an empty Pro
-      // card — a headline is the one thing publishing requires, so a record
-      // without one never existed and should not be revived.
-      contributions: Array.isArray(parsed.contributions)
-        ? parsed.contributions.filter((c) => isPublishable(c.sections ?? []))
-        : [],
       proDrafts: parsed.proDrafts ?? {},
       blockChoices: parsed.blockChoices ?? {},
       saved: Array.isArray(parsed.saved) ? parsed.saved : [],
@@ -311,7 +337,19 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
     account,
     ready: sessionReady,
     signOut: endSession,
+    refresh: refreshSession,
   } = useSession();
+
+  /**
+   * Membership, from the account rather than from this store.
+   *
+   * `SessionProvider` reads the subscription row alongside the profile in one
+   * round trip, so this costs nothing extra, and it is the same answer
+   * `is_pro()` gives the row policies. A screen that computed its own would
+   * eventually disagree with the database about who may publish — and the
+   * database is the one that decides.
+   */
+  const pro = Boolean(account?.pro);
   const [state, setState] = useState<PersistedState>(EMPTY);
   const [hydrated, setHydrated] = useState(false);
   const [pending, setPending] = useState<PendingVote | null>(null);
@@ -648,7 +686,13 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
    * pass once the vote exists.
    */
   const submitPollVote = useCallback(
-    async (pollId: string, side: PollOptionId, reason: string) => {
+    async (
+      pollId: string,
+      side: PollOptionId,
+      reason: string,
+      anonymous = false,
+      media: MediaDraft[] = [],
+    ) => {
       if (!signedIn) {
         toast("Sign in to cast your vote in this poll.");
         setAuthMode("signin");
@@ -673,10 +717,26 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
 
       const text = reason.trim();
       if (text) {
-        const { error: reasonError } = await supabase.rpc("explain_poll_vote", {
-          poll_slug: pollId,
-          reason: text,
-        });
+        const { data: savedReason, error: reasonError } = await supabase.rpc(
+          "explain_poll_vote",
+          { poll_slug: pollId, reason: text, anonymous },
+        );
+
+        // The pictures are a third write, and they only make sense once the
+        // reason row exists — `contribution_media` points at it by foreign key.
+        // The clear-then-insert is what makes changing a vote replace the old
+        // pictures rather than pile new ones on top of them.
+        if (!reasonError && savedReason) {
+          const reasonId = (savedReason as unknown as { id: string }).id;
+          try {
+            await clearReasonMedia(reasonId);
+            await attachReasonMedia(reasonId, media);
+          } catch {
+            // The argument is what matters and it is saved. Failing the whole
+            // vote over a picture would be the wrong trade.
+            toast("Vote and reason saved, but an image could not be attached.");
+          }
+        }
         // The vote landed even if the reason did not, so this says which half
         // failed rather than implying the whole thing was lost.
         if (reasonError) {
@@ -879,103 +939,111 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
     [signedIn],
   );
 
-  const subscribePro = useCallback(() => {
-    setState((prev) => ({ ...prev, pro: true }));
-    setUpgrade(null);
-    toast("Pro is on. Unlimited questions, and the rich composer is available.");
-  }, [toast]);
+  /**
+   * Opting in, for real.
+   *
+   * `start_pro()` decides, not this function. It refuses after the free window
+   * closes, refuses an account an admin has revoked, and is idempotent if two
+   * tabs press the button together. The message on failure is the one Postgres
+   * raised — those are written for a person to read, and swapping in something
+   * generic here would throw away the only explanation there is.
+   *
+   * `refreshSession()` afterwards is load-bearing: `pro` is read from the
+   * account, and without the re-read the composer stays locked until a reload.
+   */
+  const subscribePro = useCallback(async () => {
+    try {
+      await startPro();
+      await refreshSession();
+      setUpgrade(null);
+      toast("Pro is on. The rich composer, images, anonymous posting and suggestions are yours.");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Could not start Pro.");
+    }
+  }, [refreshSession, toast]);
 
   /**
    * Cancelling takes the tools away and leaves the work alone.
    *
    * Anything already published stays published. Retracting somebody's
-   * contributions because they stopped paying would make the archive a
+   * contributions because they stopped subscribing would make the archive a
    * function of the billing state, and the reader who found a contribution
    * useful is not party to that arrangement.
    */
-  const cancelPro = useCallback(() => {
-    setState((prev) => ({ ...prev, pro: false }));
-    toast("Pro cancelled. Everything you published stays published.");
-  }, [toast]);
-
-  const contributionsFor = useCallback(
-    (topicId: string) => state.contributions.filter((c) => c.topicId === topicId),
-    [state.contributions],
-  );
+  const cancelPro = useCallback(async () => {
+    try {
+      await stopPro();
+      await refreshSession();
+      toast("Pro is off. Everything you published stays published.");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Could not cancel Pro.");
+    }
+  }, [refreshSession, toast]);
 
   /**
-   * Publishes a draft.
+   * Publishes a draft, to Postgres.
    *
-   * The contribution is written into the same shape as every fixture opinion —
-   * same fields, same reply key, same helpful key — with `format: "pro"` and
-   * its sections attached. That is what puts it in one feed with everything
-   * else rather than in a parallel one.
+   * One call. `publish_contribution` writes the opinion, its sections, the
+   * interactive block, that block's options and any pictures in a single
+   * transaction — the browser doing five sequential writes with no transaction
+   * around them would eventually leave a published contribution missing half
+   * its argument, with nothing to tell the author.
    *
-   * Counts start at zero. A published contribution has been read by nobody,
-   * and seeding it with engagement would be the one lie this section cannot
-   * afford.
+   * `router.refresh()` at the end re-runs the server query, so the new
+   * contribution arrives in the feed the same way everybody else's does. The
+   * old version pushed a hand-built object into local state and rendered that,
+   * which is how the local copy and the server copy managed to disagree.
    */
   const publishPro = useCallback<PrototypeValue["publishPro"]>(
-    (topicId, sections, vote) => {
+    async (topicId, sections, vote, anonymous = false, media = []) => {
       if (!signedIn) {
         toast("Sign in to publish a contribution.");
         setAuthMode("signin");
-        return null;
-      }
-      if (!state.pro) {
-        toast("Pro tools are needed to build a rich contribution.");
         return null;
       }
       if (!isPublishable(sections)) {
         toast("A contribution needs a headline before it can be published.");
         return null;
       }
-      const name = profile?.name || "You";
-      const id = `pro-${topicId}-${Date.now().toString(36)}`;
-      const contribution: Opinion = {
-        id,
-        topicId,
-        name: `${name} (you)`,
-        initials: initialsOf(name),
-        vote,
-        text: "",
-        time: "Just now",
-        helpful: 0,
-        replies: 0,
-        format: "pro",
-        sections: sections.map((section, i) => ({ ...section, position: i })),
-        authorLine: profile?.occupation || "Pro contributor",
-        saves: 0,
-      };
-      setState((prev) => {
-        const rest = Object.fromEntries(
-          Object.entries(prev.proDrafts).filter(([key]) => key !== topicId),
+
+      try {
+        const id = await publishContribution(topicId, vote, sections, anonymous, media);
+        // The draft is gone the moment it is published — leaving it behind is
+        // how somebody reopens the composer and finds an old copy of what they
+        // already posted.
+        setState((prev) => ({
+          ...prev,
+          proDrafts: Object.fromEntries(
+            Object.entries(prev.proDrafts).filter(([key]) => key !== topicId),
+          ),
+        }));
+        toast(
+          anonymous
+            ? "Published without your name. It sits in the same conversation as every other opinion."
+            : "Published. It sits in the same conversation as every other opinion.",
         );
-        return { ...prev, contributions: [contribution, ...prev.contributions], proDrafts: rest };
-      });
-      toast("Published. It sits in the same conversation as every other opinion.");
-      return id;
+        router.refresh();
+        return id;
+      } catch (e) {
+        toast(e instanceof Error ? e.message : "Could not publish that.");
+        return null;
+      }
     },
-    [signedIn, state.pro, profile, toast],
+    [signedIn, toast, router],
   );
 
+  /**
+   * Editing is republishing.
+   *
+   * `opinions` is unique on `(topic_id, author_id)`, so there is one
+   * contribution per person per topic and `publish_contribution` upserts onto
+   * it. A separate edit path would be a second way to write the same row.
+   */
   const editPro = useCallback<PrototypeValue["editPro"]>(
-    (contributionId, sections) => {
-      if (!isPublishable(sections)) {
-        toast("A contribution needs a headline.");
-        return;
-      }
-      setState((prev) => ({
-        ...prev,
-        contributions: prev.contributions.map((c) =>
-          c.id === contributionId
-            ? { ...c, sections: sections.map((s, i) => ({ ...s, position: i })) }
-            : c,
-        ),
-      }));
-      toast("Updated.");
+    async (topicId, sections, vote, anonymous = false, media = []) => {
+      await publishPro(topicId, sections, vote, anonymous, media);
     },
-    [toast],
+    [publishPro],
   );
 
   const saveProDraft = useCallback<PrototypeValue["saveProDraft"]>((topicId, sections) => {
@@ -1105,9 +1173,9 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       postReply,
       repliesFor,
       openUpgrade,
+      pro,
       subscribePro,
       cancelPro,
-      contributionsFor,
       publishPro,
       editPro,
       saveProDraft,
@@ -1145,9 +1213,9 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       postReply,
       repliesFor,
       openUpgrade,
+      pro,
       subscribePro,
       cancelPro,
-      contributionsFor,
       publishPro,
       editPro,
       saveProDraft,

@@ -25,10 +25,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { readMyFollowCount } from "@/lib/follows";
+import { readMyContributions, type MyContribution } from "@/lib/topics/contributions";
 
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
-import { headlineOf, isPro } from "@/lib/contributions";
 import { relativeTime } from "@/lib/ask/derive";
 import { formatNumber, sentimentColor, sentimentIcon } from "@/lib/derive";
 import { PRO_PLAN } from "@/lib/entitlements";
@@ -49,7 +49,6 @@ export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
     displayName,
     votes,
     pollVotes,
-    contributions,
     replies,
     helpful,
     saved,
@@ -68,6 +67,24 @@ export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
     let live = true;
     readMyFollowCount().then((n) => {
       if (live) setFollowCount(n);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  /**
+   * Published contributions, from the server.
+   *
+   * This panel used to read an array in localStorage, so it was empty on every
+   * device except the one the contribution was written on — and empty for
+   * everybody after a cache clear.
+   */
+  const [contributions, setContributions] = useState<MyContribution[]>([]);
+  useEffect(() => {
+    let live = true;
+    readMyContributions().then((rows) => {
+      if (live) setContributions(rows);
     });
     return () => {
       live = false;
@@ -253,13 +270,13 @@ export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
             {contributions.map((contribution) => (
               <Row
                 key={contribution.id}
-                href={`/topics/${contribution.topicId}#${contribution.id}`}
-                title={isPro(contribution) ? headlineOf(contribution) : contribution.text}
-                meta={`${bySlug.get(contribution.topicId)?.name ?? contribution.topicId} · ${
-                  contribution.sections?.length ?? 0
-                } sections · ${formatNumber(contribution.helpful)} helpful`}
-                tone={contribution.vote}
-                badge="Pro contribution"
+                href={`/topics/${contribution.topicSlug}#${contribution.id}`}
+                title={contribution.headline}
+                meta={`${contribution.topicName} · ${contribution.sections} ${
+                  contribution.sections === 1 ? "section" : "sections"
+                } · ${formatNumber(contribution.helpful)} helpful`}
+                tone={contribution.vote as Sentiment}
+                badge={contribution.anonymous ? "Pro · anonymous" : "Pro contribution"}
               />
             ))}
           </Panel>

@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
+import { AnonymousToggle } from "@/components/ui/AnonymousToggle";
+import { MediaPicker } from "@/components/ui/MediaPicker";
+import type { MediaDraft } from "@/lib/topics/contributions";
 import type { DecoratedPoll, PollOptionId } from "@/lib/types";
 
 const MAX_REASON = 400;
@@ -15,11 +18,14 @@ const MAX_REASON = 400;
  * than in a thread: polls have no discussion by design.
  */
 export function PollVotePanel({ poll }: { poll: DecoratedPoll }) {
-  const { pollVotes, clearPollVote, submitPollVote, signedIn, ready } = usePrototype();
+  const { pollVotes, clearPollVote, submitPollVote, signedIn, ready, pro, openUpgrade } =
+    usePrototype();
   const cast = pollVotes[poll.id];
 
   const [side, setSide] = useState<PollOptionId | null>(null);
   const [reason, setReason] = useState("");
+  const [anonymous, setAnonymous] = useState(false);
+  const [media, setMedia] = useState<MediaDraft[]>([]);
 
   // Once storage has hydrated, show the vote already on record.
   useEffect(() => {
@@ -114,11 +120,37 @@ export function PollVotePanel({ poll }: { poll: DecoratedPoll }) {
         />
       </label>
 
+      {/* The Pro half of the reason box.
+          Shown to everybody rather than hidden from non-members: a feature you
+          cannot see is a feature you cannot decide you want, and the switch
+          says what it costs the moment it is touched. */}
+      {signedIn ? (
+        <div className="mt-4 flex flex-col gap-3.5 border-t border-veil/8 pt-4">
+          {pro ? (
+            <>
+              <MediaPicker media={media} onChange={setMedia} accent="var(--color-poll)" />
+              <AnonymousToggle on={anonymous} onChange={setAnonymous} />
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => openUpgrade("media")}
+              className="flex cursor-pointer flex-col gap-1 self-start text-left"
+            >
+              <span className="text-[12.5px] font-medium text-muted transition-colors hover:text-cream">
+                + Add an image, or post without your name
+              </span>
+              <span className="text-[11.5px] text-dim">Both are Pro. Free while the launch offer runs.</span>
+            </button>
+          )}
+        </div>
+      ) : null}
+
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <button
           type="button"
           disabled={!side}
-          onClick={() => side && submitPollVote(poll.id, side, reason)}
+          onClick={() => side && submitPollVote(poll.id, side, reason, anonymous, media)}
           className="cursor-pointer rounded-full bg-positive px-6 py-3 text-[14.5px] font-semibold text-positive-ink transition-[background,opacity] duration-300 outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light disabled:cursor-not-allowed disabled:opacity-40"
         >
           {cast ? "Update my vote" : "Cast my vote"}

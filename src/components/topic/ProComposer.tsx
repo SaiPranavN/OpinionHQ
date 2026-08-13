@@ -18,6 +18,10 @@ import { useState } from "react";
 
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { ContributionCard } from "@/components/topic/ContributionCard";
+import { AnonymousToggle } from "@/components/ui/AnonymousToggle";
+import { MediaPicker } from "@/components/ui/MediaPicker";
+import { mediaUrl } from "@/lib/media";
+import type { MediaDraft } from "@/lib/topics/contributions";
 import { isPublishable, OPTIONAL_SECTIONS, BLOCK_KIND_LABEL } from "@/lib/contributions";
 import { sentimentColor } from "@/lib/derive";
 import type {
@@ -91,6 +95,9 @@ export function ProComposer({
   );
   const [vote, setVote] = useState<Sentiment>("Neutral");
   const [preview, setPreview] = useState(false);
+  const [anonymous, setAnonymous] = useState(false);
+  const [media, setMedia] = useState<MediaDraft[]>([]);
+  const [publishing, setPublishing] = useState(false);
 
   const headline = sections.find((s) => s.type === "headline");
   const optional = sections.filter((s) => s.type !== "headline");
@@ -153,11 +160,14 @@ export function ProComposer({
       })
       .map((section, i) => ({ ...section, position: i }));
 
+  // The preview shows what everybody else will see, which is the whole reason
+  // it exists — so with anonymity on it shows the anonymous card rather than
+  // the author's own name with a note attached.
   const draftPreview: Opinion = {
     id: `preview-${topicId}`,
     topicId,
-    name: `${displayName || "You"} (you)`,
-    initials: (displayName || "You").slice(0, 2).toUpperCase(),
+    name: anonymous ? "Anonymous" : `${displayName || "You"} (you)`,
+    initials: anonymous ? "··" : (displayName || "You").slice(0, 2).toUpperCase(),
     vote,
     text: "",
     time: "Just now",
@@ -165,7 +175,16 @@ export function ProComposer({
     replies: 0,
     format: "pro",
     sections: cleaned(),
-    authorLine: "Pro contributor",
+    authorLine: anonymous ? undefined : "Pro contributor",
+    anonymous,
+    media: media.map((m) => ({
+      id: m.path,
+      url: mediaUrl(m.path),
+      kind: m.kind,
+      alt: m.alt,
+      width: m.width,
+      height: m.height,
+    })),
     saves: 0,
   };
 
@@ -293,16 +312,26 @@ export function ProComposer({
         </>
       )}
 
+      <div className="flex flex-col gap-4 border-t border-veil/8 pt-4">
+        <MediaPicker media={media} onChange={setMedia} accent={accent} />
+        <AnonymousToggle on={anonymous} onChange={setAnonymous} />
+      </div>
+
       <footer className="flex flex-wrap items-center gap-3 border-t border-veil/8 pt-4">
         <button
           type="button"
-          disabled={!ready}
-          onClick={() => {
-            if (publishPro(topicId, cleaned(), vote)) onClose();
+          disabled={!ready || publishing}
+          onClick={async () => {
+            setPublishing(true);
+            const id = await publishPro(topicId, cleaned(), vote, anonymous, media);
+            setPublishing(false);
+            // Only on success. Closing regardless would throw away the draft in
+            // front of somebody whose publish had just been refused.
+            if (id) onClose();
           }}
           className="cursor-pointer rounded-full bg-positive px-5 py-2.5 text-[13.5px] font-semibold text-positive-ink transition-opacity duration-300 outline-none disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-positive-light"
         >
-          Publish contribution
+          {publishing ? "Publishing…" : "Publish contribution"}
         </button>
         <button
           type="button"

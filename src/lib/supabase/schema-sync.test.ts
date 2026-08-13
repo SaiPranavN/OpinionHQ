@@ -20,7 +20,7 @@ import { describe, expect, it } from "vitest";
 import { ASK_CATEGORIES } from "@/lib/ask/taxonomy";
 import { PROOF_KINDS } from "@/lib/ask/verification";
 import { AGE_BANDS } from "@/lib/demographics";
-import { FREE_ASKS } from "@/lib/entitlements";
+import { FREE_ASKS, PRO_PRICE_INR } from "@/lib/entitlements";
 import { MAX_COMMENT_DEPTH } from "@/lib/ask/comments";
 import { MAX_MATCHES, REPLY_CAP } from "@/lib/ask/taxonomy";
 import { MAX_POLL_OPTIONS } from "@/lib/types";
@@ -157,5 +157,39 @@ describe("security definer functions pin their search path", () => {
       .filter((m) => m[0].includes("security definer") && !m[0].includes("set search_path"))
       .map((m) => m[1]!);
     expect(unpinned).toEqual([]);
+  });
+});
+
+describe("Pro", () => {
+  it("the fallback price matches the one seeded into pro_offer", () => {
+    // `PRO_PRICE_INR` renders before the offer row arrives, and `pro_offer`
+    // is what the payment code will eventually charge. Two numbers describing
+    // the same price is one number away from a page advertising ₹99 while the
+    // checkout takes something else.
+    const match = sql.match(/price_inr\s+integer not null default (\d+)/);
+    expect(match?.[1]).toBe(String(PRO_PRICE_INR));
+
+    const seeded = sql.match(/values \(true, timestamptz '[^']+', (\d+)\)/);
+    expect(seeded?.[1]).toBe(String(PRO_PRICE_INR));
+  });
+
+  it("only Pro may post anonymously, and it is enforced in SQL", () => {
+    // The composer's toggle is a convenience. This is the rule: every table
+    // that carries authored text refuses `anonymous = true` from a non-member
+    // in its own insert policy, so a hand-rolled request is refused too.
+    for (const table of ["opinions", "opinion_replies", "poll_reasons"]) {
+      const policy = sql.match(
+        new RegExp(`create policy "[^"]+" on public\\.${table} for insert[\\s\\S]*?;`, "g"),
+      );
+      const last = policy?.[policy.length - 1] ?? "";
+      expect(last).toContain("anonymous = false or public.is_pro()");
+    }
+  });
+
+  it("is_pro checks revocation, not just status", () => {
+    // Without this an admin's revocation lasts until the account notices the
+    // button still works.
+    const fn = sql.slice(sql.lastIndexOf("function public.is_pro"));
+    expect(fn.slice(0, 600)).toContain("revoked_at is null");
   });
 });
