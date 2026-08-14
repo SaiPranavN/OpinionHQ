@@ -222,36 +222,71 @@
 }
 
 /*
- * The rotating hero headline.
+ * The rotating hero headline — a drum turning behind the words.
  *
- * A vertical roll with a shallow barrel — `rotateX` against the perspective the
- * headline sets, around an origin at the edge the text is travelling towards,
- * so a piece appears to turn over rather than slide. Kept to 34deg and paired
- * with a fade: at 6.6rem a full barrel reads as a slot machine.
+ * PERSPECTIVE IS IN THE TRANSFORM, NOT ON AN ANCESTOR, and that is the whole
+ * reason this reads as a barrel now. The `perspective` property only applies to
+ * an element's *direct* children; the animating spans sit three levels below the
+ * container that had it, so every `rotateX` was being flattened to a vertical
+ * squash. `perspective()` as a transform function applies to the element itself
+ * and cannot be broken by anything wrapping it.
  *
- * Out is quicker than in and starts first, so the space is already clearing as
- * the replacement arrives. Neither curve overshoots — nothing here should
- * bounce.
+ * The two halves are one rotation. Picture a drum whose front face travels
+ * upward: the outgoing word is on that face and tips away over its bottom edge
+ * as it rises, and the incoming word arrives from underneath, its lower edge
+ * swinging forward until the face is flat again. Same direction of spin, which
+ * is why they hinge on opposite edges.
+ *
+ * THE ARRIVAL OVERSHOOTS AND SETTLES. It passes about seven degrees beyond flat,
+ * comes back two, and stops — a drum with mass in it does not halt dead on the
+ * mark. The amplitudes are small on purpose: enough to feel like inertia, not
+ * enough to read as a bounce.
+ *
+ * Opacity is deliberately not linear with the rotation. The word is fully solid
+ * for most of its travel and only fades at the far ends, so the roll is legible
+ * rather than a ghost turning over.
+ *
+ * THE NUMBERS ARE TUNED, not picked. 1100px of perspective rather than 520, and
+ * 68 degrees rather than 82: at the short depth and steep angle the word went
+ * far enough over to render as a foreshortened sliver, and a heavily distorted
+ * trapezoid mid-flight reads as something broken rather than something turning.
+ * Shallower rotation through a longer lens is unmistakably a barrel and never
+ * stops looking like the word it is.
  */
 @keyframes ohq-headline-in {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(0.42em) rotateX(-34deg);
+    transform: perspective(1100px) translateY(0.46em) rotateX(-68deg);
   }
-  to {
+  28% {
     opacity: 1;
-    transform: translateY(0) rotateX(0deg);
+  }
+  58% {
+    transform: perspective(1100px) translateY(-0.045em) rotateX(7deg);
+  }
+  79% {
+    transform: perspective(1100px) translateY(0.012em) rotateX(-2.4deg);
+  }
+  92% {
+    transform: perspective(1100px) translateY(0) rotateX(0.8deg);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1100px) translateY(0) rotateX(0deg);
   }
 }
 
 @keyframes ohq-headline-out {
-  from {
+  0% {
     opacity: 1;
-    transform: translateY(0) rotateX(0deg);
+    transform: perspective(1100px) translateY(0) rotateX(0deg);
   }
-  to {
+  62% {
+    opacity: 0.42;
+  }
+  100% {
     opacity: 0;
-    transform: translateY(-0.42em) rotateX(34deg);
+    transform: perspective(1100px) translateY(-0.52em) rotateX(70deg);
   }
 }
 

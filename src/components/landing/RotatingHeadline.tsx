@@ -77,9 +77,31 @@ const PHRASES: Word[][] = [
 
 /** How long a phrase sits still. Inside the 2.5–3.5s the brief asked for. */
 const HOLD_MS = 3000;
-const EXIT_MS = 420;
-const ENTER_MS = 480;
-const ENTER_DELAY_MS = 110;
+
+/**
+ * The roll.
+ *
+ * Arriving takes half as long again as leaving, because it has the settle on
+ * the end of it — the departure only has to accelerate away and can be brisk.
+ * Leaving starts first so the space is already clearing as the replacement
+ * swings up into it.
+ */
+const EXIT_MS = 460;
+const ENTER_MS = 760;
+const ENTER_DELAY_MS = 150;
+
+/**
+ * Per-word offset, so the line turns over as a wave rather than a slab.
+ *
+ * This is most of what makes it feel fluid. Five words hinging in perfect
+ * unison reads as one rigid panel flipping; forty milliseconds apart and the
+ * same motion becomes a drum rolling across the headline. Capped, so the
+ * longest phrase does not run visibly slower than the shortest.
+ */
+const STAGGER_MS = 42;
+const MAX_STAGGER_MS = 168;
+
+const stagger = (i: number) => Math.min(i * STAGGER_MS, MAX_STAGGER_MS);
 /**
  * How long a surviving word takes to glide to its new position.
  *
@@ -87,7 +109,10 @@ const ENTER_DELAY_MS = 110;
  * phases — it was that at first, and a word taking a full second to slide
  * across the headline reads as lag rather than as motion.
  */
-const GLIDE_MS = 460;
+const GLIDE_MS = 620;
+
+/** Expo-out. The same "heavy thing coasting to a stop" the roll settles with. */
+const GLIDE_EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
 
 const TONE_COLOR: Record<Tone, string> = {
   plain: "var(--color-cream-bright)",
@@ -184,6 +209,8 @@ interface Exiting {
   tone: Tone;
   left: number;
   top: number;
+  /** Where it sat in the outgoing line, so it leaves in the same wave. */
+  order: number;
 }
 
 export function RotatingHeadline() {
@@ -193,9 +220,21 @@ export function RotatingHeadline() {
 
   const rowRef = useRef<HTMLSpanElement>(null);
   const nodes = useRef(new Map<string, HTMLElement>());
-  const rects = useRef(new Map<string, DOMRect>());
-  /** Ids that arrived in this render and have not been let go yet. */
-  const entering = useRef(new Set<string>());
+  /**
+   * Where everything was, measured in the same tick the phrase changes.
+   *
+   * NOT CACHED ACROSS THE HOLD, and that was a real bug: these used to be
+   * recorded in the layout effect and read up to three seconds later, so
+   * anything that reflowed the line in between — the display font finishing
+   * loading, a resize, a zoom — left them describing a layout that no longer
+   * existed. The next transition then FLIPped a surviving word from a position
+   * it had never actually been in, which on a fresh load threw "opinion" a
+   * hundred pixels left and sixty up, straight through the word beside it.
+   *
+   * Measured at the swap, they are at most one frame old and cannot be wrong.
+   * Empty on the first render, which is exactly right — nothing has moved yet.
+   */
+  const before = useRef(new Map<string, DOMRect>());
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -219,22 +258,29 @@ export function RotatingHeadline() {
       const staying = new Set(ATOMS[nextIndex]!.map(idOf));
       const row = rowRef.current?.getBoundingClientRect();
 
+      // Everything that is on screen right now, before the swap. Survivors use
+      // it for the glide; leavers use it for the position they animate from.
+      before.current = new Map();
+      for (const [id, node] of nodes.current) {
+        before.current.set(id, node.getBoundingClientRect());
+      }
+
       const leaving: Exiting[] = [];
       if (row) {
-        for (const atom of ATOMS[index]!) {
+        ATOMS[index]!.forEach((atom, order) => {
           const id = idOf(atom);
-          if (staying.has(id)) continue;
-          const node = nodes.current.get(id);
-          if (!node) continue;
-          const box = node.getBoundingClientRect();
+          if (staying.has(id)) return;
+          const box = before.current.get(id);
+          if (!box) return;
           leaving.push({
             id,
             text: atom.text,
             tone: atom.tone,
             left: box.left - row.left,
             top: box.top - row.top,
+            order,
           });
-        }
+        });
       }
 
       setExiting(leaving);
@@ -247,7 +293,10 @@ export function RotatingHeadline() {
   /** Clear the departed once their animation has run. */
   useEffect(() => {
     if (exiting.length === 0) return;
-    const timer = window.setTimeout(() => setExiting([]), EXIT_MS + 60);
+    const timer = window.setTimeout(
+      () => setExiting([]),
+      EXIT_MS + MAX_STAGGER_MS + 60,
+    );
     return () => window.clearTimeout(timer);
   }, [exiting]);
 
@@ -260,30 +309,53 @@ export function RotatingHeadline() {
    * "the whole heading re-rendered" impression the component exists to avoid.
    */
   useLayoutEffect(() => {
-    const previous = rects.current;
-    const current = new Map<string, DOMRect>();
+    const previous = before.current;
+    // Consumed, not kept. A stale rect is worse than no rect: no rect means no
+    // glide, a stale one means a glide from somewhere the word never was.
+    before.current = new Map();
+    if (previous.size === 0) return;
 
     for (const [id, node] of nodes.current) {
+      const was = previous.get(id);
+      // Arrived with this phrase — React owns its animation, leave it alone.
+      if (!was) continue;
+
+      // Clear whatever the last pass left on it, so a re-roll below actually
+      // restarts rather than being ignored as an unchanged property.
+      node.style.animation = "";
+
       const box = node.getBoundingClientRect();
-      current.set(id, box);
-
-      const before = previous.get(id);
-      if (!before || reduced) continue;
-
-      const dx = before.left - box.left;
-      const dy = before.top - box.top;
+      const dx = was.left - box.left;
+      const dy = was.top - box.top;
       if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
+      // Reduced motion gets the position and none of the travel.
+      if (reduced) {
+        node.style.transition = "none";
+        node.style.transform = "";
+        continue;
+      }
 
-      // A word that changed line is not gliding anywhere. Two of the four
-      // phrases wrap and two do not, so a survivor can move from the end of
-      // line two to the middle of line one — animated, that is a word flying
-      // diagonally across the headline, which looks like a bug and draws the
-      // eye away from the words that are actually changing. It takes its new
-      // position immediately instead, under cover of the roll happening beside
-      // it.
+      /**
+       * A survivor that changed line rolls in again where it now is.
+       *
+       * It cannot be anchored — it is on a different line, and gliding it there
+       * is a word flying diagonally across the headline. The first version
+       * snapped it instead, which is worse: at narrower viewports the phrases
+       * wrap differently and *every* survivor changes line, so the whole
+       * headline was teleporting while a few words rolled around it. That is
+       * precisely the jerk this component exists to avoid.
+       *
+       * Rolling it in gives it the same motion as everything else on the line.
+       * Nothing is left behind at the old position because the words leaving
+       * from there are rolling out at the same moment.
+       */
       if (Math.abs(dy) > box.height * 0.5) {
         node.style.transition = "none";
-        node.style.transform = "none";
+        node.style.transform = "";
+        void node.offsetWidth;
+        node.style.animation = reduced
+          ? `ohq-headline-fade 380ms ease both`
+          : `ohq-headline-in ${ENTER_MS}ms linear ${ENTER_DELAY_MS}ms both`;
         continue;
       }
 
@@ -293,20 +365,18 @@ export function RotatingHeadline() {
       // transition is attached; without it the two style writes coalesce and
       // nothing animates.
       void node.offsetWidth;
-      node.style.transition = `transform ${GLIDE_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+      node.style.transition = `transform ${GLIDE_MS}ms ${GLIDE_EASE}`;
       node.style.transform = "translate(0, 0)";
     }
-
-    rects.current = current;
   }, [index, reduced]);
 
   const atoms = ATOMS[index]!;
+  const previousIds = new Set(
+    ATOMS[(index - 1 + PHRASES.length) % PHRASES.length]!.map(idOf),
+  );
 
   return (
-    <span
-      className="relative grid w-full"
-      style={{ perspective: reduced ? undefined : "900px" }}
-    >
+    <span className="relative grid w-full">
       {/*
         Every phrase, stacked in the same grid cell and invisible.
 
@@ -353,8 +423,9 @@ export function RotatingHeadline() {
       >
         {atoms.map((atom, i) => {
           const id = idOf(atom);
-          const isNew = !rects.current.has(id);
-          if (isNew) entering.current.add(id);
+          // New relative to the phrase we came from — which is a fact about the
+          // content, not about whatever the DOM happened to be measured as.
+          const isNew = !previousIds.has(id);
 
           return (
             <span key={id}>
@@ -364,14 +435,22 @@ export function RotatingHeadline() {
                   if (node) nodes.current.set(id, node);
                   else nodes.current.delete(id);
                 }}
-                className="inline-block will-change-transform"
+                className="inline-block [backface-visibility:hidden] [will-change:transform,opacity]"
                 style={{
                   color: TONE_COLOR[atom.tone],
-                  transformOrigin: "50% 100%",
+                  // Hinged on its top edge: it arrives from below and swings
+                  // its lower edge forward into the flat. The departing word
+                  // hinges on the opposite edge — same drum, same direction.
+                  transformOrigin: "50% 0%",
                   animation: isNew
                     ? reduced
-                      ? `ohq-headline-fade ${ENTER_MS}ms ease both`
-                      : `ohq-headline-in ${ENTER_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1) ${ENTER_DELAY_MS}ms both`
+                      ? `ohq-headline-fade 380ms ease both`
+                      : // Linear, because the easing is already in the
+                        // keyframes — the overshoot and settle are positions
+                        // in time, and a curve on top of them would fight it.
+                        `ohq-headline-in ${ENTER_MS}ms linear ${
+                          ENTER_DELAY_MS + stagger(i)
+                        }ms both`
                     : undefined,
                 }}
               >
@@ -387,15 +466,21 @@ export function RotatingHeadline() {
           <span
             key={`out:${piece.id}`}
             aria-hidden
-            className="pointer-events-none absolute inline-block will-change-transform"
+            className="pointer-events-none absolute inline-block [backface-visibility:hidden] [will-change:transform,opacity]"
             style={{
               left: piece.left,
               top: piece.top,
               color: TONE_COLOR[piece.tone],
-              transformOrigin: "50% 0%",
+              // Hinged on its bottom edge: it tips away over the top as it
+              // rises. See the drum note in globals.css.
+              transformOrigin: "50% 100%",
               animation: reduced
-                ? `ohq-headline-fade-out ${EXIT_MS}ms ease both`
-                : `ohq-headline-out ${EXIT_MS}ms cubic-bezier(0.4, 0, 0.7, 0.4) both`,
+                ? `ohq-headline-fade-out 300ms ease both`
+                : // Ease-in: it is being pulled around the drum, so it leaves
+                  // faster than it started.
+                  `ohq-headline-out ${EXIT_MS}ms cubic-bezier(0.5, 0, 0.85, 0.35) ${stagger(
+                    piece.order,
+                  )}ms both`,
             }}
           >
             {piece.text}
