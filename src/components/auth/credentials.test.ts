@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 // now reaches a server action, and a test that pulls one in fails on
 // `server-only` before it asserts anything.
 import { MIN_PASSWORD, checkPassword, nameFrom, readIdentifier } from "@/lib/auth/identifier";
-import { safeNext } from "@/lib/auth/redirect";
+import { safeNext, withWelcome } from "@/lib/auth/redirect";
 
 describe("readIdentifier", () => {
   it("reads an address as an address", () => {
@@ -97,5 +97,21 @@ describe("safeNext", () => {
 
   it("falls back when absent", () => {
     expect(safeNext(null)).toBe("/topics");
+  });
+});
+
+describe("the welcome flag", () => {
+  it("marks a plain path", () => {
+    expect(withWelcome("/topics")).toBe("/topics?welcome=1");
+  });
+
+  it("appends to a path that already has a query", () => {
+    // A `next` carrying a filtered catalog has to survive the trip, or signing
+    // up throws away the thing the person was looking at.
+    expect(withWelcome("/topics?cat=exams")).toBe("/topics?cat=exams&welcome=1");
+  });
+
+  it("keeps the fragment last, where a fragment has to be", () => {
+    expect(withWelcome("/polls/x#discussion")).toBe("/polls/x?welcome=1#discussion");
   });
 });

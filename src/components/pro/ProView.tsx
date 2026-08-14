@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { SuggestForm } from "@/components/pro/SuggestForm";
 import { Brand } from "@/components/ui/Brand";
-import { PRO_PLAN } from "@/lib/entitlements";
+import { FOUNDING, PRO_PLAN } from "@/lib/entitlements";
 import { offerDeadline, offerRemaining, readProState, type ProState } from "@/lib/pro";
 
 export function ProView() {
@@ -56,17 +56,23 @@ export function ProView() {
         </h1>
 
         {open ? (
-          <p className="m-0 max-w-[62ch] text-[15.5px] leading-[1.55] font-light text-pretty text-soft">
-            <strong className="font-medium text-positive-light">
-              Free for everyone until {deadline}
-            </strong>
-            {remaining ? <span className="text-dim"> · {remaining}</span> : null} — then ₹
-            {price} a month. No card is asked for now, and nothing starts charging
-            on its own when the offer ends.
-          </p>
+          <>
+            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-positive/35 bg-positive/10 px-3 py-[5px] font-mono text-[10px] tracking-[0.14em] uppercase text-positive-light">
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-positive" />
+              {FOUNDING.badge}
+            </span>
+            <p className="m-0 max-w-[62ch] text-[15.5px] leading-[1.55] font-light text-pretty text-soft">
+              <strong className="font-medium text-positive-light">
+                Free for founding members until {deadline}
+              </strong>
+              {remaining ? <span className="text-dim"> · {remaining}</span> : null} — then ₹
+              {price} a month. No card is asked for now, and nothing starts charging
+              on its own when the window closes.
+            </p>
+          </>
         ) : (
           <p className="m-0 max-w-[62ch] text-[15.5px] leading-[1.55] font-light text-pretty text-soft">
-            The free launch period has ended. Pro is ₹{price} a month.
+            The founding window has closed. Pro is ₹{price} a month.
           </p>
         )}
       </header>
@@ -85,10 +91,10 @@ export function ProView() {
                 ? "Pro is not available on this account. Write to support@theopinionhq.com."
                 : pro
                   ? open
-                    ? `Free until ${deadline}. Nothing renews by itself.`
+                    ? `Founding member — free until ${deadline}. Nothing renews by itself.`
                     : "Active."
                   : open
-                    ? "Turn it on whenever you like. It costs nothing until the offer ends."
+                    ? "Turn it on whenever you like. It costs nothing until the founding window closes."
                     : `₹${price} a month.`}
             </span>
           </span>
@@ -118,7 +124,7 @@ export function ProView() {
                 }}
                 className="ohq-press cursor-pointer rounded-full bg-positive px-6 py-3 text-[14.5px] font-semibold text-positive-ink transition-[background,opacity] duration-300 outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {open ? "Start Pro — free" : "Payment is not open yet"}
+                {open ? "Claim founding Pro" : "Payment is not open yet"}
               </button>
             )}
           </span>
@@ -126,8 +132,8 @@ export function ProView() {
       ) : ready ? (
         <section className="ohq-panel flex flex-wrap items-center gap-4 p-5 sm:p-6">
           <p className="m-0 max-w-[46ch] text-[14px] leading-[1.6] text-soft">
-            Sign in to turn Pro on. It is free while the launch offer runs and there
-            is no card field.
+            Sign in to turn Pro on. It is free for founding members and there is
+            no card field.
           </p>
           <button
             type="button"

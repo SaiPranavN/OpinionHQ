@@ -9,6 +9,8 @@ import { TopicCard } from "@/components/catalog/TopicCard";
 import { SortControl } from "@/components/catalog/SortControl";
 import { useSession } from "@/components/auth/SessionProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { SuggestButton } from "@/components/pro/SuggestButton";
+import { WelcomeOffer } from "@/components/pro/WelcomeOffer";
 import { PlaceFilter } from "@/components/ui/PlaceFilter";
 import { SearchField } from "@/components/ui/SearchField";
 import { placeLabel, type PlaceFilterId } from "@/lib/places";
@@ -61,6 +63,10 @@ export function CatalogView({
     <section className="mx-auto max-w-[1440px] px-4 pt-7 pb-[clamp(64px,8vw,110px)] sm:px-8 lg:px-14">
       <Breadcrumb trail={[{ label: "Home", href: "/" }, { label: "Explore" }]} />
 
+      {/* Fires only for an account that has just been created — see the
+          component for why the flag is a query parameter. */}
+      <WelcomeOffer />
+
       <header className="mt-4 flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         <div className="min-w-0">
           <h1 className="m-0 font-display text-[clamp(2rem,4vw,3.1rem)] leading-[1.02] font-bold tracking-[-0.025em] text-cream-bright">
@@ -76,16 +82,19 @@ export function CatalogView({
             topics are verified — so the invitation is shown to the people who
             actually have the power, and the row policies refuse everyone else
             regardless of what is on screen. */}
-        {isEditor ? (
-          <div className="mb-1 flex flex-wrap items-center gap-2.5">
+        {/* Suggest sits beside Create rather than inside the editor branch:
+            anyone may ask for a subject, only an editor may mint one. */}
+        <div className="mb-1 flex flex-wrap items-center gap-2.5">
+          <SuggestButton kind="topic" />
+          {isEditor ? (
             <Link
               href="/admin/topics/new"
               className="rounded-full border border-positive/40 bg-positive/12 px-4 py-[7px] text-[13px] font-medium whitespace-nowrap text-positive-light transition-colors duration-300 outline-none hover:bg-positive/18 focus-visible:ring-2 focus-visible:ring-positive/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
             >
               + Create a topic
             </Link>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </header>
 
       {/* The search box takes a whole row to itself on a phone and shares one

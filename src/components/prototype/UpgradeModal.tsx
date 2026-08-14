@@ -11,11 +11,14 @@
  * It also lists what stays free, in the same size type as what Pro adds. A
  * subscribe sheet that only tells you what you are missing is selling the fear
  * rather than the product — and this one has nothing to hide, because the free
- * tier really does cover reading, voting, replying and answering.
+ * tier really does cover reading, voting, replying and following.
  *
- * NO PAYMENT IS TAKEN. There is no card field here and no payment processor
- * behind it. Pressing subscribe flips a flag in this browser, and the sheet
- * says so where you cannot miss it.
+ * NO PAYMENT IS TAKEN, and that is not a placeholder. This docblock used to say
+ * the button "flips a flag in this browser", which was true of the prototype and
+ * stopped being true when membership moved to `subscriptions`. It calls
+ * `start_pro()`, which writes a real row whose period ends when the founding
+ * window does — there is no card field because there is nothing to charge, not
+ * because the checkout is missing.
  */
 
 import { useEffect, useState } from "react";
@@ -107,7 +110,8 @@ export function UpgradeModal({
                 Free
               </span>
               <span className="text-[13px] text-muted">
-                until {offerDeadline(offer.freeUntil)}, then ₹{offer.priceInr} a month
+                for founding members, until {offerDeadline(offer.freeUntil)}, then ₹
+                {offer.priceInr} a month
               </span>
               {remaining ? (
                 <span className="ml-auto font-mono text-[11px] tracking-[0.06em] text-positive-light">
@@ -162,7 +166,7 @@ export function UpgradeModal({
             onClick={onSubscribe}
             className="cursor-pointer rounded-full bg-positive px-6 py-3 text-[14px] font-semibold text-positive-ink transition-[background,box-shadow] duration-300 outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light"
           >
-            {offer?.offerOpen === false ? "Start Pro" : "Start Pro — free"}
+            {offer?.offerOpen === false ? "Start Pro" : "Claim founding Pro"}
           </button>
           <button
             type="button"
@@ -175,8 +179,8 @@ export function UpgradeModal({
 
         <p className="m-0 rounded-[12px] border border-veil/8 bg-veil/2 px-3.5 py-3 text-[11.5px] leading-[1.55] text-dim">
           <strong className="font-medium text-muted">No card, and nothing to cancel.</strong>{" "}
-          The launch period is free for everyone, so there is no payment to take
-          and no details to store. Your membership is a record on the server that
+          The founding window is free, so there is no payment to take and no
+          details to store. Your membership is a record on the server that
           simply expires when the offer does — nothing starts charging on its own,
           and <Brand /> will ask before it ever does.
         </p>

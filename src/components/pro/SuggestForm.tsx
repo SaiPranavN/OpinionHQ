@@ -23,9 +23,22 @@ import { suggestPoll, suggestTopic } from "@/lib/suggestions";
 const field =
   "w-full rounded-[10px] border border-veil/10 bg-surface-sunken px-3 py-2.5 text-[14px] leading-[1.55] text-cream outline-none transition-colors duration-300 focus:border-positive/50";
 
-export function SuggestForm() {
+export function SuggestForm({
+  /**
+   * Locks the form to one kind and hides the switch.
+   *
+   * The Pro page offers both, because that is a page about Pro. The catalogs
+   * open it from a button that already said which one — a "Suggest a topic"
+   * pill that opens a form asking topic-or-poll has asked the question twice.
+   */
+  only,
+  onDone,
+}: {
+  only?: "topic" | "poll";
+  onDone?: () => void;
+} = {}) {
   const { toast, pro } = usePrototype();
-  const [kind, setKind] = useState<"topic" | "poll">("topic");
+  const [kind, setKind] = useState<"topic" | "poll">(only ?? "topic");
   const [title, setTitle] = useState("");
   const [rationale, setRationale] = useState("");
   const [categoryId, setCategoryId] = useState<string>(CATEGORIES[0]?.id ?? "technology");
@@ -70,19 +83,37 @@ export function SuggestForm() {
           card as the person who asked for it — permanently, and visible to
           everybody who finds the subject.
         </p>
-        <button
-          type="button"
-          onClick={() => setDone(false)}
-          className="cursor-pointer self-start rounded-full border border-veil/16 px-4 py-2 text-[13px] font-medium text-soft transition-colors hover:border-veil/36 hover:text-cream"
-        >
-          Suggest another
-        </button>
+        <div className="flex flex-wrap gap-2.5">
+          <button
+            type="button"
+            onClick={() => setDone(false)}
+            className="cursor-pointer rounded-full border border-veil/16 px-4 py-2 text-[13px] font-medium text-soft transition-colors hover:border-veil/36 hover:text-cream"
+          >
+            Suggest another
+          </button>
+          {onDone ? (
+            <button
+              type="button"
+              onClick={onDone}
+              className="cursor-pointer px-2 py-2 text-[13px] text-dim transition-colors hover:text-soft"
+            >
+              Done
+            </button>
+          ) : null}
+        </div>
       </div>
     );
   }
 
   return (
     <div className="ohq-panel flex flex-col gap-4 p-5 sm:p-6">
+      {only ? (
+        <p className="m-0 text-[12.5px] text-dim">
+          {only === "topic"
+            ? "Something people are arguing about, measured over time."
+            : "One question, two to four answers, a single result."}
+        </p>
+      ) : (
       <div className="flex flex-wrap items-center gap-2">
         {(["topic", "poll"] as const).map((option) => (
           <button
@@ -109,6 +140,7 @@ export function SuggestForm() {
             : "One question, two to four answers, a single result."}
         </span>
       </div>
+      )}
 
       <label className="flex flex-col gap-1.5">
         <span className="text-[13px] text-soft">

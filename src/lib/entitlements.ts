@@ -74,7 +74,30 @@ export const PRO_PLAN: Plan = {
 };
 
 /**
- * The launch offer, in one sentence.
+ * How the free window is described.
+ *
+ * IT IS THE SAME MECHANISM, WORDED HONESTLY AS WHAT IT IS. Nothing about
+ * `start_pro()` changed: anyone may take it, it costs nothing, and it ends on
+ * the date in `pro_offer`. What changed is that "free Pro for everybody" reads
+ * like a discount nobody values, and this is not a discount — it is the thing
+ * you get for turning up before the site was finished. Saying so is both better
+ * marketing and more accurate.
+ *
+ * "Founding member" over "early joining gift": a gift is something handed down,
+ * and a founding member is something you *are*. The second is the one people
+ * repeat to other people.
+ */
+export const FOUNDING = {
+  badge: "Founding member",
+  /** The offer, in one line. Used wherever the free window is mentioned. */
+  headline: "Pro is on us, for founding members",
+  /** Why it exists, said plainly. No urgency theatre. */
+  blurb:
+    "You are here early, while the site is still being built out. Pro is yours for nothing until the founding window closes — no card, nothing to cancel, and it simply stops when it stops.",
+} as const;
+
+/**
+ * The offer, in one sentence.
  *
  * Takes the date from the database rather than hardcoding it, because an admin
  * can move `pro_offer.free_until` and a hardcoded month would then be a lie on
@@ -82,7 +105,7 @@ export const PRO_PLAN: Plan = {
  */
 export function offerLine(deadline: string, price: number): string {
   if (!deadline) return `₹${price} a month.`;
-  return `Free for everyone until ${deadline}. ₹${price} a month after that.`;
+  return `Free for founding members until ${deadline}. ₹${price} a month after that.`;
 }
 
 /** How many free questions remain after `asked` of them. Never negative. */

@@ -7,6 +7,8 @@ import { useSession } from "@/components/auth/SessionProvider";
 import { CategoryFilter } from "@/components/catalog/CategoryFilter";
 import { PollCard } from "@/components/polls/PollCard";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { SuggestButton } from "@/components/pro/SuggestButton";
+import { WelcomeOffer } from "@/components/pro/WelcomeOffer";
 import { PlaceFilter } from "@/components/ui/PlaceFilter";
 import { SearchField } from "@/components/ui/SearchField";
 import { formatNumber } from "@/lib/derive-poll";
@@ -61,6 +63,10 @@ export function PollsCatalog({
     <section className="mx-auto max-w-[1440px] px-4 pt-7 pb-[clamp(64px,8vw,110px)] sm:px-8 lg:px-14">
       <Breadcrumb trail={[{ label: "Home", href: "/" }, { label: "Polls" }]} />
 
+      {/* Fires only for an account that has just been created — see the
+          component for why the flag is a query parameter. */}
+      <WelcomeOffer />
+
       <header className="mt-4 flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         <div className="min-w-0">
           <h1 className="m-0 font-display text-[clamp(2rem,4vw,3.1rem)] leading-[1.02] font-bold tracking-[-0.025em] text-cream-bright">
@@ -78,16 +84,19 @@ export function PollsCatalog({
             nothing, so authoring sits with the desk. This is presentation, not
             the boundary: `/admin/polls/new` guards itself and the row policies
             refuse everyone else regardless of what is on screen. */}
-        {isEditor ? (
-          <div className="mb-1 flex flex-wrap items-center gap-2.5">
+        {/* Suggest sits beside Create rather than inside the editor branch:
+            anyone may ask for a poll, only an editor may mint one. */}
+        <div className="mb-1 flex flex-wrap items-center gap-2.5">
+          <SuggestButton kind="poll" />
+          {isEditor ? (
             <Link
               href="/admin/polls/new"
               className="rounded-full border border-poll/45 bg-poll/12 px-4 py-[7px] text-[13px] font-medium whitespace-nowrap text-poll-soft transition-colors duration-300 outline-none hover:bg-poll/20 focus-visible:ring-2 focus-visible:ring-poll/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
             >
               + Create a poll
             </Link>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </header>
 
       {/* Full-width search on a phone, inline from `sm` up — see the same row

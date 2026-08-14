@@ -23,3 +23,25 @@ export function safeNext(raw: string | null): string {
   if (!raw.startsWith("/") || raw.startsWith("//")) return DEFAULT_NEXT;
   return raw;
 }
+
+/**
+ * The flag that tells the explore page a brand-new account just arrived.
+ *
+ * A query parameter rather than anything stored, because it has to survive
+ * exactly one navigation and nothing longer. A flag in localStorage would fire
+ * again on a later visit, and one in the session would need clearing from a
+ * place that has no business knowing about a welcome modal.
+ */
+export const WELCOME_PARAM = "welcome";
+
+/**
+ * Marks a destination as "they just signed up".
+ *
+ * Appends rather than replaces, so a `next` that already carries a query — a
+ * filtered catalog, say — arrives intact.
+ */
+export function withWelcome(path: string): string {
+  const [base, hash] = path.split("#");
+  const separator = (base ?? "").includes("?") ? "&" : "?";
+  return `${base}${separator}${WELCOME_PARAM}=1${hash ? `#${hash}` : ""}`;
+}

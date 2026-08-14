@@ -78,7 +78,7 @@ import {
   startSignUp,
 } from "@/lib/auth/account";
 import { signInWithIdentifier } from "@/lib/auth/actions";
-import { safeNext } from "@/lib/auth/redirect";
+import { safeNext, withWelcome } from "@/lib/auth/redirect";
 import {
   CODE_LENGTH,
   MIN_PASSWORD_LENGTH,
@@ -197,7 +197,9 @@ export function SignInView() {
     setConfirm("");
     await refresh();
     signInWith(created);
-    router.push(next);
+    // A new account lands on the catalog carrying the flag that opens the
+    // founding-member offer. An existing one goes exactly where it asked to.
+    router.push(created ? withWelcome(next) : next);
   };
 
   /* ------------------------------------------------------------ step one */
