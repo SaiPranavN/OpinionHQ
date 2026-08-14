@@ -42,10 +42,6 @@ export function SuggestButton({ kind }: { kind: "topic" | "poll" }) {
     };
   }, [open]);
 
-  // Nothing until the session is known. Rendering "Suggest" and then swapping
-  // it for a Pro badge a beat later is a flicker on the first thing in the row.
-  if (!ready) return null;
-
   const label = kind === "topic" ? "Suggest a topic" : "Suggest a poll";
 
   return (
@@ -70,9 +66,23 @@ export function SuggestButton({ kind }: { kind: "topic" | "poll" }) {
         }
       >
         + {label}
-        {!pro ? (
-          <span className="ml-2 font-mono text-[10px] tracking-[0.08em] text-dim">Pro</span>
-        ) : null}
+        {/*
+          The button itself is ALWAYS rendered, including before the session is
+          known. Returning null until `ready` kept it out of the server HTML
+          entirely, so it popped into the header a beat after hydration — a
+          visible jump on the first row of the page, and invisible to anything
+          reading the markup.
+
+          Only the hint waits, and it occupies its space either way, so
+          resolving the session cannot reflow the row.
+        */}
+        <span
+          aria-hidden
+          className="ml-2 font-mono text-[10px] tracking-[0.08em] text-dim"
+          style={{ visibility: ready && !pro ? "visible" : "hidden" }}
+        >
+          Pro
+        </span>
       </button>
 
       {open ? (
