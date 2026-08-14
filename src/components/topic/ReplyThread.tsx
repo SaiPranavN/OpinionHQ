@@ -29,24 +29,47 @@ import {
   type ThreadNode,
   type Vote,
 } from "@/lib/comments/tree";
-import { postReply, voteOnReply } from "@/lib/topics/replies";
 import type { OpinionReply } from "@/lib/types";
+
+/**
+ * The two writes, supplied by whoever is rendering the thread.
+ *
+ * They used to be imported straight from `lib/topics/replies`, which tied this
+ * component to opinions. Poll reasons now carry the same conversation, and the
+ * alternative to passing these in was a second copy of the rail, the elbows,
+ * the depth cap and the compose box — which is how two threaded discussions in
+ * one product start behaving differently.
+ */
+export interface ThreadWrites {
+  reply: (
+    subjectId: string,
+    body: string,
+    parentId?: string,
+  ) => Promise<{ ok: true } | { ok: false; message: string }>;
+  vote: (
+    replyId: string,
+    kind: Vote,
+  ) => Promise<{ ok: true; vote: Vote | null } | { ok: false; message: string }>;
+}
 
 const MAX_REPLY = 2000;
 
 
 export function ReplyThread({
-  opinionId,
-  opinionAuthorId,
+  subjectId,
+  subjectAuthorId,
   nodes,
   myVotes,
+  writes,
   onChanged,
 }: {
-  opinionId: string;
-  /** Marked so a reader can see the opinion's author answering their own thread. */
-  opinionAuthorId: string;
+  /** The opinion or poll reason this conversation hangs under. */
+  subjectId: string;
+  /** Marked so a reader can see the subject's author answering their own thread. */
+  subjectAuthorId: string;
   nodes: ThreadNode<OpinionReply>[];
   myVotes: Record<string, Vote>;
+  writes: ThreadWrites;
   onChanged: () => void;
 }) {
   if (nodes.length === 0) {
@@ -59,8 +82,9 @@ export function ReplyThread({
         <li key={node.entry.id}>
           <ReplyNode
             node={node}
-            opinionId={opinionId}
-            opinionAuthorId={opinionAuthorId}
+            subjectId={subjectId}
+            subjectAuthorId={subjectAuthorId}
+            writes={writes}
             myVotes={myVotes}
             onChanged={onChanged}
           />
@@ -72,14 +96,16 @@ export function ReplyThread({
 
 function ReplyNode({
   node,
-  opinionId,
-  opinionAuthorId,
+  subjectId,
+  subjectAuthorId,
+  writes,
   myVotes,
   onChanged,
 }: {
   node: ThreadNode<OpinionReply>;
-  opinionId: string;
-  opinionAuthorId: string;
+  subjectId: string;
+  subjectAuthorId: string;
+  writes: ThreadWrites;
   myVotes: Record<string, Vote>;
   onChanged: () => void;
 }) {
@@ -92,7 +118,7 @@ function ReplyNode({
 
   const entry = node.entry;
   const myVote = myVotes[entry.id];
-  const isOpinionAuthor = entry.authorId === opinionAuthorId;
+  const isOpinionAuthor = entry.authorId === subjectAuthorId;
   // Voting on your own words is not a signal about anything.
   const mine = Boolean(profile) && entry.authorName === profile?.name;
   const hasReplies = node.replies.length > 0;
@@ -105,7 +131,7 @@ function ReplyNode({
     }
     setBusy(true);
     setError(null);
-    const result = await postReply(opinionId, draft, entry.id);
+    const result = await writes.reply(subjectId, draft, entry.id);
     setBusy(false);
     if (!result.ok) {
       setError(result.message);
@@ -121,7 +147,7 @@ function ReplyNode({
       openAuth("signin");
       return;
     }
-    const result = await voteOnReply(entry.id, kind);
+    const result = await writes.vote(entry.id, kind);
     if (!result.ok) {
       setError(result.message);
       return;
@@ -277,8 +303,9 @@ function ReplyNode({
             <li key={reply.entry.id}>
               <ReplyNode
                 node={reply}
-                opinionId={opinionId}
-                opinionAuthorId={opinionAuthorId}
+                subjectId={subjectId}
+                subjectAuthorId={subjectAuthorId}
+                writes={writes}
                 myVotes={myVotes}
                 onChanged={onChanged}
               />

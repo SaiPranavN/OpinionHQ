@@ -31,12 +31,25 @@ import { toMedia, type MediaRow } from "@/lib/media";
 import type {
   ContributionMedia,
   DecoratedPoll,
+  OpinionReply,
   PollOptionId,
   PollReason,
 } from "@/lib/types";
 
-/** `in ()` with an empty list is a syntax error, so it gets a uuid nothing has. */
-const EMPTY_UUID = "00000000-0000-0000-0000-000000000000";
+interface ReasonReplyRow {
+  id: string;
+  reason_id: string;
+  parent_id: string | null;
+  /** Null when the reply is anonymous and the reader is not its author. */
+  author_id: string | null;
+  anonymous: boolean;
+  display_name: string | null;
+  initials: string | null;
+  body: string;
+  likes: number;
+  dislikes: number;
+  created_at: string;
+}
 
 const CARD_COLUMNS =
   "id, slug, question, category_id, place_id, status, summary, tags, closes_at, " +
@@ -92,8 +105,12 @@ export interface PollPage {
   reasons: PollReason[];
   /** The viewer's own pick, when they have one. */
   myVote: PollOptionId | null;
-  /** Reasons the viewer has marked helpful, by reason id. */
-  myHelpful: Set<string>;
+  /** Threaded replies, keyed by the reason they hang under. */
+  replies: Record<string, OpinionReply[]>;
+  /** The viewer's own like/dislike on each reason. Empty when signed out. */
+  myReasonVotes: Record<string, "like" | "dislike">;
+  /** And on each reply under them. */
+  myReplyVotes: Record<string, "like" | "dislike">;
 }
 
 export async function getPollPage(slug: string): Promise<PollPage | null> {
@@ -147,7 +164,10 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
     // wrong.
     supabase
       .from("poll_reason_feed")
-      .select("id, user_id, anonymous, display_name, initials, option_id, body, helpful_count, created_at")
+      .select(
+        "id, user_id, anonymous, display_name, initials, option_id, body, " +
+          "helpful_count, dislike_count, reply_count, created_at",
+      )
       .eq("poll_id", pollId)
       .order("helpful_count", { ascending: false })
       .limit(100)
@@ -212,6 +232,8 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
           option_id: string;
           body: string;
           helpful_count: number;
+          dislike_count: number;
+          reply_count: number;
           created_at: string;
         }[]
       | null) ?? []
@@ -235,6 +257,8 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
         text: r.body,
         time: relativeOf(r.created_at),
         helpful: r.helpful_count,
+        dislikes: r.dislike_count,
+        replies: r.reply_count,
         anonymous: hidden,
       },
     ];
@@ -248,15 +272,38 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
 
   const reasonIds = reasons.map((r) => r.id);
 
-  // Which reasons the viewer marked helpful. Own-row-only by policy, so this
-  // returns their marks and nobody else's — signed out, it returns nothing.
-  const [{ data: helpfulRows }, { data: mediaRows }] = await Promise.all([
-    uid
+  /**
+   * The replies, the reader's own votes, and the pictures.
+   *
+   * All four in one round, and all four scoped to the poll rather than fetched
+   * per reason — a poll with thirty reasons would otherwise open thirty
+   * requests for threads that are mostly empty.
+   *
+   * THROUGH `poll_reason_reply_feed`, NOT the table. The view is what removes
+   * the author from an anonymous reply before it reaches this process, exactly
+   * as `opinion_reply_feed` does on the topic side.
+   */
+  const [
+    { data: replyRows },
+    { data: reasonVoteRows },
+    { data: replyVoteRows },
+    { data: mediaRows },
+  ] = await Promise.all([
+    reasonIds.length > 0
       ? supabase
-          .from("poll_reason_helpful")
-          .select("reason_id")
-          .eq("user_id", uid)
-          .in("reason_id", reasonIds.length > 0 ? reasonIds : [EMPTY_UUID])
+          .from("poll_reason_reply_feed")
+          .select(
+            "id, reason_id, parent_id, author_id, anonymous, display_name, initials, " +
+              "body, likes, dislikes, created_at",
+          )
+          .in("reason_id", reasonIds)
+          .order("created_at", { ascending: true })
+      : Promise.resolve({ data: null }),
+    uid
+      ? supabase.rpc("my_poll_reason_votes", { target: pollId })
+      : Promise.resolve({ data: null }),
+    uid
+      ? supabase.rpc("my_poll_reply_votes", { target: pollId })
       : Promise.resolve({ data: null }),
     reasonIds.length > 0
       ? supabase
@@ -266,6 +313,33 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
           .order("position", { ascending: true })
       : Promise.resolve({ data: null }),
   ]);
+
+  const replies: Record<string, OpinionReply[]> = {};
+  for (const r of (replyRows as ReasonReplyRow[] | null) ?? []) {
+    const hidden = Boolean(r.anonymous);
+    (replies[r.reason_id] ??= []).push({
+      id: r.id,
+      parentId: r.parent_id,
+      authorId: r.author_id ?? "",
+      authorName: hidden ? "Anonymous" : (r.display_name ?? "A participant"),
+      authorInitials: hidden ? "··" : (r.initials ?? "··"),
+      body: r.body,
+      createdAt: r.created_at,
+      time: relativeOf(r.created_at),
+      likes: r.likes,
+      dislikes: r.dislikes,
+    });
+  }
+
+  const myReasonVotes: Record<string, "like" | "dislike"> = {};
+  for (const v of (reasonVoteRows as { reason_id: string; vote: string }[] | null) ?? []) {
+    myReasonVotes[v.reason_id] = v.vote === "dislike" ? "dislike" : "like";
+  }
+
+  const myReplyVotes: Record<string, "like" | "dislike"> = {};
+  for (const v of (replyVoteRows as { reply_id: string; vote: string }[] | null) ?? []) {
+    myReplyVotes[v.reply_id] = v.vote === "dislike" ? "dislike" : "like";
+  }
 
   const byReason: Record<string, ContributionMedia[]> = {};
   for (const row of (mediaRows as MediaRow[] | null) ?? []) {
@@ -280,10 +354,10 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
   return {
     poll: decoratePoll(poll),
     reasons,
+    replies,
     myVote,
-    myHelpful: new Set(
-      ((helpfulRows as { reason_id: string }[] | null) ?? []).map((r) => r.reason_id),
-    ),
+    myReasonVotes,
+    myReplyVotes,
   };
 }
 

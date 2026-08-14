@@ -574,7 +574,7 @@ export interface OpinionReply {
   dislikes: number;
 }
 
-/** A participant's written reason for their pick. Polls have no threads. */
+/** A participant's written reason for their pick, and the thread under it. */
 export interface PollReason {
   id: string;
   pollId: string;
@@ -591,7 +591,11 @@ export interface PollReason {
   initials: string;
   text: string;
   time: string;
+  /** Likes. Named `helpful` because the column still is. */
   helpful: number;
+  dislikes?: number;
+  /** Replies hanging under it. Polls have threads now, same as topics. */
+  replies?: number;
   /**
    * Written without a name. Pro only.
    *

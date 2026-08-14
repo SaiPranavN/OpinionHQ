@@ -178,7 +178,12 @@ describe("Pro", () => {
     // The composer's toggle is a convenience. This is the rule: every table
     // that carries authored text refuses `anonymous = true` from a non-member
     // in its own insert policy, so a hand-rolled request is refused too.
-    for (const table of ["opinions", "opinion_replies", "poll_reasons"]) {
+    for (const table of [
+      "opinions",
+      "opinion_replies",
+      "poll_reasons",
+      "poll_reason_replies",
+    ]) {
       const policy = sql.match(
         new RegExp(`create policy "[^"]+" on public\\.${table} for insert[\\s\\S]*?;`, "g"),
       );
@@ -212,5 +217,38 @@ describe("contribution edits", () => {
     // thing and not one worth imposing.
     const fn = sql.slice(sql.lastIndexOf("function public.withdraw_contribution"));
     expect(fn.slice(0, 900)).not.toContain("edit_count");
+  });
+});
+
+describe("polls and topics carry the same conversation", () => {
+  it("a poll reason has every engagement table an opinion has", () => {
+    // The two sides drifting is the failure this guards: a reader who can like,
+    // dislike and reply on a topic should find the same four actions on a poll,
+    // and the tables behind them are what make that true rather than the
+    // buttons. `poll_reason_helpful` was the like-only version and is gone.
+    for (const table of [
+      "opinion_votes",
+      "opinion_reply_votes",
+      "poll_reason_votes",
+      "poll_reason_reply_votes",
+      "poll_reason_replies",
+    ]) {
+      // Either declaration form: the older tables predate the
+      // `if not exists` convention this codebase settled on later.
+      expect(sql).toMatch(
+        new RegExp(`create table (if not exists )?public\\.${table}\\b`),
+      );
+    }
+    expect(sql).toContain("drop table if exists public.poll_reason_helpful");
+  });
+
+  it("both reply tables cap the thread at the same depth", () => {
+    // Two threaded discussions in one product that indent differently is two
+    // things for a reader to learn for no reason.
+    const caps = [...sql.matchAll(/depth integer not null default 0 check \(depth between 0 and (\d)\)/g)]
+      .map((m) => m[1]);
+    expect(caps.length).toBeGreaterThanOrEqual(1);
+    expect(new Set(caps).size).toBe(1);
+    expect(caps[0]).toBe(String(MAX_COMMENT_DEPTH));
   });
 });

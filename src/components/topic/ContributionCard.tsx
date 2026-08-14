@@ -31,10 +31,13 @@ import {
 } from "@/lib/contributions";
 import { buildThread } from "@/lib/comments/tree";
 import { formatNumber, sentimentColor, sentimentIcon } from "@/lib/derive";
-import { postReply, voteOnOpinion } from "@/lib/topics/replies";
+import { postReply, voteOnOpinion, voteOnReply } from "@/lib/topics/replies";
 import type { Opinion, OpinionReply, ProSection } from "@/lib/types";
 
 const MAX_REPLY = 400;
+
+/** The opinion side's two writes, handed to the shared thread renderer. */
+const OPINION_WRITES = { reply: postReply, vote: voteOnReply };
 
 export function ContributionCard({
   contribution,
@@ -326,8 +329,9 @@ export function ContributionCard({
       {showReplies ? (
         <div className="flex flex-col gap-3 border-t border-line bg-veil/2 px-[18px] py-4 sm:px-6">
           <ReplyThread
-            opinionId={contribution.id}
-            opinionAuthorId={contribution.authorId ?? ""}
+            subjectId={contribution.id}
+            subjectAuthorId={contribution.authorId ?? ""}
+            writes={OPINION_WRITES}
             nodes={nodes}
             myVotes={myReplyVotes}
             onChanged={() => router.refresh()}

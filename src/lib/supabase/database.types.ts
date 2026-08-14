@@ -1624,46 +1624,190 @@ export type Database = {
           },
         ]
       }
-      poll_reason_helpful: {
+      poll_reason_replies: {
         Row: {
+          anonymous: boolean
+          author_id: string
+          body: string
           created_at: string
+          depth: number
+          dislikes: number
+          hidden_at: string | null
+          hidden_reason: string | null
+          id: string
+          likes: number
+          parent_id: string | null
           reason_id: string
-          user_id: string
+          updated_at: string
         }
         Insert: {
+          anonymous?: boolean
+          author_id: string
+          body: string
           created_at?: string
+          depth?: number
+          dislikes?: number
+          hidden_at?: string | null
+          hidden_reason?: string | null
+          id?: string
+          likes?: number
+          parent_id?: string | null
           reason_id: string
-          user_id: string
+          updated_at?: string
         }
         Update: {
+          anonymous?: boolean
+          author_id?: string
+          body?: string
           created_at?: string
+          depth?: number
+          dislikes?: number
+          hidden_at?: string | null
+          hidden_reason?: string | null
+          id?: string
+          likes?: number
+          parent_id?: string | null
           reason_id?: string
-          user_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "poll_reason_helpful_reason_id_fkey"
+            foreignKeyName: "poll_reason_replies_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "poll_reason_replies_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_reason_replies_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "poll_reason_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_reason_replies_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "poll_reason_reply_feed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_reason_replies_reason_id_fkey"
             columns: ["reason_id"]
             isOneToOne: false
             referencedRelation: "poll_reason_feed"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "poll_reason_helpful_reason_id_fkey"
+            foreignKeyName: "poll_reason_replies_reason_id_fkey"
             columns: ["reason_id"]
             isOneToOne: false
             referencedRelation: "poll_reasons"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      poll_reason_reply_votes: {
+        Row: {
+          created_at: string
+          reply_id: string
+          user_id: string
+          vote: Database["public"]["Enums"]["reader_vote"]
+        }
+        Insert: {
+          created_at?: string
+          reply_id: string
+          user_id: string
+          vote: Database["public"]["Enums"]["reader_vote"]
+        }
+        Update: {
+          created_at?: string
+          reply_id?: string
+          user_id?: string
+          vote?: Database["public"]["Enums"]["reader_vote"]
+        }
+        Relationships: [
           {
-            foreignKeyName: "poll_reason_helpful_user_id_fkey"
+            foreignKeyName: "poll_reason_reply_votes_reply_id_fkey"
+            columns: ["reply_id"]
+            isOneToOne: false
+            referencedRelation: "poll_reason_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_reason_reply_votes_reply_id_fkey"
+            columns: ["reply_id"]
+            isOneToOne: false
+            referencedRelation: "poll_reason_reply_feed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_reason_reply_votes_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "professionals"
             referencedColumns: ["user_id"]
           },
           {
-            foreignKeyName: "poll_reason_helpful_user_id_fkey"
+            foreignKeyName: "poll_reason_reply_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_reason_votes: {
+        Row: {
+          created_at: string
+          reason_id: string
+          user_id: string
+          vote: Database["public"]["Enums"]["reader_vote"]
+        }
+        Insert: {
+          created_at?: string
+          reason_id: string
+          user_id: string
+          vote: Database["public"]["Enums"]["reader_vote"]
+        }
+        Update: {
+          created_at?: string
+          reason_id?: string
+          user_id?: string
+          vote?: Database["public"]["Enums"]["reader_vote"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_reason_votes_reason_id_fkey"
+            columns: ["reason_id"]
+            isOneToOne: false
+            referencedRelation: "poll_reason_feed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_reason_votes_reason_id_fkey"
+            columns: ["reason_id"]
+            isOneToOne: false
+            referencedRelation: "poll_reasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_reason_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "poll_reason_votes_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -1676,12 +1820,14 @@ export type Database = {
           anonymous: boolean
           body: string
           created_at: string
+          dislike_count: number
           helpful_count: number
           hidden_at: string | null
           hidden_reason: string | null
           id: string
           option_id: string
           poll_id: string
+          reply_count: number
           updated_at: string
           user_id: string
         }
@@ -1689,12 +1835,14 @@ export type Database = {
           anonymous?: boolean
           body: string
           created_at?: string
+          dislike_count?: number
           helpful_count?: number
           hidden_at?: string | null
           hidden_reason?: string | null
           id?: string
           option_id: string
           poll_id: string
+          reply_count?: number
           updated_at?: string
           user_id: string
         }
@@ -1702,12 +1850,14 @@ export type Database = {
           anonymous?: boolean
           body?: string
           created_at?: string
+          dislike_count?: number
           helpful_count?: number
           hidden_at?: string | null
           hidden_reason?: string | null
           id?: string
           option_id?: string
           poll_id?: string
+          reply_count?: number
           updated_at?: string
           user_id?: string
         }
@@ -3188,6 +3338,7 @@ export type Database = {
           anonymous: boolean | null
           body: string | null
           created_at: string | null
+          dislike_count: number | null
           display_name: string | null
           helpful_count: number | null
           hidden_at: string | null
@@ -3195,6 +3346,7 @@ export type Database = {
           initials: string | null
           option_id: string | null
           poll_id: string | null
+          reply_count: number | null
           user_id: string | null
         }
         Relationships: [
@@ -3217,6 +3369,53 @@ export type Database = {
             columns: ["poll_id"]
             isOneToOne: false
             referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_reason_reply_feed: {
+        Row: {
+          anonymous: boolean | null
+          author_id: string | null
+          body: string | null
+          created_at: string | null
+          depth: number | null
+          dislikes: number | null
+          display_name: string | null
+          hidden_at: string | null
+          id: string | null
+          initials: string | null
+          likes: number | null
+          parent_id: string | null
+          reason_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_reason_replies_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "poll_reason_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_reason_replies_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "poll_reason_reply_feed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_reason_replies_reason_id_fkey"
+            columns: ["reason_id"]
+            isOneToOne: false
+            referencedRelation: "poll_reason_feed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_reason_replies_reason_id_fkey"
+            columns: ["reason_id"]
+            isOneToOne: false
+            referencedRelation: "poll_reasons"
             referencedColumns: ["id"]
           },
         ]
@@ -3630,12 +3829,14 @@ export type Database = {
           anonymous: boolean
           body: string
           created_at: string
+          dislike_count: number
           helpful_count: number
           hidden_at: string | null
           hidden_reason: string | null
           id: string
           option_id: string
           poll_id: string
+          reply_count: number
           updated_at: string
           user_id: string
         }
@@ -3691,6 +3892,20 @@ export type Database = {
         Args: { topic: string }
         Returns: {
           opinion_id: string
+          vote: Database["public"]["Enums"]["reader_vote"]
+        }[]
+      }
+      my_poll_reason_votes: {
+        Args: { target: string }
+        Returns: {
+          reason_id: string
+          vote: Database["public"]["Enums"]["reader_vote"]
+        }[]
+      }
+      my_poll_reply_votes: {
+        Args: { target: string }
+        Returns: {
+          reply_id: string
           vote: Database["public"]["Enums"]["reader_vote"]
         }[]
       }
@@ -3838,6 +4053,35 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "opinion_replies"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      reply_to_poll_reason: {
+        Args: {
+          anonymous?: boolean
+          body: string
+          parent?: string
+          reason: string
+        }
+        Returns: {
+          anonymous: boolean
+          author_id: string
+          body: string
+          created_at: string
+          depth: number
+          dislikes: number
+          hidden_at: string | null
+          hidden_reason: string | null
+          id: string
+          likes: number
+          parent_id: string | null
+          reason_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "poll_reason_replies"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -4011,7 +4255,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      toggle_reason_helpful: { Args: { reason: string }; Returns: boolean }
       topic_audience: {
         Args: { target: string }
         Returns: {
@@ -4040,6 +4283,20 @@ export type Database = {
         Args: {
           kind: Database["public"]["Enums"]["reader_vote"]
           opinion: string
+        }
+        Returns: Database["public"]["Enums"]["reader_vote"]
+      }
+      vote_on_poll_reason: {
+        Args: {
+          kind: Database["public"]["Enums"]["reader_vote"]
+          reason: string
+        }
+        Returns: Database["public"]["Enums"]["reader_vote"]
+      }
+      vote_on_poll_reason_reply: {
+        Args: {
+          kind: Database["public"]["Enums"]["reader_vote"]
+          reply: string
         }
         Returns: Database["public"]["Enums"]["reader_vote"]
       }

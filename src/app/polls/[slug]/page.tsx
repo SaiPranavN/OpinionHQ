@@ -95,7 +95,13 @@ export default async function PollPage({
         <PollHistory poll={poll} />
         <PollAudience poll={poll} />
         <PollVotePanel poll={poll} />
-        <PollReasons poll={poll} reasons={reasons} />
+        <PollReasons
+          poll={poll}
+          reasons={reasons}
+          replies={page.replies}
+          myReasonVotes={page.myReasonVotes}
+          myReplyVotes={page.myReplyVotes}
+        />
       </div>
       <Footer />
     </>
