@@ -221,6 +221,59 @@
   }
 }
 
+/*
+ * The rotating hero headline.
+ *
+ * A vertical roll with a shallow barrel — `rotateX` against the perspective the
+ * headline sets, around an origin at the edge the text is travelling towards,
+ * so a piece appears to turn over rather than slide. Kept to 34deg and paired
+ * with a fade: at 6.6rem a full barrel reads as a slot machine.
+ *
+ * Out is quicker than in and starts first, so the space is already clearing as
+ * the replacement arrives. Neither curve overshoots — nothing here should
+ * bounce.
+ */
+@keyframes ohq-headline-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.42em) rotateX(-34deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotateX(0deg);
+  }
+}
+
+@keyframes ohq-headline-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) rotateX(0deg);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-0.42em) rotateX(34deg);
+  }
+}
+
+/* prefers-reduced-motion: the same choreography with the movement taken out. */
+@keyframes ohq-headline-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ohq-headline-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 @keyframes ohq-flow {
   to {
     stroke-dashoffset: -28;

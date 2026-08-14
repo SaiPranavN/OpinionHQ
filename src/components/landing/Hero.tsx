@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { RotatingHeadline } from "@/components/landing/RotatingHeadline";
+
 import { formatNumber } from "@/lib/derive";
 
 export function Hero({
@@ -51,11 +53,25 @@ export function Hero({
           Opinion intelligence
         </div>
 
+        {/*
+          The rotating headline.
+
+          `aria-label` carries a single stable sentence and the rotation itself
+          is `aria-hidden`, because a heading whose text changes every three
+          seconds is a heading a screen reader has to keep re-announcing — and
+          the first thing on the page is the worst place for that. The rotating
+          words are still ordinary text in the DOM, so nothing is hidden from a
+          crawler.
+
+          Typography, centring and the reveal are unchanged; only the content of
+          the h1 is different.
+        */}
         <h1
           data-reveal
-          className="ohq-reveal m-0 font-display text-[clamp(2.9rem,7.4vw,6.6rem)] leading-[0.96] font-bold tracking-[-0.026em] text-balance text-cream-bright delay-[80ms] duration-[1150ms]"
+          aria-label="Explore people’s opinions, give your own, and see who is winning in the polls."
+          className="ohq-reveal m-0 flex w-full justify-center font-display text-[clamp(2.9rem,7.4vw,6.6rem)] leading-[0.96] font-bold tracking-[-0.026em] text-cream-bright delay-[80ms] duration-[1150ms]"
         >
-          What does everyone <em className="text-positive">really</em> think?
+          <RotatingHeadline />
         </h1>
 
         <p
