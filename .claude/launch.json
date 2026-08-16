@@ -7,6 +7,16 @@
       "runtimeArgs": ["run", "dev"],
       "port": 3000,
       "autoPort": false
+    },
+    {
+      "name": "opinionhq-prod-utc",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "TZ=UTC NEXT_DIST_DIR=.next-build npx next start -p 3100"
+      ],
+      "port": 3100,
+      "autoPort": false
     }
   ]
 }
