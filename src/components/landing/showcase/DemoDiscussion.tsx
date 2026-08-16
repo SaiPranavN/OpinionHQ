@@ -26,6 +26,7 @@ import {
   POLL_OPTIONS,
   SAMPLE_OPINIONS,
   SAMPLE_REASONS,
+  SENTIMENT_ROWS,
   type Mode,
   type SampleOpinion,
 } from "@/components/landing/showcase/data";
@@ -87,11 +88,21 @@ function Composer({
   );
 }
 
-const STANCE: Record<SampleOpinion["stance"], { color: string; icon: string; label: string }> = {
-  Positive: { color: "var(--color-positive)", icon: "▲", label: "In favour" },
-  Neutral: { color: "var(--color-neutral)", icon: "●", label: "No strong view" },
-  Negative: { color: "var(--color-negative)", icon: "▼", label: "Against" },
+/**
+ * The position chip, read off the same three rows the donut draws.
+ *
+ * Derived rather than restated so a card can never label itself something the
+ * chart above it does not recognise.
+ */
+const STANCE_ROW: Record<SampleOpinion["stance"], 0 | 1 | 2> = {
+  Positive: 0,
+  Neutral: 1,
+  Negative: 2,
 };
+
+function stanceOf(stance: SampleOpinion["stance"]) {
+  return SENTIMENT_ROWS[STANCE_ROW[stance]];
+}
 
 export function DemoDiscussion({ mode }: { mode: Mode }) {
   return mode === "topic" ? <Opinions /> : <Reasons />;
@@ -105,13 +116,13 @@ function Opinions() {
   return (
     <div className="flex flex-col gap-3">
       <Composer
-        stance="In favour"
+        stance="Positive"
         placeholder="Why do you feel that way? One or two sentences is plenty."
         note="The written half is optional — a vote counts on its own. What you write appears in the list below, carries the position you voted, and can be posted under your name or anonymously."
         chips={["Post anonymously", "Attach a link or image", "Long-form format"]}
       />
       {SAMPLE_OPINIONS.map((opinion) => {
-        const stance = STANCE[opinion.stance];
+        const stance = stanceOf(opinion.stance);
         const expanded = open === opinion.id;
         const pro = Boolean(opinion.sections?.length);
 
@@ -188,7 +199,7 @@ function Opinions() {
               // a utility that zeroes it puts every elbow outside the card.
               <ul className="ohq-thread m-0 list-none">
                 {opinion.replies.map((reply, i) => {
-                  const tone = STANCE[reply.stance];
+                  const tone = stanceOf(reply.stance);
                   return (
                     <li key={i} className="flex gap-2.5">
                       <span
@@ -244,7 +255,7 @@ function Reasons() {
   return (
     <div className="flex flex-col gap-3">
       <Composer
-        stance="Hybrid"
+        stance="IMAX 70mm"
         placeholder="Why that one? The strongest case for a side is usually one sentence."
         note="The reason box opens the moment you pick a side, and what you write lands in that side’s column below. Voting without writing is fine — most people do."
         chips={["Post anonymously", "Attach a link or image"]}

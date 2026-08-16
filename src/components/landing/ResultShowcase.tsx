@@ -110,7 +110,7 @@ export function ResultShowcase() {
             One number, and then the <em>questions about it.</em>
           </h2>
           <p className="m-0 text-[16px] leading-[1.6] font-light text-pretty text-muted">
-            &ldquo;58% in favour&rdquo; is where most polls stop. It is where a subject
+            &ldquo;70% positive&rdquo; is where most polls stop. It is where a subject
             page starts: how the reading moved and what moved it, which groups went the
             other way, which parts people actually argue about, and what they wrote.
             Everything below is live — push on it.
@@ -118,7 +118,7 @@ export function ResultShowcase() {
           <div className="mt-5">
             <SectionPurpose
               problem="A headline percentage tells you nothing about who was asked"
-              solution="Filter any result by region, age or occupation and watch it move"
+              solution="Filter any result by state, age or occupation and watch it move"
             />
           </div>
         </div>
@@ -188,7 +188,7 @@ export function ResultShowcase() {
                 <DemoBreakdown filter={filter} mode={mode} onPick={pick} />
                 {odd ? <AgainstTheGrain contrarian={odd} mode={mode} /> : null}
                 <p className="m-0 border-t border-line pt-4 text-[12px] leading-[1.55] text-dim">
-                  On a live subject, region, age and occupation are optional and
+                  On a live subject, location, age and occupation are optional and
                   self-declared, and a segment too small to publish without identifying
                   the people in it is withheld rather than shown.
                 </p>
@@ -232,23 +232,33 @@ export function ResultShowcase() {
 function StageChrome({ mode, onMode }: { mode: Mode; onMode: (m: Mode) => void }) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-line bg-surface-sunken/60 px-[clamp(14px,2.2vw,26px)] py-3">
+      {/*
+       * A segmented control, on a GRID rather than a flex row.
+       *
+       * The sliding pill is `50% - 4px` wide, which is only the width of a half
+       * if the two halves are actually equal — and under `flex-1` they are not.
+       * A flex container that is shrink-to-fit sizes itself from its children's
+       * max-content, so `flex: 1 1 0` leaves no free space to distribute and
+       * each button keeps its own natural width. "Opinion topic" is half again
+       * as wide as "Poll", so the pill sat under neither of them. Two equal
+       * `1fr` columns make the geometry true instead of assumed.
+       */}
       <div
         role="tablist"
         aria-label="Which instrument to demonstrate"
-        className="relative flex rounded-full border border-veil/10 bg-veil/3 p-1"
+        className="relative grid grid-cols-2 rounded-full border border-veil/10 bg-veil/4 p-1"
       >
-        {/* One sliding pill under both labels, rather than a background on the
-            selected button — the movement is what says the two are the same
-            control in two states. */}
+        {/* One pill that travels, rather than a background on the selected
+            button — the movement is what says the two are the same control in
+            two states. Filled rather than tinted: it is the same figure/ground
+            the hero's two buttons use, and a 20% wash of green behind green
+            type reads as a highlight artefact. */}
         <span
           aria-hidden
-          className="absolute inset-y-1 w-[calc(50%-4px)] rounded-full transition-[transform,background] duration-500 ease-ohq"
+          className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full shadow-[0_2px_10px_-4px_rgba(0,0,0,0.6)] transition-[transform,background] duration-500 ease-ohq"
           style={{
             transform: mode === "topic" ? "translateX(0)" : "translateX(100%)",
-            background:
-              mode === "topic"
-                ? "color-mix(in oklab, var(--color-positive) 20%, transparent)"
-                : "color-mix(in oklab, var(--color-poll) 22%, transparent)",
+            background: mode === "topic" ? "var(--color-positive)" : "var(--color-poll)",
           }}
         />
         {(["topic", "poll"] as Mode[]).map((m) => (
@@ -258,13 +268,21 @@ function StageChrome({ mode, onMode }: { mode: Mode; onMode: (m: Mode) => void }
             role="tab"
             aria-selected={mode === m}
             onClick={() => onMode(m)}
-            className={`relative z-1 flex-1 cursor-pointer rounded-full px-[clamp(12px,2vw,20px)] py-1.5 text-[12.5px] font-semibold whitespace-nowrap transition-colors duration-300 outline-none focus-visible:ring-2 focus-visible:ring-positive/60 ${
-              mode === m
-                ? m === "topic"
-                  ? "text-positive-light"
-                  : "text-poll-soft"
-                : "text-dim hover:text-cream"
+            // The selected colour is inline because it depends on which mode is
+            // selected; the unselected one stays a class so it keeps its hover.
+            className={`relative z-1 cursor-pointer rounded-full px-[clamp(10px,1.6vw,18px)] py-1.5 text-[12.5px] font-semibold whitespace-nowrap transition-colors duration-300 outline-none focus-visible:ring-2 focus-visible:ring-positive/60 ${
+              mode === m ? "" : "text-dim hover:text-cream"
             }`}
+            style={
+              mode === m
+                ? {
+                    color:
+                      m === "topic"
+                        ? "var(--color-positive-ink)"
+                        : "var(--color-poll-ink)",
+                  }
+                : undefined
+            }
           >
             {m === "topic" ? "Opinion topic" : "Poll"}
           </button>
@@ -318,7 +336,7 @@ function ScopeBar({
   onPick: (dim: Dim, value: string | undefined) => void;
   onClear: () => void;
 }) {
-  const chips = (["region", "age", "work"] as Dim[]).flatMap((dim) => {
+  const chips = (["state", "age", "work"] as Dim[]).flatMap((dim) => {
     const value = filterValue(filter, dim);
     return value ? [{ dim, value }] : [];
   });
@@ -467,8 +485,8 @@ function AgainstTheGrain({
         <strong className="font-semibold text-cream-bright">{odd.label}</strong> is the one{" "}
         {DIM_LABEL[odd.dim].toLowerCase()} that goes another way —{" "}
         <strong className="font-semibold" style={{ color: leader?.text }}>
-          {odd.leaderPct}% {mode === "topic" ? "" : "for "}
-          {leader?.label.toLowerCase()}
+          {odd.leaderPct}%{" "}
+          {mode === "topic" ? leader?.label.toLowerCase() : `picked ${leader?.label}`}
         </strong>
         , against the rest of the sample.
       </p>
@@ -496,7 +514,7 @@ function MarginNote({ shares }: { shares: [number, number, number] }) {
         A poll has no neutral option and no fence to sit on, which is exactly why the
         margin is the result rather than a footnote to it. Every poll page states it in
         words as well as in points, and restates it for each group in the cross-tabs
-        above — a national lead that disappears in one region is a different finding from
+        above — a national lead that disappears in one state is a different finding from
         one that holds everywhere.
       </p>
     </div>

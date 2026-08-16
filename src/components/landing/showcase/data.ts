@@ -4,7 +4,7 @@
  * WHAT THIS IS, AND WHAT IT IS NOT. Every figure in this file is an
  * illustration. Nobody was asked, nothing was counted, and no panel built on it
  * carries a headcount — shares only, under a badge that says so on every screen
- * it appears on. It exists because "we break a result down by region, age and
+ * it appears on. It exists because "we break a result down by state, age and
  * occupation, and show you where the split flips" is a sentence nobody can
  * picture, and one look at the actual instrument settles it.
  *
@@ -14,12 +14,18 @@
  * in the same typography a measured reading uses, and were indistinguishable
  * from counted data. The rule that came out of it is not "never draw a shape" —
  * it is that a number must never be presented as a measurement unless it is
- * one. So: a generic subject that implicates no real institution, exam, film or
- * person; no vote counts anywhere; and the word "illustration" attached to the
- * frame rather than buried in a caption.
+ * one. What carries that here: the "Illustration" badge in the stage chrome,
+ * above the first chart, in the position a live page uses for its status; no
+ * vote count anywhere; and no invented people — every contribution is
+ * attributed to "Participant" and a position, never to a name.
+ *
+ * THE SUBJECT IS A FILM ON PURPOSE. It was a policy question first, and a
+ * policy question is one most of the people who land here have no stake in — a
+ * student reading about the working week is reading about somebody else's life.
+ * A film everybody has an opinion about is the demonstration doing its job.
  *
  * IT IS ONE MODEL, NOT A PILE OF HAND-PICKED PERCENTAGES. The sample is a set
- * of cells — one per (region × age band × occupation) — each with a weight and
+ * of cells — one per (state × age band × occupation) — each with a weight and
  * a lean. Every panel in the showcase is an aggregation over those cells, which
  * is why the cross-filter can work at all: clicking "17–20" re-reads the donut,
  * the trend and the split bar from the same cells, and the numbers reconcile
@@ -27,17 +33,30 @@
  * the first time anybody edited one.
  */
 
+import { FACET_SETS } from "@/lib/facets";
+
 /* ------------------------------------------------------------- dimensions */
 
 /**
- * Compass regions rather than named states.
+ * Real states, from the same gazetteer the product measures with.
  *
- * The product measures real places and says so. An illustration must not:
- * attaching an invented opinion to a named state is the one way this file
- * could still be read as a claim about somebody. Directions carry the same
- * "the split flips by geography" point and claim nothing.
+ * An earlier version used compass directions to avoid attaching an opinion to
+ * a named place. It read as a hedge and it taught the wrong thing: the live
+ * panel says "Where participants are voting from" and lists Karnataka, so a
+ * demonstration of that panel that lists "South" is demonstrating something
+ * else. These six are the labels in lib/places.ts, and the reason it is safe to
+ * use them is the badge rather than the anonymisation — the panel says out loud
+ * that nobody was asked.
  */
-export const REGIONS = ["North", "South", "West", "East", "Central", "North-east"] as const;
+export const STATES = [
+  "Maharashtra",
+  "Karnataka",
+  "Tamil Nadu",
+  "Delhi NCR",
+  "Kerala",
+  "Uttar Pradesh",
+] as const;
+
 export const AGES = ["17–20", "21–24", "25–30", "31–40", "41+"] as const;
 export const WORK = [
   "Student",
@@ -47,34 +66,34 @@ export const WORK = [
   "Not working",
 ] as const;
 
-export type Region = (typeof REGIONS)[number];
+export type State = (typeof STATES)[number];
 export type Age = (typeof AGES)[number];
 export type Work = (typeof WORK)[number];
 
 /** The three cross-filterable axes. Gender is deliberately not one — see below. */
-export type Dim = "region" | "age" | "work";
+export type Dim = "state" | "age" | "work";
 
 export const DIM_LABEL: Record<Dim, string> = {
-  region: "Region",
+  state: "State",
   age: "Age band",
   work: "Occupation",
 };
 
 export const DIM_VALUES: Record<Dim, readonly string[]> = {
-  region: REGIONS,
+  state: STATES,
   age: AGES,
   work: WORK,
 };
 
 /** A cross-filter. Empty means the whole illustrative sample. */
 export interface Filter {
-  region?: Region;
+  state?: State;
   age?: Age;
   work?: Work;
 }
 
 export function filterValue(filter: Filter, dim: Dim): string | undefined {
-  return dim === "region" ? filter.region : dim === "age" ? filter.age : filter.work;
+  return dim === "state" ? filter.state : dim === "age" ? filter.age : filter.work;
 }
 
 export function withDim(filter: Filter, dim: Dim, value: string | undefined): Filter {
@@ -82,28 +101,28 @@ export function withDim(filter: Filter, dim: Dim, value: string | undefined): Fi
 }
 
 export function filterLabel(filter: Filter): string {
-  const parts = [filter.region, filter.age, filter.work].filter(Boolean);
+  const parts = [filter.state, filter.age, filter.work].filter(Boolean);
   return parts.length === 0 ? "Everyone" : parts.join(" · ");
 }
 
 /* ------------------------------------------------------------------ shape */
 
 /** How many people are in a cell, relative to every other cell. */
-const REGION_WEIGHT: Record<Region, number> = {
-  North: 0.22,
-  South: 0.24,
-  West: 0.21,
-  East: 0.14,
-  Central: 0.12,
-  "North-east": 0.07,
+const STATE_WEIGHT: Record<State, number> = {
+  Maharashtra: 0.23,
+  Karnataka: 0.21,
+  "Tamil Nadu": 0.18,
+  "Delhi NCR": 0.16,
+  Kerala: 0.12,
+  "Uttar Pradesh": 0.1,
 };
 
 const AGE_WEIGHT: Record<Age, number> = {
-  "17–20": 0.16,
-  "21–24": 0.27,
+  "17–20": 0.18,
+  "21–24": 0.29,
   "25–30": 0.26,
-  "31–40": 0.19,
-  "41+": 0.12,
+  "31–40": 0.17,
+  "41+": 0.1,
 };
 
 /**
@@ -124,106 +143,120 @@ const WORK_GIVEN_AGE: Record<Age, Record<Work, number>> = {
 /* ------------------------------------------------------------------- lean */
 
 /**
- * The topic reading, as an additive score in roughly [-1, 1].
+ * The sentiment reading, as an additive score in roughly [-1, 1].
  *
- * Positive is "in favour". The effects are small and the interesting ones are
- * on occupation, because that is where the example has something to say: the
- * people who would absorb the cost of the change read it differently from the
- * people who would take the day. A demo whose every segment agrees is a demo
- * that argues against its own cross-tabs.
+ * A spectacle film with a strong opening: broadly liked, and liked hardest by
+ * the people who went first and went big. The interesting divergence is by age
+ * — the crowd that turned up for the format is not the crowd that turned up
+ * three weeks later for a story, and they do not report the same film.
  */
-const TOPIC_BASE = 0.3;
+const TOPIC_BASE = 0.7;
 
-const TOPIC_REGION: Record<Region, number> = {
-  North: -0.05,
-  South: 0.12,
-  West: 0.06,
-  East: -0.02,
-  Central: -0.11,
-  "North-east": 0.03,
-};
-
-const TOPIC_AGE: Record<Age, number> = {
-  "17–20": 0.26,
-  "21–24": 0.18,
-  "25–30": 0.02,
-  "31–40": -0.13,
-  "41+": -0.29,
-};
-
-const TOPIC_WORK: Record<Work, number> = {
-  Student: 0.22,
-  Salaried: 0.11,
-  "Self-employed": -0.34,
-  "Public sector": -0.08,
-  "Not working": 0.04,
+const TOPIC_STATE: Record<State, number> = {
+  Maharashtra: 0.06,
+  Karnataka: 0.09,
+  "Tamil Nadu": -0.04,
+  "Delhi NCR": 0.03,
+  Kerala: -0.11,
+  "Uttar Pradesh": -0.07,
 };
 
 /**
- * The poll asks the same crowd to pick one of three working patterns, so the
- * scores below are read through a softmax rather than a single axis. Office,
- * hybrid, remote — in that order, everywhere.
+ * The 41+ effect is large enough to *flip the donut*, and that is the point.
+ *
+ * A demonstration whose every segment agrees with the headline is a
+ * demonstration arguing against its own cross-tabs — there is nothing to find,
+ * so there is no reason to click. One band that reads the film the other way
+ * turns the breakdown from a decoration into the thing the section is about,
+ * and it is the split anybody who has sat through a loud spectacle film with
+ * their parents will recognise.
  */
-const POLL_BASE = [0.08, 0.7, 0.42] as const;
+const TOPIC_AGE: Record<Age, number> = {
+  "17–20": 0.11,
+  "21–24": 0.07,
+  "25–30": 0,
+  "31–40": -0.24,
+  "41+": -0.8,
+};
 
-const POLL_REGION: Record<Region, readonly [number, number, number]> = {
-  North: [0.12, 0.02, -0.14],
-  South: [-0.16, 0.04, 0.18],
-  West: [-0.06, 0.1, 0.02],
-  East: [0.08, -0.02, -0.08],
-  Central: [0.18, -0.04, -0.16],
-  "North-east": [-0.1, -0.08, 0.26],
+const TOPIC_WORK: Record<Work, number> = {
+  Student: 0.09,
+  Salaried: 0.03,
+  "Self-employed": -0.16,
+  "Public sector": -0.12,
+  "Not working": 0,
+};
+
+/**
+ * The poll asks the same crowd how they would actually watch it, so the scores
+ * below are read through a softmax rather than a single axis. IMAX, a regular
+ * screen, waiting for streaming — in that order, everywhere.
+ *
+ * This is the axis where money and geography do the work: an IMAX screen is a
+ * thing that exists in some cities and not others, and a ₹1,400 ticket is a
+ * different proposition to a student than to a salaried thirty-year-old. Which
+ * is the whole point of showing cross-tabs at all.
+ */
+const POLL_BASE = [0.55, 0.7, 0.3] as const;
+
+const POLL_STATE: Record<State, readonly [number, number, number]> = {
+  Maharashtra: [0.22, 0.02, -0.18],
+  Karnataka: [0.26, -0.04, -0.16],
+  "Tamil Nadu": [-0.08, 0.24, -0.1],
+  "Delhi NCR": [0.18, 0.04, -0.14],
+  Kerala: [-0.22, 0.28, 0.02],
+  "Uttar Pradesh": [-0.3, 0.12, 0.24],
 };
 
 const POLL_AGE: Record<Age, readonly [number, number, number]> = {
-  "17–20": [0.24, -0.1, 0.02],
-  "21–24": [0.1, 0.06, -0.08],
-  "25–30": [-0.12, 0.16, 0.04],
-  "31–40": [-0.18, 0.1, 0.16],
-  "41+": [-0.08, -0.06, 0.22],
+  "17–20": [-0.14, -0.06, 0.34],
+  "21–24": [0.06, 0.02, 0.06],
+  "25–30": [0.24, 0.04, -0.18],
+  "31–40": [0.14, 0.12, -0.14],
+  "41+": [-0.16, 0.22, -0.02],
 };
 
 const POLL_WORK: Record<Work, readonly [number, number, number]> = {
-  Student: [0.3, -0.12, -0.06],
-  Salaried: [-0.04, 0.22, -0.08],
-  "Self-employed": [-0.22, -0.06, 0.34],
-  "Public sector": [0.26, -0.14, -0.12],
-  "Not working": [-0.14, -0.1, 0.2],
+  Student: [-0.34, -0.08, 0.52],
+  Salaried: [0.26, 0.04, -0.22],
+  "Self-employed": [0.08, 0.14, -0.1],
+  "Public sector": [-0.06, 0.22, -0.08],
+  "Not working": [-0.3, -0.02, 0.36],
 };
 
 /* ------------------------------------------------------------------ cells */
 
 export interface Cell {
-  region: Region;
+  state: State;
   age: Age;
   work: Work;
   /** Share of the illustrative sample, before any filter. */
   w: number;
-  /** Topic lean, roughly -1 (against) to +1 (in favour). */
+  /** Sentiment lean, roughly -1 (negative) to +1 (positive). */
   lean: number;
-  /** Unnormalised poll scores: office, hybrid, remote. */
+  /** Unnormalised poll scores: IMAX, regular screen, streaming. */
   poll: readonly [number, number, number];
 }
 
-export const CELLS: Cell[] = REGIONS.flatMap((region) =>
+export const CELLS: Cell[] = STATES.flatMap((state) =>
   AGES.flatMap((age) =>
     WORK.map((work): Cell => {
-      const w = REGION_WEIGHT[region] * AGE_WEIGHT[age] * WORK_GIVEN_AGE[age][work];
-      const lean = TOPIC_BASE + TOPIC_REGION[region] + TOPIC_AGE[age] + TOPIC_WORK[work];
+      const w = STATE_WEIGHT[state] * AGE_WEIGHT[age] * WORK_GIVEN_AGE[age][work];
+      const lean = TOPIC_BASE + TOPIC_STATE[state] + TOPIC_AGE[age] + TOPIC_WORK[work];
       const poll = [0, 1, 2].map(
         (i) =>
           (POLL_BASE[i] ?? 0) +
-          (POLL_REGION[region][i] ?? 0) +
+          (POLL_STATE[state][i] ?? 0) +
           (POLL_AGE[age][i] ?? 0) +
           (POLL_WORK[work][i] ?? 0),
       ) as unknown as readonly [number, number, number];
-      return { region, age, work, w, lean, poll };
+      return { state, age, work, w, lean, poll };
     }),
   ),
 );
 
 function matches(cell: Cell, filter: Filter): boolean {
-  if (filter.region && cell.region !== filter.region) return false;
+  if (filter.state && cell.state !== filter.state) return false;
   if (filter.age && cell.age !== filter.age) return false;
   if (filter.work && cell.work !== filter.work) return false;
   return true;
@@ -248,10 +281,9 @@ function sentimentOf(lean: number): [number, number, number] {
 /**
  * Temperature is the one knob that decides whether the poll is a race.
  *
- * Too cold and the leading option runs away with it — at 0.42 hybrid took 69%
- * and no segment anywhere flipped, which quietly deleted the "against the
- * grain" panel. A demonstration of cross-tabs needs a result the cross-tabs can
- * disagree with.
+ * Too cold and the leading option runs away with it — nothing flips in any
+ * segment, and the "against the grain" panel quietly disappears. A
+ * demonstration of cross-tabs needs a result the cross-tabs can disagree with.
  */
 function softmax(scores: readonly number[], temperature = 0.72): number[] {
   const exps = scores.map((s) => Math.exp(s / temperature));
@@ -283,7 +315,7 @@ export function roundShares(values: number[]): number[] {
 export interface Reading {
   /** Positive, neutral, negative — whole numbers summing to 100. */
   sentiment: [number, number, number];
-  /** Office, hybrid, remote — whole numbers summing to 100. */
+  /** IMAX, regular screen, streaming — whole numbers summing to 100. */
   poll: [number, number, number];
   /** What share of the whole sample this filter selects. */
   share: number;
@@ -328,18 +360,27 @@ export function read(filter: Filter, drift = 0): Reading {
   };
 }
 
-/** How a day's drift lands on each poll option. Office loses what remote gains. */
-const DRIFT_POLL = [-0.6, 0.1, 0.5] as const;
+/**
+ * How a day's drift lands on each poll option.
+ *
+ * The two move together for a reason: the crowd that turns up in the first
+ * week is the crowd that books the big screen, and the drift that cools the
+ * sentiment reading is the same drift that pushes the format answer towards
+ * waiting. One number, two visible consequences.
+ */
+const DRIFT_POLL = [0.7, -0.1, -0.6] as const;
 
 /* ----------------------------------------------------------------- the run */
 
 /**
- * Twenty-one days of an illustrative run, labelled by day number rather than by
+ * Three weeks of an illustrative run, labelled by day number rather than by
  * date. A calendar date is a claim that something was recorded on it.
  *
  * `share` is that day's slice of participation and `drift` is where the crowd
- * sat that day — both of which are the point: opinion moves, and it usually
- * moves right after something happens. The two markers are the something.
+ * sat that day — both of which are the point: opinion moves, and for a film it
+ * moves in a shape everybody recognises. A huge opening, a weekend rhythm, and
+ * a reading that cools as the audience widens past the people who had already
+ * decided they would love it.
  */
 export interface Day {
   /** 1-based. */
@@ -350,25 +391,37 @@ export interface Day {
 }
 
 const ARRIVALS = [
-  9, 14, 11, 7, 6, 22, 31, 19, 13, 10, 8, 7, 15, 26, 18, 12, 9, 8, 7, 6, 5,
+  36, 31, 27, 14, 10, 9, 12, 25, 22, 11, 8, 7, 9, 19, 23, 13, 8, 6, 5, 5, 4,
 ] as const;
 
-const DRIFTS = [
-  0.34, 0.31, 0.29, 0.28, 0.26, 0.05, -0.08, -0.11, -0.09, -0.06, -0.04, -0.02,
-  0.04, 0.14, 0.17, 0.18, 0.19, 0.2, 0.2, 0.21, 0.21,
+/**
+ * Raw drift, re-centred below so the run ends exactly on the headline reading.
+ *
+ * THAT RE-CENTRING IS NOT COSMETIC. The donut is `read(filter)` at drift zero
+ * and the last point of the trend is `read(filter, cumulative drift)`. If the
+ * weighted mean of these numbers is not zero, those two are different figures
+ * sitting six inches apart on the same panel, both describing "now" — which is
+ * exactly the class of contradiction this whole model exists to make
+ * impossible. Subtracting the mean costs one line and makes it structural.
+ */
+const RAW_DRIFT = [
+  0.3, 0.28, 0.26, 0.19, 0.11, 0.07, 0.03, -0.01, -0.04, -0.05, -0.06, -0.06,
+  -0.05, -0.09, -0.12, -0.13, -0.13, -0.12, -0.12, -0.11, -0.11,
 ] as const;
 
 const MARKERS: Record<number, string> = {
-  6: "Draft proposal published",
-  14: "Independent review released",
+  3: "Opening weekend ends",
+  14: "Streaming date announced",
 };
 
 const ARRIVAL_TOTAL = ARRIVALS.reduce((a, b) => a + b, 0);
+const SHARES = ARRIVALS.map((a) => a / ARRIVAL_TOTAL);
+const DRIFT_MEAN = SHARES.reduce((sum, share, i) => sum + share * (RAW_DRIFT[i] ?? 0), 0);
 
-export const DAYS: Day[] = ARRIVALS.map((arrivals, i) => ({
+export const DAYS: Day[] = SHARES.map((share, i) => ({
   n: i + 1,
-  share: arrivals / ARRIVAL_TOTAL,
-  drift: DRIFTS[i] ?? 0,
+  share,
+  drift: (RAW_DRIFT[i] ?? 0) - DRIFT_MEAN,
   ...(MARKERS[i + 1] ? { marker: MARKERS[i + 1] } : {}),
 }));
 
@@ -391,14 +444,10 @@ export interface TrendPoint {
 export function trend(filter: Filter): TrendPoint[] {
   let seen = 0;
   let leanSum = 0;
-  const pollSum = [0, 0, 0];
 
   return DAYS.map((day) => {
     seen += day.share;
     leanSum += day.share * day.drift;
-    for (let i = 0; i < 3; i += 1) {
-      pollSum[i] = (pollSum[i] ?? 0) + day.share * day.drift * DRIFT_POLL[i]!;
-    }
     const reading = read(filter, leanSum / seen);
     return {
       n: day.n,
@@ -432,9 +481,9 @@ export interface Breakdown {
 /**
  * One breakdown, respecting whatever else is filtered.
  *
- * Filtering by age and then reading the region rows gives the regions *within*
+ * Filtering by age and then reading the state rows gives the states *within*
  * that age band, which is the whole reason cross-tabs are worth having: the
- * question is never "how did the South split", it is "how did the South split
+ * question is never "how did Kerala split", it is "how did Kerala split
  * differently from everybody else".
  */
 export function breakdown(dim: Dim, filter: Filter, mode: Mode): Breakdown {
@@ -489,7 +538,7 @@ export function contrarian(filter: Filter, mode: Mode): Contrarian | null {
   const leader = shares.indexOf(Math.max(...shares));
 
   let best: Contrarian | null = null;
-  for (const dim of ["region", "age", "work"] as Dim[]) {
+  for (const dim of ["state", "age", "work"] as Dim[]) {
     if (filterValue(filter, dim)) continue;
     for (const value of DIM_VALUES[dim]) {
       const reading = read(withDim(filter, dim, value));
@@ -510,10 +559,10 @@ export function contrarian(filter: Filter, mode: Mode): Contrarian | null {
  * Gender, as a participation breakdown only.
  *
  * It is shown because the live product shows it, and it carries no lean on
- * purpose. Inventing a gendered split on a subject like this one would be the
- * single most quotable number on the page and the least defensible — an
- * illustration is allowed to show the *shape* of a breakdown without asserting
- * that men and women disagree about the working week.
+ * purpose. Inventing a gendered split on any subject would be the single most
+ * quotable number on the page and the least defensible — an illustration is
+ * allowed to show the *shape* of a breakdown without asserting that men and
+ * women disagree about a film.
  */
 export const GENDERS: { label: string; pct: number }[] = [
   { label: "Woman", pct: 44.1 },
@@ -527,33 +576,30 @@ export type Mode = "topic" | "poll";
 
 export const SUBJECT = {
   topic: {
-    eyebrow: "Opinion topic",
-    question: "The four-day working week",
-    prompt: "How do you feel about moving to a four-day week?",
-    positive: "In favour",
-    neutral: "No strong view",
-    negative: "Against",
+    eyebrow: "Opinion topic · Entertainment",
+    question: "The Odyssey",
+    prompt: "Three weeks in. Was it the film everyone spent a year waiting for?",
   },
   poll: {
-    eyebrow: "Poll",
-    question: "Office, hybrid or fully remote?",
-    prompt: "If you had to pick one for the next five years.",
+    eyebrow: "Poll · Entertainment",
+    question: "IMAX, regular screen, or wait for streaming?",
+    prompt: "How you would tell a friend to watch it — pick one.",
   },
 } as const;
 
 /** The three sentiment positions, in the order every chart draws them. */
 export const SENTIMENT_ROWS = [
-  { key: "pos", label: "In favour", color: "var(--color-positive)", icon: "▲" },
-  { key: "neu", label: "No strong view", color: "var(--color-neutral)", icon: "●" },
-  { key: "neg", label: "Against", color: "var(--color-negative)", icon: "▼" },
+  { key: "pos", label: "Positive", color: "var(--color-positive)", icon: "▲" },
+  { key: "neu", label: "Neutral", color: "var(--color-neutral)", icon: "●" },
+  { key: "neg", label: "Negative", color: "var(--color-negative)", icon: "▼" },
 ] as const;
 
 /** Option identities, borrowed from the live poll palette so a demo and a real
  *  poll are the same colour language. See POLL_COLORS in lib/derive-poll.ts. */
 export const POLL_OPTIONS = [
-  { id: "office", name: "In the office", color: "#1DB954", text: "var(--color-opt-a)", ink: "#07240f" },
-  { id: "hybrid", name: "Hybrid", color: "#A78BFA", text: "var(--color-opt-b)", ink: "#1B1233" },
-  { id: "remote", name: "Fully remote", color: "#5AA9F0", text: "var(--color-opt-c)", ink: "#06182B" },
+  { id: "imax", name: "IMAX 70mm", color: "#1DB954", text: "var(--color-opt-a)", ink: "#07240f" },
+  { id: "regular", name: "Regular screen", color: "#A78BFA", text: "var(--color-opt-b)", ink: "#1B1233" },
+  { id: "stream", name: "Wait for streaming", color: "#5AA9F0", text: "var(--color-opt-c)", ink: "#06182B" },
 ] as const;
 
 /**
@@ -591,9 +637,14 @@ export function stackFor(mode: Mode): StackSeries[] {
 /* ------------------------------------------------------------ the aspects */
 
 /**
- * Aspect questions, written for this subject rather than for its category —
- * which is the point the panel is making. A film gets asked about its second
- * half; this gets asked about pay and cover.
+ * Aspect questions — taken from the product's own film set rather than written
+ * for the demo.
+ *
+ * That is the point the panel is making: a topic is not asked "rate this out of
+ * five", it is asked four questions chosen for what its category actually
+ * argues about. Importing FACET_SETS.film means the showcase cannot drift away
+ * from the questions a real film topic asks, and that anybody editing those
+ * questions edits the landing page too. Only the tallies are illustrative.
  */
 export interface Aspect {
   id: string;
@@ -602,48 +653,28 @@ export interface Aspect {
   options: { id: string; label: string; tone: "Positive" | "Neutral" | "Negative"; pct: number }[];
 }
 
-export const ASPECTS: Aspect[] = [
-  {
-    id: "pay",
-    label: "Pay",
-    prompt: "Should the same pay carry over to the shorter week?",
-    options: [
-      { id: "same", label: "Same pay", tone: "Positive", pct: 71 },
-      { id: "pro-rata", label: "Pro-rata", tone: "Neutral", pct: 21 },
-      { id: "unsure", label: "Not sure", tone: "Negative", pct: 8 },
-    ],
-  },
-  {
-    id: "cover",
-    label: "Cover",
-    prompt: "Could your work actually be covered on the fifth day?",
-    options: [
-      { id: "yes", label: "Easily", tone: "Positive", pct: 38 },
-      { id: "some", label: "With effort", tone: "Neutral", pct: 44 },
-      { id: "no", label: "Not at all", tone: "Negative", pct: 18 },
-    ],
-  },
-  {
-    id: "hours",
-    label: "Hours",
-    prompt: "Would the same work just compress into four longer days?",
-    options: [
-      { id: "no", label: "No", tone: "Positive", pct: 26 },
-      { id: "partly", label: "Partly", tone: "Neutral", pct: 39 },
-      { id: "yes", label: "Yes, entirely", tone: "Negative", pct: 35 },
-    ],
-  },
-  {
-    id: "small",
-    label: "Small employers",
-    prompt: "Is it workable for a business with under ten people?",
-    options: [
-      { id: "yes", label: "Workable", tone: "Positive", pct: 19 },
-      { id: "depends", label: "Depends", tone: "Neutral", pct: 34 },
-      { id: "no", label: "Not workable", tone: "Negative", pct: 47 },
-    ],
-  },
-];
+/** Illustrative tallies, positive → neutral → negative, keyed by facet id. */
+const ASPECT_TALLIES: Record<string, [number, number, number]> = {
+  story: [46, 33, 21],
+  acting: [74, 19, 7],
+  music: [68, 24, 8],
+  visuals: [88, 9, 3],
+  value: [61, 27, 12],
+};
+
+export const ASPECTS: Aspect[] = FACET_SETS.film
+  .filter((facet) => facet.id !== "music")
+  .map((facet) => ({
+    id: facet.id,
+    label: facet.label,
+    prompt: facet.prompt,
+    options: facet.options.map((option, i) => ({
+      id: option.id,
+      label: option.label,
+      tone: option.tone,
+      pct: ASPECT_TALLIES[facet.id]?.[i] ?? 0,
+    })),
+  }));
 
 /* --------------------------------------------------------- what people say */
 
@@ -672,47 +703,47 @@ export const SAMPLE_OPINIONS: SampleOpinion[] = [
   {
     id: "s1",
     stance: "Positive",
-    headline: "Four days, same output — the fifth was meetings",
-    body: "Two of the five days went to status calls that could have been a document. Cut the day and the work does not move.",
+    headline: "Sat in the front row by accident and would do it again",
+    body: "The scale is not a gimmick here — it is the whole argument the film is making. Nothing on a laptop is going to survive the trip.",
     replies: [
       {
         stance: "Negative",
-        body: "That holds for desk work. It does not hold for anyone on a shift or behind a counter.",
+        body: "Scale is doing a lot of heavy lifting for a middle hour that forgets it has characters in it.",
       },
       {
         stance: "Neutral",
-        body: "Agreed on both — which is why this needs to be asked per sector rather than once.",
+        body: "Both true. Spectacular to sit inside, thin to think about afterwards.",
       },
     ],
   },
   {
     id: "s2",
     stance: "Negative",
-    headline: "Fine for salaried teams. I run a shop.",
-    body: "Nobody covers the fifth day for me. A four-day week is a five-day week where I lose a day of takings.",
+    headline: "Beautiful, loud, and about forty minutes too pleased with itself",
+    body: "Half the dialogue is buried under the score and the other half is exposition. I could not tell you what anyone wanted by the end.",
     replies: [
       {
-        stance: "Neutral",
-        body: "This is the split the occupation breakdown shows — self-employed is the one group that goes the other way.",
+        stance: "Positive",
+        body: "The sound mix complaint is fair. The rest of it lands differently on a big screen.",
       },
     ],
   },
   {
     id: "s3",
     stance: "Neutral",
-    headline: "The trials are real, the sample sizes are small",
+    headline: "What the adaptation gains, and what the poem still does better",
     sections: [
       {
-        label: "What the evidence says",
-        body: "Published pilots report retained output and lower attrition, mostly at knowledge-work employers under 300 people.",
+        label: "Where it is strongest",
+        body: "The voyage sequences are the best case anyone has made in years for shooting practically and projecting big.",
       },
       {
-        label: "What it does not cover",
-        body: "Shift work, healthcare and retail are close to absent from the trial set, and they are most of the workforce.",
+        label: "Where it thins out",
+        body: "The homecoming is the half of the story that carries the meaning, and it is the half given the least room.",
       },
       {
-        label: "What would change my mind",
-        body: "One published trial in a sector where output is measured per hour rather than per project.",
+        label: "Worth the ticket",
+        body: "Yes, on the largest screen you can reach. The argument for a second viewing is weaker than the argument for the first.",
       },
     ],
     body: "",
@@ -722,8 +753,8 @@ export const SAMPLE_OPINIONS: SampleOpinion[] = [
 
 /** Written reasons, grouped by which option the writer picked. */
 export const SAMPLE_REASONS: { option: number; body: string }[] = [
-  { option: 0, body: "Everything I learn, I learn by overhearing it. That does not happen on a call." },
-  { option: 1, body: "Two days in is enough to keep a team together and short enough to keep the commute survivable." },
-  { option: 2, body: "The commute was ninety minutes each way. That is a working day a week, unpaid." },
-  { option: 1, body: "Hybrid only works if the days are fixed. Pick-your-own means nobody overlaps." },
+  { option: 0, body: "It was shot for this format. Watching it any other way is watching a different film." },
+  { option: 1, body: "Nearest IMAX is a two-hour drive and a full day gone. The regular screen was fine." },
+  { option: 2, body: "₹1,400 for one ticket. That is the whole month's subscription for one evening." },
+  { option: 1, body: "Booked the good seats at a normal multiplex and paid a third of the price. No regrets." },
 ];

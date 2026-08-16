@@ -32,7 +32,7 @@ import {
   type Mode,
 } from "@/components/landing/showcase/data";
 
-const DIMS: Dim[] = ["region", "age", "work"];
+const DIMS: Dim[] = ["state", "age", "work"];
 
 export function DemoBreakdown({
   filter,

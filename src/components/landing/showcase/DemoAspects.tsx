@@ -5,9 +5,13 @@
  *
  * The feature the landing page has never shown and the one that most often
  * decides whether a subject is worth a page at all: a topic is not asked "rate
- * this out of five", it is asked four or five questions written for that
- * subject. A film gets asked about its second half. This one gets asked whether
- * the work can actually be covered on the fifth day.
+ * this out of five", it is asked four or five questions chosen for what its
+ * category actually argues about. A film gets asked about its screenplay and
+ * whether it was worth the ticket; an exam would get asked about its paper.
+ *
+ * The questions here are the product's own — imported from FACET_SETS.film
+ * rather than written for the demo, so the landing page cannot drift away from
+ * what a real film topic asks. See showcase/data.ts.
  *
  * Answerable here, on the same terms as the live panel: one click, no submit
  * step, click again to withdraw. Nothing is recorded — the tally underneath is
@@ -32,9 +36,10 @@ export function DemoAspects() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="m-0 max-w-[520px] text-[13px] leading-[1.55] text-dim">
-          Four aspects, written for this subject rather than for its category. One click
-          each, no submit button — and the headline vote stays a separate question.
+        <p className="m-0 max-w-[560px] text-[13px] leading-[1.55] text-dim">
+          A film is not asked to be rated out of five. It is asked the questions films
+          get argued about — the same set every Entertainment topic carries. One click
+          each, no submit button, and the headline vote stays a separate question.
         </p>
         {answered > 0 ? (
           <span className="rounded-full border border-positive/35 bg-positive/10 px-3 py-1 font-mono text-[10px] tracking-[0.1em] uppercase text-positive-light">

@@ -403,7 +403,9 @@ see what a subject page produces before creating an account: the distribution,
 the trend with verified events plotted on it, the cross-tabs by region, age and
 occupation, the aspect questions, and the written contributions with their
 replies. One switch moves the whole panel between the two public modes, and
-clicking any breakdown row re-reads every chart as that group.
+clicking any breakdown row re-reads every chart as that group — including at
+least one group in each mode whose leading answer is not the headline's, which
+is the finding the whole section exists to make visible.
 
 Implemented in `src/components/landing/ResultShowcase.tsx` and
 `src/components/landing/showcase/`.
@@ -411,18 +413,28 @@ Implemented in `src/components/landing/ResultShowcase.tsx` and
 **It runs on a worked example, and that is a rule rather than a convenience.**
 No figure in the section is a measurement, so:
 
-* The subject is generic and implicates no real institution, exam, film, brand
-  or person, and regions are compass directions rather than named states.
+* The panel carries an "Illustration" badge in its chrome, above the first
+  chart, in the position a live page uses for its status, and the stage footer
+  repeats it in a full sentence.
 * No headcount appears anywhere — shares only. Days are numbered, not dated.
 * Contributions are attributed to "Participant" and a position. Never a name,
   an avatar or a like count.
-* The panel carries an "Illustration" badge in its chrome, above the first
-  chart, in the position a live page uses for its status.
+
+The subject is a film and the geography is real Indian states, both taken from
+the product's own vocabulary — the `film` facet set in `lib/facets.ts` supplies
+the aspect questions verbatim, and the state labels come from `lib/places.ts`.
+An earlier version used a policy question and compass directions to avoid
+naming anything. It demonstrated the wrong product: the live panel says "Where
+participants are voting from" and lists Karnataka, so a demonstration of that
+panel listing "South" is demonstrating something else, and a working-week
+question is one most of the audience has no stake in. What makes the section
+safe is the labelling, not the anonymising.
 
 Every number comes from one model (`showcase/data.ts`) rather than from
 hand-written percentages, which is what lets the panels stay consistent under
-filtering. The invariants that model has to hold are tested in
-`showcase/data.test.ts`.
+filtering — including the property that the right-hand end of the trend is
+*exactly* the figure in the donut beside it. The invariants that model has to
+hold are tested in `showcase/data.test.ts`.
 
 §30 requires every live analytic to be aggregated server-side from stored
 votes. This section is the other half of that rule: where a figure is *not*

@@ -5,7 +5,7 @@ import {
   CELLS,
   DAYS,
   DIM_VALUES,
-  REGIONS,
+  STATES,
   WORK,
   breakdown,
   contrarian,
@@ -38,7 +38,7 @@ import {
  */
 
 const MODES: Mode[] = ["topic", "poll"];
-const DIMS: Dim[] = ["region", "age", "work"];
+const DIMS: Dim[] = ["state", "age", "work"];
 
 /** Every single-axis filter, plus the unfiltered case. */
 function everyFilter(): Filter[] {
@@ -70,8 +70,8 @@ describe("roundShares", () => {
 });
 
 describe("the sample", () => {
-  it("has one cell per region, age band and occupation", () => {
-    expect(CELLS).toHaveLength(REGIONS.length * AGES.length * WORK.length);
+  it("has one cell per state, age band and occupation", () => {
+    expect(CELLS).toHaveLength(STATES.length * AGES.length * WORK.length);
   });
 
   it("weights to one, so a share is a share of everybody", () => {
@@ -80,7 +80,7 @@ describe("the sample", () => {
   });
 
   it("puts nobody in a cell twice and nobody in a negative one", () => {
-    const seen = new Set(CELLS.map((c) => `${c.region}|${c.age}|${c.work}`));
+    const seen = new Set(CELLS.map((c) => `${c.state}|${c.age}|${c.work}`));
     expect(seen.size).toBe(CELLS.length);
     expect(CELLS.every((c) => c.w > 0)).toBe(true);
   });
@@ -102,16 +102,16 @@ describe("read", () => {
 
   it("narrows as filters are added, and never widens", () => {
     const all = read({});
-    const south = read({ region: "South" });
-    const southYoung = read({ region: "South", age: "21–24" });
+    const kerala = read({ state: "Kerala" });
+    const keralaYoung = read({ state: "Kerala", age: "21–24" });
 
-    expect(south.share).toBeLessThan(all.share);
-    expect(southYoung.share).toBeLessThan(south.share);
-    expect(southYoung.share).toBeGreaterThan(0);
+    expect(kerala.share).toBeLessThan(all.share);
+    expect(keralaYoung.share).toBeLessThan(kerala.share);
+    expect(keralaYoung.share).toBeGreaterThan(0);
   });
 
   it("still totals 100 with all three axes pinned", () => {
-    const reading = read({ region: "North-east", age: "41+", work: "Public sector" });
+    const reading = read({ state: "Uttar Pradesh", age: "41+", work: "Public sector" });
     expect(reading.empty).toBe(false);
     expect(reading.sentiment.reduce((a, b) => a + b, 0)).toBe(100);
   });
@@ -216,14 +216,34 @@ describe("trend", () => {
     expect(marked.map((p) => p.n)).toEqual(DAYS.filter((d) => d.marker).map((d) => d.n));
   });
 
-  it("ends where the headline reading sits", () => {
-    // The last point of a cumulative series is the reading at the top of the
-    // panel. A chart whose right-hand end disagrees with the donut beside it
-    // is the bug this whole model exists to make impossible.
-    const points = trend({ age: "17–20" });
-    const last = points[points.length - 1]!;
-    const headline = read({ age: "17–20" }, DAYS.reduce((s, d) => s + d.share * d.drift, 0));
-    expect(last.sentiment).toEqual(headline.sentiment);
+  it("ends exactly on the headline reading, under every filter", () => {
+    // The donut is `read(filter)` at drift zero and the last point of the trend
+    // is `read(filter, cumulative drift)`. If the drift series does not average
+    // to zero those are two different figures six inches apart on one panel,
+    // both describing "now" — which is the class of contradiction this whole
+    // model exists to make impossible. The re-centring in DAYS is what holds
+    // it, and this is the assertion that notices if somebody removes it.
+    for (const filter of everyFilter()) {
+      const points = trend(filter);
+      const last = points[points.length - 1]!;
+      const headline = read(filter);
+      expect(last.sentiment).toEqual(headline.sentiment);
+      expect(last.poll).toEqual(headline.poll);
+    }
+  });
+
+  it("actually moves on the way there", () => {
+    // A trend that ends on the headline could trivially be a flat line. The
+    // opening crowd has to read the film differently from the whole run, or
+    // the chart is decoration.
+    const points = trend({});
+    expect(points[0]!.sentiment[0]).toBeGreaterThan(points[points.length - 1]!.sentiment[0]! + 5);
+  });
+
+  it("finds a group that reads the subject the other way", () => {
+    // Same argument as the poll's contrarian test: if no age band flips, the
+    // cross-filter has nothing to demonstrate and the panel goes quiet.
+    expect(contrarian({}, "topic")).not.toBeNull();
   });
 });
 
@@ -233,7 +253,7 @@ describe("filterLabel", () => {
   });
 
   it("joins the axes that are", () => {
-    expect(filterLabel({ region: "South", work: "Student" })).toBe("South · Student");
+    expect(filterLabel({ state: "Kerala", work: "Student" })).toBe("Kerala · Student");
   });
 });
 
