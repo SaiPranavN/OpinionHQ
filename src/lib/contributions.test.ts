@@ -12,6 +12,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   ageMinutes,
+  compareBySort,
+  isExplained,
+  MIN_EXPLANATION,
+  SORTS,
   blockResults,
   blockTotal,
   collapsedSections,
@@ -336,5 +340,111 @@ describe("category accents", () => {
     for (const topic of testTopics()) {
       expect(categoryAccent(topic.cat), topic.cat).toMatch(/^#[0-9A-Fa-f]{6}$/);
     }
+  });
+});
+
+/* ------------------------------------------------------------ the new sorts */
+
+describe("the abbreviated ages the product actually renders", () => {
+  /**
+   * `relativeTime` has always produced "3d ago", "45m ago", "2h ago" — and
+   * none of them parsed. Every contribution tied at ten years old, which
+   * silently broke two things: "Newest" ordered nothing, and the decay in
+   * `relevanceScore` divided by a constant. The long forms below were the only
+   * ones that ever worked, and nothing generates them.
+   */
+  it("reads the short forms", () => {
+    expect(ageMinutes("45m ago")).toBe(45);
+    expect(ageMinutes("2h ago")).toBe(120);
+    expect(ageMinutes("3d ago")).toBe(4320);
+    expect(ageMinutes("2w ago")).toBe(20160);
+    expect(ageMinutes("3mo ago")).toBe(131400);
+    expect(ageMinutes("1y ago")).toBe(525600);
+  });
+
+  it("does not read months as minutes", () => {
+    // The whole reason the alternation is ordered longest-first.
+    expect(ageMinutes("3mo ago")).toBeGreaterThan(ageMinutes("3m ago"));
+    expect(ageMinutes("3 months ago")).toBe(ageMinutes("3mo ago"));
+  });
+
+  it("still reads the long forms, and still distrusts nonsense", () => {
+    expect(ageMinutes("20 minutes ago")).toBe(20);
+    expect(ageMinutes("2 days ago")).toBe(2880);
+    expect(ageMinutes("whenever")).toBeGreaterThan(ageMinutes("1y ago"));
+  });
+});
+
+describe("ordering", () => {
+  const at = (minutesAgo: number) =>
+    new Date(Date.now() - minutesAgo * 60_000).toISOString();
+
+  it("prefers the exact timestamp over the rounded label", () => {
+    // Both render "3d ago", so the label alone cannot separate them.
+    const morning = standard({ id: "morning", time: "3d ago", createdAt: at(4400) });
+    const evening = standard({ id: "evening", time: "3d ago", createdAt: at(4320) });
+    expect(sortContributions([morning, evening], "newest")[0]!.id).toBe("evening");
+    expect(sortContributions([morning, evening], "oldest")[0]!.id).toBe("morning");
+  });
+
+  it("orders by downvotes, which no ordering used to expose", () => {
+    const liked = standard({ id: "liked", helpful: 40, dislikes: 1 });
+    const rejected = standard({ id: "rejected", helpful: 2, dislikes: 30 });
+    expect(sortContributions([liked, rejected], "downvoted")[0]!.id).toBe("rejected");
+    expect(sortContributions([liked, rejected], "upvoted")[0]!.id).toBe("liked");
+  });
+
+  it("treats a missing dislike count as none rather than as unknown", () => {
+    const none = standard({ id: "none" });
+    const some = standard({ id: "some", dislikes: 3 });
+    expect(sortContributions([none, some], "downvoted")[0]!.id).toBe("some");
+  });
+
+  it("newest and oldest are exact reverses", () => {
+    const list = [
+      standard({ id: "a", createdAt: at(10) }),
+      standard({ id: "b", createdAt: at(500) }),
+      standard({ id: "c", createdAt: at(90) }),
+    ];
+    expect(sortContributions(list, "newest").map((o) => o.id)).toEqual(
+      [...sortContributions(list, "oldest")].reverse().map((o) => o.id),
+    );
+  });
+
+  it("offers a comparator for every label it advertises", () => {
+    // A label with no comparator is a dropdown entry that silently does
+    // nothing, which is exactly what "Newest" was before the age fix.
+    const list = [
+      standard({ id: "a", helpful: 3, dislikes: 1, replies: 5, createdAt: at(10) }),
+      standard({ id: "b", helpful: 9, dislikes: 4, replies: 0, createdAt: at(900) }),
+    ];
+    for (const option of SORTS) {
+      expect(sortContributions(list, option.id), option.label).toHaveLength(2);
+    }
+  });
+
+  it("sorts a poll reason with the same code as an opinion", () => {
+    // `compareBySort` is generic so the two lists cannot drift. A reason has no
+    // `format`, so it never carries the Pro boost.
+    const reasons = [
+      { id: "quiet", time: "1h ago", helpful: 1, dislikes: 0, replies: 0 },
+      { id: "loud", time: "1h ago", helpful: 20, dislikes: 0, replies: 0 },
+    ];
+    expect([...reasons].sort(compareBySort("upvoted"))[0]!.id).toBe("loud");
+  });
+});
+
+describe("a vote needs a reason", () => {
+  it("refuses what is not an explanation", () => {
+    expect(isExplained("")).toBe(false);
+    expect(isExplained(".")).toBe(false);
+    expect(isExplained("   \n  ")).toBe(false);
+    // Whitespace does not count towards the floor.
+    expect(isExplained(" ".repeat(MIN_EXPLANATION))).toBe(false);
+  });
+
+  it("accepts something somebody actually typed", () => {
+    expect(isExplained("Too expensive for what it is")).toBe(true);
+    expect(isExplained("a".repeat(MIN_EXPLANATION))).toBe(true);
   });
 });

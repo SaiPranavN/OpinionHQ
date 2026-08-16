@@ -21,6 +21,7 @@ import { useMemo, useState } from "react";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { ReplyThread } from "@/components/topic/ReplyThread";
 import { InteractiveBlockView } from "@/components/topic/InteractiveBlockView";
+import { EditedTag } from "@/components/ui/EditedTag";
 import { MediaStrip } from "@/components/ui/MediaStrip";
 import {
   collapsedSections,
@@ -467,7 +468,7 @@ function Header({
             : pro
               ? contribution.authorLine || "Pro contributor"
               : "Participant opinion"}{" "}
-          · {contribution.time}
+          · {contribution.time} <EditedTag at={contribution.editedAt} />
         </span>
       </span>
 

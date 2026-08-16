@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { ProComposer } from "@/components/topic/ProComposer";
 import { sentimentColor } from "@/lib/derive";
+import { MIN_EXPLANATION, isExplained } from "@/lib/contributions";
 import {
   MAX_CONTRIBUTION_EDITS,
   readMyPublished,
@@ -71,9 +72,17 @@ export function VotePanel({ topicId, accent }: { topicId: string; accent: string
 
   const showComposer = !recorded || editing;
 
+  const explained = isExplained(note);
+
   const submit = () => {
     if (!vote) {
       toast("Pick Positive, Neutral or Negative first.");
+      return;
+    }
+    // Said here so it is not discovered as a server refusal. `cast_vote`
+    // enforces the same rule, and that is the one that counts.
+    if (!explained) {
+      toast(`Add a short explanation — at least ${MIN_EXPLANATION} characters.`);
       return;
     }
     submitVote(topicId, vote, note.trim());
@@ -255,33 +264,58 @@ export function VotePanel({ topicId, accent }: { topicId: string; accent: string
             })}
           </div>
 
+          {/* Required now, and said as a requirement rather than shown as a
+              disabled button somebody has to work out. The counter turns from
+              "how much is left" into "how much more is needed" while it is
+              short, because those are two different questions and only one of
+              them is being asked before the floor is cleared. */}
           <label className="flex flex-col gap-2">
-            <span className="text-[13px] text-muted">
-              Add a short explanation (optional)
+            <span className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-[13px] text-muted">
+                Why? <span className="text-dim">A short explanation is required.</span>
+              </span>
+              <span
+                className="font-mono text-[10.5px]"
+                style={{ color: explained ? "var(--color-dim)" : "var(--color-neutral)" }}
+              >
+                {explained
+                  ? `${note.length}/${MAX_NOTE}`
+                  : `${MIN_EXPLANATION - note.trim().length} more`}
+              </span>
             </span>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value.slice(0, MAX_NOTE))}
               rows={3}
+              required
+              aria-describedby="ohq-note-rule"
               placeholder="What shaped your view?"
               className="resize-y rounded-[12px] border border-veil/10 bg-surface-sunken p-3.5 text-[14px] leading-[1.6] text-cream outline-none transition-colors duration-300 focus:border-positive/50"
             />
-            <span className="self-end font-mono text-[10.5px] text-dim">
-              {note.length}/{MAX_NOTE}
+            <span id="ohq-note-rule" className="text-[11.5px] leading-[1.5] text-dim">
+              A vote on its own tells the room what you think and nothing about
+              why, and why is the part anybody can argue with.
             </span>
           </label>
 
           <div className="flex flex-wrap items-center gap-4">
+            {/* Not `disabled`. A dead button explains nothing; this one is
+                pressable and answers what is missing, which is the difference
+                between a form that refuses you and one that tells you why. */}
             <button
               type="button"
               onClick={submit}
               className="cursor-pointer rounded-full px-8 py-[15px] text-[15px] font-semibold tracking-[-0.01em] transition-[background,box-shadow] duration-[450ms] hover:shadow-[0_12px_40px_-12px_rgba(29,185,84,0.5)]"
               style={{
-                background: vote ? "#1DB954" : "rgba(29,185,84,0.28)",
-                color: vote ? "#07240F" : "rgba(7,36,15,0.6)",
+                background: vote && explained ? "#1DB954" : "rgba(29,185,84,0.28)",
+                color: vote && explained ? "#07240F" : "rgba(7,36,15,0.6)",
               }}
             >
-              {vote ? "Submit opinion" : "Select an option to continue"}
+              {!vote
+                ? "Select an option to continue"
+                : explained
+                  ? "Submit opinion"
+                  : "Add a short explanation"}
             </button>
             {editing ? (
               <button

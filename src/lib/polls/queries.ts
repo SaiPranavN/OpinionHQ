@@ -173,7 +173,7 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
       .from("poll_reason_feed")
       .select(
         "id, user_id, anonymous, display_name, initials, option_id, body, " +
-          "helpful_count, dislike_count, reply_count, created_at",
+          "helpful_count, dislike_count, reply_count, created_at, edited_at",
       )
       .eq("poll_id", pollId)
       .order("helpful_count", { ascending: false })
@@ -243,6 +243,7 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
           dislike_count: number;
           reply_count: number;
           created_at: string;
+          edited_at: string | null;
         }[]
       | null) ?? []
   ).flatMap((r) => {
@@ -264,6 +265,8 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
         initials: hidden ? "··" : (r.initials ?? "··"),
         text: r.body,
         time: relativeOf(r.created_at),
+        createdAt: r.created_at,
+        editedAt: r.edited_at,
         helpful: r.helpful_count,
         dislikes: r.dislike_count,
         replies: r.reply_count,

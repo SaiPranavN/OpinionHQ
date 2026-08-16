@@ -315,6 +315,21 @@ export interface Opinion {
   /** The standard body. On a Pro contribution this is the summary line. */
   text: string;
   time: string;
+  /**
+   * When it was written, exactly. ISO 8601.
+   *
+   * `time` is the same instant rounded for reading — "3d ago" — which is fine
+   * to show and useless to sort by, because every contribution written on the
+   * same day compares equal. Ordering reads this.
+   */
+  createdAt?: string;
+  /**
+   * When the author last rewrote it, if they have. ISO 8601, null otherwise.
+   *
+   * Distinct from `updated_at`, which moves whenever anything on the row does —
+   * including a like landing on it. This one only moves when the author does.
+   */
+  editedAt?: string | null;
   helpful: number;
   replies: number;
   thread?: Reply[];
@@ -591,6 +606,10 @@ export interface PollReason {
   initials: string;
   text: string;
   time: string;
+  /** Exact write time, for ordering. See `Opinion.createdAt`. */
+  createdAt?: string;
+  /** Last rewrite by the author, or null. See `Opinion.editedAt`. */
+  editedAt?: string | null;
   /** Likes. Named `helpful` because the column still is. */
   helpful: number;
   dislikes?: number;

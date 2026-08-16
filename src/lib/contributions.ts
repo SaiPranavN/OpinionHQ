@@ -16,6 +16,32 @@ import type {
   Sentiment,
 } from "@/lib/types";
 
+/**
+ * The shortest thing that counts as an explanation.
+ *
+ * A WRITTEN REASON IS NOW REQUIRED TO VOTE, on topics and on polls both, at the
+ * product owner's direction. What that costs is worth stating rather than
+ * discovering: every vote is now more expensive to cast, and some people who
+ * would have clicked Positive and moved on will close the tab instead. The
+ * split will be measured over a smaller, more deliberate sample. That is the
+ * trade — fewer votes, none of them silent.
+ *
+ * The floor exists because "mandatory" with no length is a rule satisfied by a
+ * full stop. Ten characters is about two words: low enough not to be a wall,
+ * high enough that clearing it means having typed something.
+ *
+ * ENFORCED IN POSTGRES, not here. `cast_vote` and `vote_and_explain` both
+ * refuse a shorter body, so a hand-rolled request is refused too; this constant
+ * is what the composer uses to say so before the refusal. `schema-sync.test.ts`
+ * holds the two numbers level.
+ */
+export const MIN_EXPLANATION = 10;
+
+/** Whether this draft may be submitted with a vote. */
+export function isExplained(text: string): boolean {
+  return text.trim().length >= MIN_EXPLANATION;
+}
+
 /* ------------------------------------------------------------ predicates */
 
 export function isPro(contribution: Opinion): boolean {
@@ -69,24 +95,46 @@ export const OPTIONAL_SECTIONS: {
 /**
  * Approximate age in minutes, parsed from the display string.
  *
- * The prototype stores "3 hours ago" rather than a timestamp, and inventing a
- * real `createdAt` for a hundred fixtures would be inventing data. Parsing the
- * label is honest about what it is: good enough to order a feed, and never
- * presented as a precise time.
+ * A fallback, not the mechanism. Anything that came out of Postgres carries a
+ * real `createdAt` and is ordered by that; this is for the one row that has no
+ * timestamp yet — the copy of a reason held in the browser between writing it
+ * and the page refetching.
  *
- * Anything unrecognised sorts as old rather than as new. A string nobody
+ * IT UNDERSTANDS THE ABBREVIATED FORMS, and that is a fix rather than an
+ * addition. `relativeTime` in lib/topics/rows.ts has always rendered "3d ago",
+ * "45m ago", "2h ago", and none of those matched — every one of them fell
+ * through to `OLD`. Two things were quietly broken by that: the "Newest" sort
+ * did nothing at all, because every contribution tied at ten years old, and the
+ * decay in `relevanceScore` divided by a constant, so an hour-old post and a
+ * month-old post ranked purely on engagement. The only strings that ever
+ * matched were the long forms nothing generates.
+ *
+ * Anything still unrecognised sorts as old rather than as new. A string nobody
  * predicted should not be rewarded with the top of the list.
  */
 const UNIT_MINUTES: Record<string, number> = {
   minute: 1,
   min: 1,
+  m: 1,
   hour: 60,
   hr: 60,
+  h: 60,
   day: 1440,
+  d: 1440,
   week: 10080,
+  w: 10080,
   month: 43800,
+  mo: 43800,
   year: 525600,
+  y: 525600,
 };
+
+/**
+ * Longest first, because the alternation is ordered and `m` would otherwise
+ * swallow the `m` of `mo` and read three months as three minutes.
+ */
+const UNIT_PATTERN =
+  /(\d+)\s*(minutes?|mins?|months?|hours?|hrs?|weeks?|years?|days?|mo|m|h|d|w|y)\b/;
 
 const OLD = 525_600 * 10;
 
@@ -94,23 +142,60 @@ export function ageMinutes(time: string): number {
   const label = time.trim().toLowerCase();
   if (!label) return OLD;
   if (label.startsWith("just now") || label === "now") return 0;
-  const match = label.match(/(\d+)\s*(minute|min|hour|hr|day|week|month|year)/);
+  const match = label.match(UNIT_PATTERN);
   if (!match) return OLD;
   const value = Number(match[1]);
-  const unit = UNIT_MINUTES[match[2]!];
+  const unit = UNIT_MINUTES[match[2]!.replace(/s$/, "")];
   if (!Number.isFinite(value) || unit === undefined) return OLD;
   return value * unit;
 }
 
+/**
+ * How old something is, preferring the timestamp over the label.
+ *
+ * Every row from the database has `createdAt`, which is exact; the label is
+ * rounded to whole days once a post is a day old, so ordering by it ties every
+ * contribution written on the same day and calls the result "Newest".
+ */
+export function ageOf(item: { time: string; createdAt?: string }): number {
+  if (item.createdAt) {
+    const ms = Date.parse(item.createdAt);
+    if (Number.isFinite(ms)) return Math.max((Date.now() - ms) / 60_000, 0);
+  }
+  return ageMinutes(item.time);
+}
+
 /* --------------------------------------------------------------- ranking */
 
-export type ContributionSort = "relevant" | "upvoted" | "discussed" | "newest";
+export type ContributionSort =
+  | "relevant"
+  | "upvoted"
+  | "downvoted"
+  | "discussed"
+  | "newest"
+  | "oldest";
 
+/**
+ * Every ordering the product offers, in one list.
+ *
+ * Shared by the opinions tab, the discussion tab and the poll reason columns,
+ * so the three cannot drift into offering different answers to the same
+ * question. "Most commented" rather than "Most discussed": the number under it
+ * is a reply count, and naming it after what is counted is one less thing to
+ * work out.
+ *
+ * MOST DOWNVOTED IS A REAL OPTION and not an oversight. It surfaces what the
+ * room rejected, which is the half of a discussion that ranking normally
+ * buries — and on a site whose whole claim is showing disagreement, an
+ * ordering that can only ever show approval would be an odd omission.
+ */
 export const SORTS: { id: ContributionSort; label: string }[] = [
   { id: "relevant", label: "Most relevant" },
   { id: "upvoted", label: "Most upvoted" },
-  { id: "discussed", label: "Most discussed" },
+  { id: "downvoted", label: "Most downvoted" },
+  { id: "discussed", label: "Most commented" },
   { id: "newest", label: "Newest" },
+  { id: "oldest", label: "Oldest" },
 ];
 
 /**
@@ -132,12 +217,12 @@ export const SORTS: { id: ContributionSort; label: string }[] = [
  * The decay is gentle — a day-old contribution should slip, not vanish, since
  * topics here run for weeks and the best read on one is often not the newest.
  */
-export function relevanceScore(contribution: Opinion): number {
+export function relevanceScore(contribution: Sortable): number {
   const engagement = Math.max(
-    contribution.helpful - (contribution.dislikes ?? 0) + contribution.replies * 3,
+    contribution.helpful - (contribution.dislikes ?? 0) + (contribution.replies ?? 0) * 3,
     0,
   );
-  const hours = ageMinutes(contribution.time) / 60;
+  const hours = ageOf(contribution) / 60;
   return engagement / Math.pow(hours + 3, 0.35);
 }
 
@@ -179,21 +264,53 @@ function byBoostedRelevance(a: Opinion, b: Opinion): number {
   return relevanceScore(b) - relevanceScore(a);
 }
 
+/**
+ * Ordering, for anything with likes, dislikes, replies and an age.
+ *
+ * Generic over the shape rather than over `Opinion`, because a poll reason is
+ * the same object under a different name and the two lists had no business
+ * sorting by different code. Only `relevant` needs a full contribution, so it
+ * is the one branch that asks for one.
+ */
+export interface Sortable {
+  time: string;
+  createdAt?: string;
+  helpful: number;
+  dislikes?: number;
+  replies?: number;
+}
+
+export function compareBySort<T extends Sortable>(
+  sort: ContributionSort,
+): (a: T, b: T) => number {
+  switch (sort) {
+    // No Pro boost here. The lift is applied by `sortContributions`, which is
+    // the only caller that has a `format` to read — a poll reason has no format
+    // and inventing one to keep the two paths symmetrical would be inventing a
+    // ranking rule nobody asked for.
+    case "relevant":
+      return (a, b) => relevanceScore(b) - relevanceScore(a);
+    case "upvoted":
+      return (a, b) => b.helpful - a.helpful;
+    case "downvoted":
+      return (a, b) => (b.dislikes ?? 0) - (a.dislikes ?? 0);
+    case "discussed":
+      return (a, b) => (b.replies ?? 0) - (a.replies ?? 0);
+    case "newest":
+      return (a, b) => ageOf(a) - ageOf(b);
+    case "oldest":
+      return (a, b) => ageOf(b) - ageOf(a);
+  }
+}
+
 export function sortContributions(
   list: Opinion[],
   sort: ContributionSort,
 ): Opinion[] {
   const copy = [...list];
-  switch (sort) {
-    case "upvoted":
-      return copy.sort((a, b) => b.helpful - a.helpful);
-    case "discussed":
-      return copy.sort((a, b) => b.replies - a.replies);
-    case "newest":
-      return copy.sort((a, b) => ageMinutes(a.time) - ageMinutes(b.time));
-    case "relevant":
-      return copy.sort(byBoostedRelevance);
-  }
+  return sort === "relevant"
+    ? copy.sort(byBoostedRelevance)
+    : copy.sort(compareBySort(sort));
 }
 
 /**

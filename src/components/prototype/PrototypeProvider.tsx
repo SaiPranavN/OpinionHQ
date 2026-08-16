@@ -666,9 +666,14 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
    * checks it, so a poll that closed while the page was open refuses the vote
    * rather than accepting one after the deadline.
    *
-   * The reason is a second call because it is a second row with its own policy
-   * ("you may only explain a pick you actually made"), and that policy can only
-   * pass once the vote exists.
+   * ONE CALL NOW, NOT TWO. The reason is still a second row with its own policy
+   * ("you may only explain a pick you actually made") which can only pass once
+   * the vote exists — so it is still two writes, but `vote_and_explain` does
+   * both inside one statement. That matters because the reason is required: two
+   * round trips meant the first could land and the second fail, leaving exactly
+   * the bare vote the rule exists to prevent, with the person told "vote
+   * recorded, but your reason could not be saved" and no way back to fix it.
+   * Now either both land or neither does.
    */
   const submitPollVote = useCallback(
     async (
@@ -685,9 +690,13 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       }
 
       const supabase = supabaseBrowser();
-      const { error } = await supabase.rpc("cast_poll_vote", {
+      const text = reason.trim();
+
+      const { data: savedReason, error } = await supabase.rpc("vote_and_explain", {
         poll_slug: pollId,
         option_slot: side,
+        reason: text,
+        anonymous,
       });
 
       if (error) {
@@ -700,46 +709,20 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const text = reason.trim();
-      if (text) {
-        const { data: savedReason, error: reasonError } = await supabase.rpc(
-          "explain_poll_vote",
-          { poll_slug: pollId, reason: text, anonymous },
-        );
-
-        // The pictures are a third write, and they only make sense once the
-        // reason row exists — `contribution_media` points at it by foreign key.
-        // The clear-then-insert is what makes changing a vote replace the old
-        // pictures rather than pile new ones on top of them.
-        if (!reasonError && savedReason) {
-          const reasonId = (savedReason as unknown as { id: string }).id;
-          try {
-            await clearReasonMedia(reasonId);
-            await attachReasonMedia(reasonId, media);
-          } catch {
-            // The argument is what matters and it is saved. Failing the whole
-            // vote over a picture would be the wrong trade.
-            toast("Vote and reason saved, but an image could not be attached.");
-          }
+      // The pictures are a separate write, and they only make sense once the
+      // reason row exists — `contribution_media` points at it by foreign key.
+      // The clear-then-insert is what makes changing a vote replace the old
+      // pictures rather than pile new ones on top of them.
+      if (savedReason) {
+        const reasonId = (savedReason as unknown as { id: string }).id;
+        try {
+          await clearReasonMedia(reasonId);
+          await attachReasonMedia(reasonId, media);
+        } catch {
+          // The argument is what matters and it is saved. Failing the whole
+          // vote over a picture would be the wrong trade.
+          toast("Vote and reason saved, but an image could not be attached.");
         }
-        // The vote landed even if the reason did not, so this says which half
-        // failed rather than implying the whole thing was lost.
-        if (reasonError) {
-          toast("Vote recorded, but your reason could not be saved.");
-          setState((prev) => ({
-            ...prev,
-            pollVotes: {
-              ...prev.pollVotes,
-              [pollId]: { side, reason: "", updatedAt: new Date().toISOString() },
-            },
-          }));
-          router.refresh();
-          return;
-        }
-      } else {
-        // Clearing the box withdraws the reason, rather than leaving the old
-        // text sitting under a pick it may no longer explain.
-        await supabase.rpc("retract_poll_reason", { poll_slug: pollId });
       }
 
       setState((prev) => ({
@@ -750,11 +733,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
         },
       }));
       router.refresh();
-      toast(
-        text
-          ? "Vote recorded, and your reason is now next to it."
-          : "Vote recorded. You can add a reason any time.",
-      );
+      toast("Vote recorded, and your reason is now next to it.");
     },
     [signedIn, toast, router],
   );

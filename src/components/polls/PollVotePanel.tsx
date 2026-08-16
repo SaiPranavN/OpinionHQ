@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { AnonymousToggle } from "@/components/ui/AnonymousToggle";
 import { MediaPicker } from "@/components/ui/MediaPicker";
+import { MIN_EXPLANATION, isExplained } from "@/lib/contributions";
 import type { MediaDraft } from "@/lib/topics/contributions";
 import type { DecoratedPoll, PollOptionId } from "@/lib/types";
 
@@ -26,6 +27,8 @@ export function PollVotePanel({ poll }: { poll: DecoratedPoll }) {
   const [reason, setReason] = useState("");
   const [anonymous, setAnonymous] = useState(false);
   const [media, setMedia] = useState<MediaDraft[]>([]);
+
+  const explained = isExplained(reason);
 
   // Once storage has hydrated, show the vote already on record.
   useEffect(() => {
@@ -102,19 +105,28 @@ export function PollVotePanel({ poll }: { poll: DecoratedPoll }) {
         })}
       </div>
 
+      {/* Required now. It used to say "optional, but it is what makes a poll
+          readable" — which was true, and is the argument for having made it
+          required rather than a reason to keep asking nicely. */}
       <label className="mt-5 flex flex-col gap-2">
         <span className="flex flex-wrap items-baseline justify-between gap-2">
           <span className="text-[13px] text-soft">
-            Why? <span className="text-dim">Optional, but it is what makes a poll readable.</span>
+            Why? <span className="text-dim">Required — it is what makes a poll readable.</span>
           </span>
-          <span className="font-mono text-[10.5px] text-dim">
-            {reason.length}/{MAX_REASON}
+          <span
+            className="font-mono text-[10.5px]"
+            style={{ color: explained ? "var(--color-dim)" : "var(--color-neutral)" }}
+          >
+            {explained
+              ? `${reason.length}/${MAX_REASON}`
+              : `${MIN_EXPLANATION - reason.trim().length} more`}
           </span>
         </span>
         <textarea
           value={reason}
           onChange={(e) => setReason(e.target.value.slice(0, MAX_REASON))}
           rows={3}
+          required
           placeholder="One specific reason beats three general ones."
           className="resize-y rounded-[12px] border border-veil/10 bg-surface-sunken p-3.5 text-[14px] leading-[1.6] text-cream outline-none transition-colors duration-300 focus:border-poll/50"
         />
@@ -149,11 +161,17 @@ export function PollVotePanel({ poll }: { poll: DecoratedPoll }) {
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <button
           type="button"
-          disabled={!side}
+          disabled={!side || !explained}
           onClick={() => side && submitPollVote(poll.id, side, reason, anonymous, media)}
           className="cursor-pointer rounded-full bg-positive px-6 py-3 text-[14.5px] font-semibold text-positive-ink transition-[background,opacity] duration-300 outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {cast ? "Update my vote" : "Cast my vote"}
+          {!side
+            ? "Pick one to continue"
+            : !explained
+              ? `Say why — ${MIN_EXPLANATION - reason.trim().length} more characters`
+              : cast
+                ? "Update my vote"
+                : "Cast my vote"}
         </button>
         {cast ? (
           <button

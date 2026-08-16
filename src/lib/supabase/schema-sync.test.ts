@@ -21,6 +21,7 @@ import { ASK_CATEGORIES } from "@/lib/ask/taxonomy";
 import { PROOF_KINDS } from "@/lib/ask/verification";
 import { AGE_BANDS } from "@/lib/demographics";
 import { FREE_ASKS, PRO_PRICE_INR } from "@/lib/entitlements";
+import { MIN_EXPLANATION } from "@/lib/contributions";
 import { MAX_CONTRIBUTION_EDITS } from "@/lib/topics/contributions";
 import { MAX_COMMENT_DEPTH } from "@/lib/ask/comments";
 import { MAX_MATCHES, REPLY_CAP } from "@/lib/ask/taxonomy";
@@ -121,6 +122,30 @@ describe("limits are enforced in both places", () => {
   it("a poll's upper option bound matches MAX_POLL_OPTIONS", () => {
     const fn = sql.match(/function public\.check_poll_option_count[\s\S]*?\$\$;/)?.[0] ?? "";
     expect(fn).toContain(`> ${MAX_POLL_OPTIONS}`);
+  });
+
+  it("every write path that takes a vote requires MIN_EXPLANATION characters", () => {
+    // A vote cannot be cast without a written reason. Three functions can
+    // create one, and a gate on two of three is not a gate — `vote_and_explain`
+    // exists precisely so the poll path cannot land a bare vote, and it would
+    // be pointless if `explain_poll_vote` still accepted an empty body from a
+    // caller who skipped the wrapper.
+    for (const fn of ["cast_vote", "explain_poll_vote", "vote_and_explain"]) {
+      // The LAST definition, not the last mention. Anchoring on
+      // `function public.<name>(` finds the trailing grant/revoke line instead,
+      // and the assertion then reads whatever migration happens to come after
+      // it — which is how this test first passed against the wrong text.
+      const defs = [
+        ...sql.matchAll(
+          new RegExp(`create (?:or replace )?function public\\.${fn}\\(([\\s\\S]*?)\\$\\$;`, "g"),
+        ),
+      ];
+      const body = defs[defs.length - 1]?.[0] ?? "";
+      expect(body, `${fn} — no definition found`).not.toBe("");
+      expect(body, fn).toMatch(
+        new RegExp(`length\\(trim\\(coalesce\\([^)]*\\)\\)\\) < ${MIN_EXPLANATION}`),
+      );
+    }
   });
 });
 

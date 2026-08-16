@@ -4,27 +4,37 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useSession } from "@/components/auth/SessionProvider";
 import { ContributionCard } from "@/components/topic/ContributionCard";
+import { SortPicker } from "@/components/ui/SortPicker";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { safeExternalUrl } from "@/lib/safe-url";
 import {
   FILTERS,
-  SORTS,
   filterContributions,
   filterLabel,
-  headlineOf,
-  isPro,
   sortContributions,
   type ContributionFilter,
   type ContributionSort,
 } from "@/lib/contributions";
-import { formatNumber, sentimentColor, sentimentIcon } from "@/lib/derive";
-import type { Opinion,
-  OpinionReply, TimelineEvent } from "@/lib/types";
+import type { Opinion, OpinionReply, TimelineEvent } from "@/lib/types";
 
-type TabId = "overview" | "opinions" | "discussion" | "timeline";
+/**
+ * THERE IS NO OVERVIEW TAB.
+ *
+ * It held one panel, "Most liked opinions", which was the Opinions tab sorted
+ * by likes and truncated to two — the same rows, the same text, one click
+ * away, presented as a different section. A tab whose content is a subset of
+ * the next tab's teaches a reader that the tabs are decoration.
+ *
+ * What it had that was genuinely its own was "Latest verified updates", and
+ * that left some time ago: a sourced fact outranks a measurement of feeling and
+ * now leads the page. See components/topic/VerifiedUpdates.tsx. Removing the
+ * tab is finishing that move rather than starting a new one.
+ *
+ * Opinions is the landing tab in its place.
+ */
+type TabId = "opinions" | "discussion" | "timeline";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "overview", label: "Overview" },
   { id: "opinions", label: "Opinions" },
   { id: "discussion", label: "Discussion" },
   { id: "timeline", label: "Timeline" },
@@ -48,9 +58,19 @@ export function TopicTabs({
   myOpinionVotes,
 }: TopicTabsProps) {
   const { user } = useSession();
-  const [tab, setTab] = useState<TabId>("overview");
+  const [tab, setTab] = useState<TabId>("opinions");
   const [filter, setFilter] = useState<ContributionFilter>("All");
   const [sort, setSort] = useState<ContributionSort>("relevant");
+  /**
+   * The discussion tab keeps its own ordering.
+   *
+   * Separate state rather than shared, because the two tabs are asking
+   * different questions: Opinions is "what should I read", Discussion is
+   * "what is being argued about". Sharing one control would mean picking
+   * "Oldest" to find the start of a thread and then finding the Opinions tab
+   * reordered underneath you.
+   */
+  const [threadSort, setThreadSort] = useState<ContributionSort>("discussed");
 
   /**
    * The one list, and now it is just the server's.
@@ -80,13 +100,11 @@ export function TopicTabs({
     [allContributions, filter, sort],
   );
 
-  /** Discussion leads with the threads that are actually moving. */
+  /** Discussion opens on the threads that are actually moving, then obeys. */
   const discussionOrder = useMemo(
-    () => sortContributions(allContributions, "discussed"),
-    [allContributions],
+    () => sortContributions(allContributions, threadSort),
+    [allContributions, threadSort],
   );
-
-  const mostHelpful = [...allContributions].sort((a, b) => b.helpful - a.helpful).slice(0, 2);
 
   /**
    * `#discussion` opens the discussion tab.
@@ -138,50 +156,6 @@ export function TopicTabs({
         })}
       </div>
 
-      {tab === "overview" ? (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] gap-[clamp(14px,1.6vw,20px)]">
-          {/* "Latest verified updates" used to sit here. It now leads the page,
-              above the charts — a sourced fact outranks a measurement of
-              feeling. See components/topic/VerifiedUpdates.tsx. */}
-          <div className="ohq-panel flex flex-col gap-4 p-5 sm:p-7">
-            <span className="ohq-eyebrow">Most liked opinions</span>
-            {mostHelpful.map((opinion) => (
-              <div
-                key={opinion.id}
-                className="flex flex-col gap-2 border-b border-veil/6 pb-4 last:border-0 last:pb-0"
-              >
-                <span className="flex items-center gap-2.5">
-                  <span className="text-[13.5px] font-semibold text-cream">
-                    {opinion.name}
-                  </span>
-                  <span
-                    className="inline-flex items-center gap-[5px] text-[11.5px]"
-                    style={{ color: sentimentColor(opinion.vote) }}
-                  >
-                    <span aria-hidden className="text-[8px]">
-                      {sentimentIcon(opinion.vote)}
-                    </span>
-                    {opinion.vote}
-                  </span>
-                  <span className="ml-auto font-mono text-[10.5px] text-dim">
-                    {formatNumber(opinion.helpful)} likes
-                  </span>
-                </span>
-                <span className="text-[13.5px] leading-[1.6] text-muted">
-                  {isPro(opinion) ? headlineOf(opinion) : opinion.text}
-                </span>
-              </div>
-            ))}
-            {mostHelpful.length === 0 ? (
-              <p className="m-0 text-[13.5px] leading-[1.6] text-dim">
-                Votes have been recorded on this topic, but no written explanations have
-                been published yet. Add the first one above.
-              </p>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-
       {tab === "opinions" ? (
         <div className="flex flex-col gap-[clamp(16px,2.2vw,22px)]">
           <div className="flex flex-wrap items-center gap-2.5">
@@ -207,22 +181,7 @@ export function TopicTabs({
 
             {/* Sorting, not a second tab. Every option below orders the one
                 list; none of them separates it. */}
-            <label className="ml-auto flex items-center gap-2">
-              <span className="font-mono text-[10px] tracking-[0.1em] uppercase text-dim">
-                Sort
-              </span>
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value as ContributionSort)}
-                className="cursor-pointer rounded-full border border-veil/12 bg-surface-sunken px-3 py-1.5 text-[12.5px] text-soft outline-none transition-colors hover:border-veil/30 focus-visible:ring-2 focus-visible:ring-positive/60"
-              >
-                {SORTS.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SortPicker value={sort} onChange={setSort} className="ml-auto" />
           </div>
 
           {shown.map((contribution) => (
@@ -249,11 +208,14 @@ export function TopicTabs({
 
       {tab === "discussion" ? (
         <div className="flex flex-col gap-[clamp(16px,2vw,22px)]">
-          <p className="m-0 max-w-[620px] text-[13.5px] text-dim">
-            The same contributions as the Opinions tab, ordered by what is being
-            discussed and opened out for reading. Replies sit one level under a
-            contribution — verified developments live in the Timeline tab.
-          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5">
+            <p className="m-0 max-w-[620px] text-[13.5px] text-dim">
+              The same contributions as the Opinions tab, opened out for reading
+              and led by what is being argued about. Replies sit one level under a
+              contribution — verified developments live in the Timeline tab.
+            </p>
+            <SortPicker value={threadSort} onChange={setThreadSort} className="ml-auto" />
+          </div>
           {discussionOrder.map((contribution) => (
             <ContributionCard
               key={contribution.id}

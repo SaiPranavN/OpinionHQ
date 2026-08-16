@@ -190,7 +190,7 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
         .select(
           "id, author_id, anonymous, display_name, initials, vote, body, format, " +
             "author_line, verified_label, helpful_count, dislike_count, reply_count, " +
-            "edit_count, created_at",
+            "edit_count, created_at, edited_at",
         )
         .eq("topic_id", topicId)
         .neq("body", "")
@@ -378,6 +378,7 @@ interface OpinionRow {
   reply_count: number;
   edit_count: number;
   created_at: string;
+  edited_at: string | null;
 }
 
 interface TimelineRow {
@@ -411,6 +412,8 @@ function toOpinion(row: OpinionRow, topicSlug: string): Opinion {
     vote: row.vote as Sentiment,
     text: row.body,
     time: relativeTime(row.created_at),
+    createdAt: row.created_at,
+    editedAt: row.edited_at,
     helpful: row.helpful_count,
     replies: row.reply_count,
     format: row.format === "pro" ? "pro" : "standard",

@@ -1,0 +1,25 @@
+-- =============================================================================
+-- `retract_poll_reason` is now a hole rather than a feature.
+--
+-- It deletes the caller's written reason and leaves their vote standing. That
+-- was a sensible thing to offer while reasons were optional — clearing the box
+-- withdrew the text rather than leaving an old argument sitting under a pick it
+-- no longer explained, and the app called it on exactly that path.
+--
+-- Reasons are required as of 20260816120000. `cast_vote`, `explain_poll_vote`
+-- and `vote_and_explain` all refuse a body under ten characters, so no write
+-- path can produce a vote without an argument attached — except this one, which
+-- produces it by deleting the argument afterwards. A rule enforced on three
+-- doors and not the fourth is not enforced.
+--
+-- Nothing calls it: the app now writes through `vote_and_explain`, and
+-- `withdraw_poll_vote` already removes the reason along with the vote, which is
+-- the operation that still makes sense. Taking your words down is still always
+-- allowed — it just takes the vote with it now, because the two are one thing.
+--
+-- This is the same shape of leftover `toggle_reason_helpful` was, and it is
+-- worth saying why it is worth a migration: a function that is unreachable from
+-- the UI is still reachable over HTTP by anybody with the anon key.
+-- =============================================================================
+
+drop function if exists public.retract_poll_reason(text);

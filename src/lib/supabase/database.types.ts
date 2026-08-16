@@ -1821,6 +1821,7 @@ export type Database = {
           body: string
           created_at: string
           dislike_count: number
+          edited_at: string | null
           helpful_count: number
           hidden_at: string | null
           hidden_reason: string | null
@@ -1836,6 +1837,7 @@ export type Database = {
           body: string
           created_at?: string
           dislike_count?: number
+          edited_at?: string | null
           helpful_count?: number
           hidden_at?: string | null
           hidden_reason?: string | null
@@ -1851,6 +1853,7 @@ export type Database = {
           body?: string
           created_at?: string
           dislike_count?: number
+          edited_at?: string | null
           helpful_count?: number
           hidden_at?: string | null
           hidden_reason?: string | null
@@ -3340,6 +3343,7 @@ export type Database = {
           created_at: string | null
           dislike_count: number | null
           display_name: string | null
+          edited_at: string | null
           helpful_count: number | null
           hidden_at: string | null
           id: string | null
@@ -3830,6 +3834,7 @@ export type Database = {
           body: string
           created_at: string
           dislike_count: number
+          edited_at: string | null
           helpful_count: number
           hidden_at: string | null
           hidden_reason: string | null
@@ -4125,7 +4130,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      retract_poll_reason: { Args: { poll_slug: string }; Returns: boolean }
       review_credential: {
         Args: {
           approve: boolean
@@ -4301,6 +4305,36 @@ export type Database = {
       unique_poll_slug: { Args: { input: string }; Returns: string }
       unique_topic_slug: { Args: { input: string }; Returns: string }
       unpublish_contribution: { Args: { topic_slug: string }; Returns: boolean }
+      vote_and_explain: {
+        Args: {
+          anonymous?: boolean
+          option_slot: Database["public"]["Enums"]["option_slot"]
+          poll_slug: string
+          reason: string
+        }
+        Returns: {
+          anonymous: boolean
+          body: string
+          created_at: string
+          dislike_count: number
+          edited_at: string | null
+          helpful_count: number
+          hidden_at: string | null
+          hidden_reason: string | null
+          id: string
+          option_id: string
+          poll_id: string
+          reply_count: number
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "poll_reasons"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       vote_on_opinion: {
         Args: {
           kind: Database["public"]["Enums"]["reader_vote"]

@@ -6,8 +6,11 @@ import { useMemo, useState } from "react";
 import { useSession } from "@/components/auth/SessionProvider";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { ReplyThread } from "@/components/topic/ReplyThread";
+import { EditedTag } from "@/components/ui/EditedTag";
 import { MediaStrip } from "@/components/ui/MediaStrip";
+import { SortPicker } from "@/components/ui/SortPicker";
 import { buildThread } from "@/lib/comments/tree";
+import { compareBySort, type ContributionSort } from "@/lib/contributions";
 import { formatNumber } from "@/lib/derive-poll";
 import { REASON_WRITES, replyToReason, voteOnReason } from "@/lib/polls/reasons";
 import type {
@@ -55,6 +58,17 @@ export function PollReasons({
   const myId = account?.id ?? null;
 
   /**
+   * One ordering across both columns.
+   *
+   * Per-column controls would let somebody read the two sides under different
+   * rules without noticing — "most upvoted" on the left against "oldest" on the
+   * right is a comparison of two different things laid out to look like one.
+   * The whole point of the side-by-side layout is that neither side is
+   * privileged, and that includes how each is ranked.
+   */
+  const [sort, setSort] = useState<ContributionSort>("upvoted");
+
+  /**
    * One column, with the reader's own reason first and shown exactly once.
    *
    * IT USED TO APPEAR TWICE. This prepended a copy held in `localStorage` on
@@ -71,7 +85,11 @@ export function PollReasons({
    * render. Without it the reason a person just wrote appears to vanish.
    */
   const columnFor = (side: PollOptionId): PollReason[] => {
-    const list = reasons.filter((r) => r.side === side);
+    // Sorted before the reader's own is lifted out, so the chosen ordering
+    // decides everything except that one row.
+    const list = reasons
+      .filter((r) => r.side === side)
+      .sort(compareBySort(sort));
     const ownIndex = myId ? list.findIndex((r) => r.authorId === myId) : -1;
 
     if (ownIndex !== -1) {
@@ -111,15 +129,23 @@ export function PollReasons({
       // Clears the fixed nav, which would otherwise sit over the heading.
       className="flex scroll-mt-[calc(var(--ohq-nav-h)+16px)] flex-col gap-5"
     >
-      <div>
-        <h2 className="m-0 mb-2 font-display text-[clamp(1.6rem,3vw,2.2rem)] leading-[1.05] font-bold tracking-[-0.02em] text-cream-bright">
-          Why people <em>chose what they chose</em>
-        </h2>
-        <p className="m-0 max-w-[620px] text-[13.5px] leading-[1.55] text-dim">
-          Written reasons attached to votes, side by side — and the conversation
-          under each one. Every reason can be liked, disliked and replied to,
-          the same as an opinion on a topic.
-        </p>
+      <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+        <div>
+          <h2 className="m-0 mb-2 font-display text-[clamp(1.6rem,3vw,2.2rem)] leading-[1.05] font-bold tracking-[-0.02em] text-cream-bright">
+            Why people <em>chose what they chose</em>
+          </h2>
+          <p className="m-0 max-w-[620px] text-[13.5px] leading-[1.55] text-dim">
+            Written reasons attached to votes, side by side — and the conversation
+            under each one. Every reason can be liked, disliked and replied to,
+            the same as an opinion on a topic.
+          </p>
+        </div>
+        <SortPicker
+          value={sort}
+          onChange={setSort}
+          label="Sort both sides"
+          className="ml-auto pb-1"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-[clamp(14px,1.6vw,20px)] lg:grid-cols-2">
@@ -307,7 +333,7 @@ function ReasonCard({
             ) : null}
           </span>
           <span className="font-mono text-[9.5px] tracking-[0.08em] uppercase text-dim">
-            Voted {option.name} · {reason.time}
+            Voted {option.name} · {reason.time} <EditedTag at={reason.editedAt} />
           </span>
         </span>
       </header>
