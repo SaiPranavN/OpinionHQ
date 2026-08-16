@@ -37,7 +37,6 @@ import {
   DIM_NOUN,
   contrarianOf,
   crossTab,
-  filterCount,
   readScope,
   scopeLabel,
   withDim,
@@ -78,8 +77,6 @@ export function AudienceExplorer({
   const pick = (dim: AudienceDim, value: string | undefined) =>
     setFilter((f) => withDim(f, dim, value));
 
-  const active = filterCount(filter);
-
   return (
     <section aria-label={title} className="ohq-panel flex flex-col gap-[clamp(16px,2vw,24px)] p-5 sm:p-7">
       <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
@@ -101,9 +98,8 @@ export function AudienceExplorer({
 
       <div className="grid grid-cols-1 gap-[clamp(16px,2vw,24px)] lg:grid-cols-[minmax(0,262px)_minmax(0,1fr)]">
         <div className="flex flex-col gap-3 rounded-[16px] border border-line bg-veil/2 p-4">
-          <span className="ohq-eyebrow">
-            {active === 0 ? "Everyone" : scopeLabel(filter)}
-          </span>
+          {/* `scopeLabel` already says "Everyone" for an empty filter. */}
+          <span className="ohq-eyebrow">{scopeLabel(filter)}</span>
           <ScopeReading
             shares={scope.shares}
             total={scope.total}
