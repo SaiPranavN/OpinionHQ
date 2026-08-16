@@ -14,6 +14,11 @@
  * only lean makes a group of forty people look as important as a group of four
  * thousand. Both questions get answered by the same 200 pixels.
  *
+ * The share is then printed as a number, because a bar is a comparison and not
+ * a reading. Length alone answers "which group is bigger" and never "how big" —
+ * and the gender row directly below these columns has always printed its
+ * figure, so a bare bar here read as a column that had lost its number.
+ *
  * The swing chip on the right is the finding, stated: how far this group sits
  * from everybody currently in scope, in points, on whichever answer is winning.
  * It is measured against the *leader* rather than a fixed column because the
@@ -67,8 +72,8 @@ export function DemoBreakdown({
         </div>
         <div className="grid grid-cols-1 gap-x-[clamp(16px,2vw,22px)] gap-y-2 lg:grid-cols-3">
           {GENDERS.map((row) => (
-            <span key={row.label} className="flex min-w-0 items-center gap-2.5">
-              <span className="w-[104px] lg:w-[92px] shrink-0 text-[12.5px] text-soft">
+            <span key={row.label} className="flex min-w-0 items-center gap-2.5 px-2">
+              <span className="w-[100px] lg:w-[84px] shrink-0 text-[12.5px] text-soft">
                 {row.label}
               </span>
               <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-veil/6">
@@ -77,9 +82,12 @@ export function DemoBreakdown({
                   style={{ width: `${row.pct}%` }}
                 />
               </span>
-              <span className="shrink-0 font-mono text-[11px] tabular-nums text-cream">
-                {row.pct}%
+              <span className="w-[46px] shrink-0 text-right font-mono text-[10.5px] tabular-nums text-cream">
+                {row.pct.toFixed(1)}%
               </span>
+              {/* Holds the swing column's width so the gender figures line up
+                  with the share figures above them rather than with the swings. */}
+              <span aria-hidden className="w-[34px] shrink-0" />
             </span>
           ))}
         </div>
@@ -144,13 +152,13 @@ function DimBlock({
                 aria-pressed={active}
                 aria-label={`${row.label}: ${row.pct} percent of participants, ${stack
                   .map((s, i) => `${s.label} ${shares[i]} percent`)
-                  .join(", ")}`}
+                  .join(", ")}, ${swing === 0 ? "level with" : `${Math.abs(swing)} points ${swing > 0 ? "above" : "below"}`} the reading on ${swingOf.label}`}
                 className={`group flex w-full cursor-pointer items-center gap-2.5 rounded-[9px] px-2 py-[7px] text-left transition-[background,box-shadow] duration-300 outline-none focus-visible:ring-2 focus-visible:ring-positive/60 ${
                   active ? "bg-veil/7" : "hover:bg-veil/4"
                 }`}
               >
                 <span
-                  className={`w-[104px] lg:w-[92px] shrink-0 truncate text-[12.5px] transition-colors duration-300 ${
+                  className={`w-[100px] lg:w-[84px] shrink-0 truncate text-[12.5px] transition-colors duration-300 ${
                     active ? "font-medium text-cream-bright" : "text-soft"
                   }`}
                 >
@@ -175,8 +183,19 @@ function DimBlock({
                   </span>
                 </span>
 
+                {/* What the bar is long *because of*. One decimal, the same as
+                    the gender row, so the two halves of this panel read as one
+                    table rather than as two different instruments. */}
                 <span
-                  className="w-[46px] shrink-0 text-right font-mono text-[10.5px] tabular-nums transition-colors duration-300"
+                  className={`w-[46px] shrink-0 text-right font-mono text-[10.5px] tabular-nums transition-colors duration-300 ${
+                    active ? "text-cream-bright" : "text-cream"
+                  }`}
+                >
+                  {row.pct.toFixed(1)}%
+                </span>
+
+                <span
+                  className="w-[34px] shrink-0 text-right font-mono text-[10.5px] tabular-nums transition-colors duration-300"
                   style={{
                     color:
                       swing === 0
