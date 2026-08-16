@@ -13,6 +13,18 @@
  * edit is worth a permanent two-word footprint; the minute it happened is worth
  * a hover.
  *
+ * THE TIME ZONE IS PINNED, and it has to be. This renders on the server, and
+ * `toLocaleString` with no zone uses whatever the machine's is — which is UTC
+ * on Vercel and IST on the laptop it was written on. The deployed page shipped
+ * "1:28 pm" in its HTML and then React re-rendered it as "6:58 pm" after
+ * hydration: a mismatch, and five and a half hours of wrong for anybody reading
+ * before the JavaScript lands or with it turned off.
+ *
+ * Asia/Kolkata rather than the reader's own zone, because pinning is what makes
+ * server and client agree, and IST is the right default for a site whose
+ * subjects are Indian. It is labelled, so a reader elsewhere knows which clock
+ * they are being shown rather than assuming it is theirs.
+ *
  * DELIBERATELY NOT A COUNT. "edited 3 times" reads as an accusation, and the
  * limit already exists to stop the behaviour that would deserve one.
  */
@@ -28,11 +40,12 @@ export function EditedTag({ at }: { at?: string | null }) {
         year: "numeric",
         hour: "numeric",
         minute: "2-digit",
+        timeZone: "Asia/Kolkata",
       });
 
   return (
     <span
-      title={exact ? `Edited ${exact}` : "Edited after posting"}
+      title={exact ? `Edited ${exact} IST` : "Edited after posting"}
       className="font-mono text-[10px] tracking-[0.08em] whitespace-nowrap text-dim"
     >
       · edited
