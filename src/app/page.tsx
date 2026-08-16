@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CategoriesSection } from "@/components/landing/CategoriesSection";
 import { Hero } from "@/components/landing/Hero";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
+import { ResultShowcase } from "@/components/landing/ResultShowcase";
 import { TwoModesSection } from "@/components/landing/TwoModesSection";
 import { RevealOnScroll } from "@/components/motion/RevealOnScroll";
 import { Footer } from "@/components/site/Footer";
@@ -68,6 +69,14 @@ export default async function LandingPage() {
         pollCount={pollTotals.count}
         pollVotes={pollTotals.votes}
       />
+
+      {/* What the two modes actually produce, as a working instrument rather
+          than as a description of one. Sits directly under the section that
+          introduces them because "you can vote or you can write" is the setup
+          and this is the payoff — the analytics layer is the product, and it
+          used to be entirely invisible until somebody signed up. */}
+      <ResultShowcase />
+
       <HowItWorksSection />
 
       {/* Scope, then out. */}

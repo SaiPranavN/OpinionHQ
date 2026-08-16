@@ -103,6 +103,17 @@ export function TwoModesSection({
               <span className="font-mono text-[10.5px] tracking-[0.1em] uppercase text-dim">
                 {formatNumber(voteCount)} {voteCount === 1 ? "vote" : "votes"}
               </span>
+              {/* Into the showcase below, on this instrument. The hash is what
+                  picks the mode — see ResultShowcase. */}
+              <a
+                href="#inside-topic"
+                className="ml-auto inline-flex items-center gap-1.5 text-[13.5px] text-muted transition-colors duration-300 hover:text-cream"
+              >
+                See a result in full
+                <span aria-hidden className="font-mono">
+                  ↓
+                </span>
+              </a>
             </footer>
           </article>
 
@@ -157,6 +168,15 @@ export function TwoModesSection({
               <span className="font-mono text-[10.5px] tracking-[0.1em] uppercase text-dim">
                 {formatNumber(pollVotes)} {pollVotes === 1 ? "vote" : "votes"}
               </span>
+              <a
+                href="#inside-poll"
+                className="ml-auto inline-flex items-center gap-1.5 text-[13.5px] text-muted transition-colors duration-300 hover:text-cream"
+              >
+                See a result in full
+                <span aria-hidden className="font-mono">
+                  ↓
+                </span>
+              </a>
             </footer>
           </article>
         </div>

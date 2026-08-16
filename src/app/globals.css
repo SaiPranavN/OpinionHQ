@@ -315,6 +315,16 @@
   }
 }
 
+/* Sweeps a normalised path (see `[data-draw]` in the components layer). */
+@keyframes ohq-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 @keyframes ohq-grow-x {
   from {
     transform: scaleX(0);
@@ -685,6 +695,43 @@ select option {
   .ohq-reveal[data-shown="true"] {
     opacity: 1;
     transform: none;
+  }
+
+  /*
+   * Two reveals that key off the *same* `[data-shown]` flag the block above
+   * sets, rather than off a second observer.
+   *
+   * A chart that fades in as a finished line has not shown you anything; a line
+   * that draws itself left to right has shown you a direction of travel before
+   * you have read a single label. `pathLength="1"` is what makes it one rule
+   * instead of per-path JavaScript — it normalises any path to a length of 1,
+   * so a dasharray of 1 covers exactly the whole stroke whatever its real
+   * geometry, and the same declaration works for a two-point line and a
+   * twenty-one-point one.
+   *
+   * `both` matters as much as the keyframes: the fill keeps the offset at 0
+   * after it finishes, so a path whose `d` changes later — every time the
+   * showcase is cross-filtered — stays fully drawn instead of re-hiding.
+   */
+  [data-draw] {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+
+  [data-reveal][data-shown="true"] [data-draw] {
+    animation: ohq-draw 1.5s var(--ease-ohq) both;
+  }
+
+  /* The hairline that finishes an act heading, drawn rather than painted. */
+  .ohq-rule {
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 900ms var(--ease-ohq) 160ms;
+  }
+
+  [data-reveal][data-shown="true"] .ohq-rule,
+  [data-shown="true"].ohq-rule {
+    transform: scaleX(1);
   }
 
   /*

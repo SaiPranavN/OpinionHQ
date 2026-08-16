@@ -23,7 +23,10 @@ const LINKS = [
   { href: "/polls", label: "Polls" },
   { href: "/pro", label: "Pro" },
   { href: "/#how", label: "How it works" },
-  { href: "/#facts", label: "Why it’s different" },
+  // Was `/#facts`, which had not existed on the landing page for some time —
+  // the primary nav's last item scrolled nowhere. "Inside a result" is the
+  // section that makes the argument this label promises.
+  { href: "/#inside", label: "Why it’s different" },
 ] as const;
 
 export function Nav() {

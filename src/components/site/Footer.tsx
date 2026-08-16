@@ -34,7 +34,8 @@ const EXPLORE = [
 
 const ABOUT = [
   { href: "/#how", label: "How it works" },
-  { href: "/#facts", label: "Why it’s different" },
+  // See the note in Nav.tsx — `/#facts` was a dead anchor in both menus.
+  { href: "/#inside", label: "Why it’s different" },
   { href: "/#modes", label: "The two modes" },
 ];
 

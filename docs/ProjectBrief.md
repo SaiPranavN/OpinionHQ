@@ -396,6 +396,38 @@ Visitors should be able to access the landing page and entity dashboards without
 
 This allows them to understand the value of OpinionHQ before registering.
 
+### 12.6 Inside a Result
+
+The landing page carries a working copy of the analytics layer, so a visitor can
+see what a subject page produces before creating an account: the distribution,
+the trend with verified events plotted on it, the cross-tabs by region, age and
+occupation, the aspect questions, and the written contributions with their
+replies. One switch moves the whole panel between the two public modes, and
+clicking any breakdown row re-reads every chart as that group.
+
+Implemented in `src/components/landing/ResultShowcase.tsx` and
+`src/components/landing/showcase/`.
+
+**It runs on a worked example, and that is a rule rather than a convenience.**
+No figure in the section is a measurement, so:
+
+* The subject is generic and implicates no real institution, exam, film, brand
+  or person, and regions are compass directions rather than named states.
+* No headcount appears anywhere — shares only. Days are numbered, not dated.
+* Contributions are attributed to "Participant" and a position. Never a name,
+  an avatar or a like count.
+* The panel carries an "Illustration" badge in its chrome, above the first
+  chart, in the position a live page uses for its status.
+
+Every number comes from one model (`showcase/data.ts`) rather than from
+hand-written percentages, which is what lets the panels stay consistent under
+filtering. The invariants that model has to hold are tested in
+`showcase/data.test.ts`.
+
+§30 requires every live analytic to be aggregated server-side from stored
+votes. This section is the other half of that rule: where a figure is *not*
+aggregated from votes, it must be unmistakable that it is not.
+
 ---
 
 ## 13. Search and Discovery
