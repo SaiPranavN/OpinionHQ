@@ -14,6 +14,7 @@ import "server-only";
  * reproduce.
  */
 
+import { pollCells, type AudienceCell, type PollCellRow } from "@/lib/audience/cells";
 import { decoratePoll } from "@/lib/derive-poll";
 import type { ReadClient } from "@/lib/supabase/public";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -102,6 +103,8 @@ export async function listPolls(client?: ReadClient): Promise<DecoratedPoll[]> {
 
 export interface PollPage {
   poll: DecoratedPoll;
+  /** The joint demographic cross-tab. See TopicPage.audienceCells. */
+  audienceCells: AudienceCell[];
   reasons: PollReason[];
   /** The viewer's own pick, when they have one. */
   myVote: PollOptionId | null;
@@ -145,6 +148,10 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
 
   const results = await Promise.all([
     supabase.rpc("poll_audience", { target: pollId }).then((r) => r.data),
+    // The same measurement, undecomposed: one row per distinct demographic
+    // combination rather than three independent summaries. It is what lets the
+    // cross-tabs filter each other — see lib/audience/cells.ts.
+    supabase.rpc("poll_audience_cells", { target: pollId }).then((r) => r.data),
     supabase.rpc("poll_demographic_opt_in", { target: pollId }).then((r) => r.data),
     supabase.rpc("poll_reason_counts", { target: pollId }).then((r) => r.data),
     // From the votes themselves. `poll_history` was meant to be filled by a
@@ -183,7 +190,8 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
       : Promise.resolve(null),
   ]);
 
-  const [audienceRows, optIn, reasonCountRows, historyRows, reasonRows, myVoteRow] = results;
+  const [audienceRows, cellRows, optIn, reasonCountRows, historyRows, reasonRows, myVoteRow] =
+    results;
 
   const reasonCounts: Partial<Record<PollOptionId, number>> = {};
   for (const r of (reasonCountRows as { slot: string; reasons: number }[] | null) ?? []) {
@@ -353,6 +361,7 @@ export async function getPollPage(slug: string): Promise<PollPage | null> {
 
   return {
     poll: decoratePoll(poll),
+    audienceCells: pollCells((cellRows as PollCellRow[] | null) ?? [], options.length),
     reasons,
     replies,
     myVote,

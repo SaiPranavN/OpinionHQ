@@ -3964,6 +3964,17 @@ export type Database = {
           voters: number
         }[]
       }
+      poll_audience_cells: {
+        Args: { target: string }
+        Returns: {
+          age: string
+          gender: string
+          occupation: string
+          region: string
+          slot: Database["public"]["Enums"]["option_slot"]
+          voters: number
+        }[]
+      }
       poll_daily_series: {
         Args: { target: string }
         Returns: {
@@ -4261,6 +4272,17 @@ export type Database = {
           dimension: string
           responses: number
           segment: string
+          vote: Database["public"]["Enums"]["sentiment"]
+        }[]
+      }
+      topic_audience_cells: {
+        Args: { target: string }
+        Returns: {
+          age: string
+          gender: string
+          occupation: string
+          region: string
+          responses: number
           vote: Database["public"]["Enums"]["sentiment"]
         }[]
       }

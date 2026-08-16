@@ -161,6 +161,45 @@ describe("security definer functions pin their search path", () => {
   });
 });
 
+describe("the audience cross-tabs", () => {
+  /**
+   * The joint cells are a sharper instrument than the marginals they replace on
+   * the page, so the guard in front of them matters more, not less. Without the
+   * publication check these functions would cross-tab an unpublished draft for
+   * anybody who knew its id — and because they are SECURITY DEFINER, row-level
+   * security would not stop it.
+   */
+  it("refuse a subject the caller is not allowed to see", () => {
+    for (const [fn, table] of [
+      ["topic_audience_cells", "topics"],
+      ["poll_audience_cells", "polls"],
+    ] as const) {
+      const body = sql.slice(sql.lastIndexOf(`create or replace function public.${fn}`));
+      const head = body.slice(0, body.indexOf("return query"));
+      expect(head, fn).toContain(`from public.${table}`);
+      expect(head, fn).toContain("published_at is not null");
+      expect(head, fn).toContain("archived_at is null");
+      expect(head, fn).toContain("public.is_editor()");
+    }
+  });
+
+  it("null out the answers that do not count as answers", () => {
+    // "Prefer not to say" is a real response and is stored, and it is still not
+    // a gender. An occupation outside `counts_in_breakdowns` is the same rule.
+    // Both are nulled per column rather than filtered per row, so somebody who
+    // declined one question is still counted in the three they answered.
+    for (const fn of ["topic_audience_cells", "poll_audience_cells"]) {
+      const body = sql.slice(sql.lastIndexOf(`create or replace function public.${fn}`));
+      expect(body.slice(0, 2000), fn).toContain("<> 'Prefer not to say'");
+      expect(body.slice(0, 2000), fn).toContain("counts_in_breakdowns");
+      // A left join, not an inner one — an inner join here would silently drop
+      // every voter who skipped a field from all four breakdowns.
+      expect(body.slice(0, 2000), fn).toContain("left join public.occupations");
+      expect(body.slice(0, 2000), fn).toContain("left join lateral");
+    }
+  });
+});
+
 describe("Pro", () => {
   it("the fallback price matches the one seeded into pro_offer", () => {
     // `PRO_PRICE_INR` renders before the offer row arrives, and `pro_offer`

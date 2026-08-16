@@ -15,6 +15,7 @@ import "server-only";
  * the query has to reproduce.
  */
 
+import { topicCells, type AudienceCell, type TopicCellRow } from "@/lib/audience/cells";
 import { decorate } from "@/lib/derive";
 import { toMedia, type MediaRow } from "@/lib/media";
 import type { ReadClient } from "@/lib/supabase/public";
@@ -78,6 +79,15 @@ interface ReplyRow {
 
 export interface TopicPage {
   topic: DecoratedTopic;
+  /**
+   * The joint demographic cross-tab, for the audience panel to filter on.
+   *
+   * Separate from `topic.geo` / `topic.ageGroups` / … , which are the same
+   * measurement already collapsed to four independent summaries. Those still
+   * feed the PDF export and anything that needs one static answer; this is what
+   * a reader can push on.
+   */
+  audienceCells: AudienceCell[];
   opinions: Opinion[];
   /** Threaded replies, keyed by the opinion they hang under. */
   replies: Record<string, OpinionReply[]>;
@@ -162,6 +172,7 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
     { data: mine },
     { data: facetAnswers },
     { data: audienceRows },
+    { data: cellRows },
     { data: optIn },
     { data: tallyRows },
     { data: seriesRows },
@@ -211,6 +222,12 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
       // answered. All three replaced generators — see the note on
       // `facetResults` in lib/derive.ts.
       supabase.rpc("topic_audience", { target: topicId }),
+      // The same measurement, undecomposed: one row per distinct demographic
+      // combination rather than four independent summaries. It is what lets the
+      // cross-tabs filter each other — see lib/audience/cells.ts — and it is a
+      // separate call rather than a replacement because the summaries above
+      // still feed the export and the KPI strip.
+      supabase.rpc("topic_audience_cells", { target: topicId }),
       supabase.rpc("topic_demographic_opt_in", { target: topicId }),
       supabase.rpc("aspect_tallies", { target: topicId }),
       // Per-day participation and sentiment, counted from opinions.created_at.
@@ -309,6 +326,7 @@ export async function getTopicPage(slug: string): Promise<TopicPage | null> {
         })),
       }),
     ),
+    audienceCells: topicCells((cellRows as TopicCellRow[] | null) ?? []),
     opinions,
     replies,
     myReplyVotes,

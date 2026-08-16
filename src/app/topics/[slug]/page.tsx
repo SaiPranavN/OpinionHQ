@@ -95,6 +95,7 @@ export default async function TopicPage({
         myReplyVotes={page.myReplyVotes}
         myOpinionVotes={page.myOpinionVotes}
         timeline={page.timeline}
+        audienceCells={page.audienceCells}
       />
       <Footer />
     </>

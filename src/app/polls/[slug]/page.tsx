@@ -76,7 +76,7 @@ export default async function PollPage({
   // the query ran under — the row policy decides that, not this file.
   if (!page) notFound();
 
-  const { poll, reasons } = page;
+  const { poll, reasons, audienceCells } = page;
 
   return (
     <>
@@ -93,7 +93,7 @@ export default async function PollPage({
             a reader has immediately after seeing the split, and it is a worse
             answer once they have been through three breakdowns. */}
         <PollHistory poll={poll} />
-        <PollAudience poll={poll} />
+        <PollAudience poll={poll} cells={audienceCells} />
         <PollVotePanel poll={poll} />
         <PollReasons
           poll={poll}

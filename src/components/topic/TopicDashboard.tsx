@@ -8,6 +8,7 @@ import { ParticipationChart } from "@/components/topic/ParticipationChart";
 import { SentimentDonut } from "@/components/topic/SentimentDonut";
 import { SentimentTrend } from "@/components/topic/SentimentTrend";
 import { VotePanel } from "@/components/topic/VotePanel";
+import type { AudienceCell } from "@/lib/audience/cells";
 import { categoryAccent } from "@/lib/taxonomy";
 import type {
   OpinionReply,
@@ -30,6 +31,7 @@ export function TopicDashboard({
   replies,
   myReplyVotes,
   myOpinionVotes,
+  audienceCells,
 }: {
   topic: DecoratedTopic;
   context: TopicContext;
@@ -38,6 +40,8 @@ export function TopicDashboard({
   replies: Record<string, OpinionReply[]>;
   myReplyVotes: Record<string, "like" | "dislike">;
   myOpinionVotes: Record<string, "like" | "dislike">;
+  /** The joint cross-tab the audience panel filters on. */
+  audienceCells: AudienceCell[];
 }) {
   // One accent for the whole topic, resolved once and handed down. Richer
   // contributions tint with it so a card reads as belonging to *this* subject
@@ -66,7 +70,7 @@ export function TopicDashboard({
           <ParticipationChart topic={topic} />
         </div>
         <KpiGrid topic={topic} />
-        <AudiencePanels topic={topic} />
+        <AudiencePanels topic={topic} cells={audienceCells} />
       </div>
 
       {/* 2 — Where you add yours: the headline vote, then the aspects under it. */}
