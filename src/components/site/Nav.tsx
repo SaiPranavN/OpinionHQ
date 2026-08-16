@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "@/components/auth/SessionProvider";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { ThemeToggle } from "@/components/site/ThemeToggle";
+import { POLL_CTA } from "@/lib/taxonomy";
 
 /**
  * The five destinations, in one list.
@@ -20,7 +21,9 @@ import { ThemeToggle } from "@/components/site/ThemeToggle";
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/topics", label: "Topics" },
-  { href: "/polls", label: "Polls" },
+  // "Pick a side" is what a poll is called where somebody is being invited to
+  // take one — here and on the landing page's own button. See POLL_CTA.
+  { href: "/polls", label: POLL_CTA },
   { href: "/pro", label: "Pro" },
   { href: "/#how", label: "How it works" },
   // Was `/#facts`, which had not existed on the landing page for some time —

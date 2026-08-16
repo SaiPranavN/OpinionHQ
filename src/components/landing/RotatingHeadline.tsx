@@ -34,28 +34,54 @@ interface Word {
   tone: Tone;
 }
 
+/**
+ * The subject list every phrase ends on.
+ *
+ * Shared rather than repeated, because it is the same nine words three times
+ * and the one thing that must not drift between them: the phrases differ only
+ * in their opening clause, so a typo in one copy would show up as a flicker
+ * every nine seconds and nowhere else.
+ *
+ * "more !!" carries a non-breaking space. The words are laid out as separate
+ * inline blocks and a normal space there lets a narrow viewport strand the two
+ * exclamation marks alone on the last line.
+ */
+const SUBJECTS: Word[] = [
+  { text: "on", tone: "plain" },
+  { text: "movies,", tone: "plain" },
+  { text: "sports,", tone: "plain" },
+  { text: "politics,", tone: "plain" },
+  { text: "tech", tone: "plain" },
+  { text: "and", tone: "plain" },
+  { text: "many", tone: "plain" },
+  { text: "more !!", tone: "plain" },
+];
+
+/**
+ * "Pick a side" is the poll half now, and it is purple for that reason.
+ *
+ * The colour language is the product's, not this component's: green is a
+ * measured opinion and purple is a forced choice, everywhere on the site. The
+ * phrase changed; what it refers to did not.
+ */
 const PHRASES: Word[][] = [
   [
     { text: "Explore", tone: "plain" },
     { text: "people’s", tone: "plain" },
     { text: "opinions", tone: "opinion" },
+    ...SUBJECTS,
   ],
   [
     { text: "Give", tone: "plain" },
     { text: "your", tone: "plain" },
     { text: "opinion", tone: "opinion" },
+    ...SUBJECTS,
   ],
   [
-    { text: "Know", tone: "plain" },
-    { text: "who’s", tone: "plain" },
-    { text: "winning", tone: "plain" },
-    { text: "in", tone: "plain" },
-    { text: "polls", tone: "poll" },
-  ],
-  [
-    { text: "Participate", tone: "plain" },
-    { text: "in", tone: "plain" },
-    { text: "polls", tone: "poll" },
+    { text: "Pick", tone: "poll" },
+    { text: "a", tone: "poll" },
+    { text: "side", tone: "poll" },
+    ...SUBJECTS,
   ],
 ];
 

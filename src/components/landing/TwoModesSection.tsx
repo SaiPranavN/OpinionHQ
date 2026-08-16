@@ -199,6 +199,34 @@ export function TwoModesSection({
  * The shape is the point and the shape is kept. The subject is now plainly an
  * example, and no number that could be read as a count of people survives.
  */
+/**
+ * "Illustration — nothing here is counted", next to the figure it disclaims.
+ *
+ * WHY THIS APPEARED WHEN THE SUBJECTS GOT NAMES. These two cards used to be
+ * headed "Example topic" and "Example poll", which made the disclaimer almost
+ * redundant — nobody reads "78% Negative" under the word *example* as a finding
+ * about anything. They now name a real film and two real products, at the
+ * product owner's request, and the same 78% becomes a specific claim about a
+ * specific film sitting on the most-read page of the site.
+ *
+ * The footnote underneath already said so, and a footnote is where the last
+ * fabricated figure on this page hid too — "NEET UG 2026 Paper Leak, 78%
+ * Negative, of 42,847 participants" ran live with a caveat below it. Beside the
+ * number, in the same eyeline, is the difference between disclosing something
+ * and technically having mentioned it.
+ *
+ * The percentages are unchanged and deliberately still describe nothing. If a
+ * real reading is ever wanted here, it has to come from the database.
+ */
+function IllustrationChip() {
+  return (
+    <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-veil/12 bg-veil/4 px-2.5 py-[3px] font-mono text-[9.5px] tracking-[0.1em] uppercase text-dim">
+      <span aria-hidden>◇</span>
+      Illustration — nothing here is counted
+    </span>
+  );
+}
+
 function SentimentMini() {
   const rows = [
     { label: "Positive", pct: 8, color: "#1DB954" },
@@ -207,13 +235,16 @@ function SentimentMini() {
   ];
   return (
     <figure
-      aria-label="Example topic result: 8 percent positive, 14 percent neutral, 78 percent negative"
+      aria-label="Illustration of a topic result on The Odyssey — not measured: 8 percent positive, 14 percent neutral, 78 percent negative"
       className="m-0 flex flex-col gap-3 rounded-[16px] border border-veil/8 bg-surface-sunken p-5"
     >
       <figcaption className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="text-[13px] font-medium text-soft">Example topic</span>
+        <span className="text-[13px] font-medium text-soft">
+          Your opinion on <em className="not-italic text-cream">The Odyssey</em>
+        </span>
         <span className="text-[15px] font-semibold text-negative">78% Negative</span>
       </figcaption>
+      <IllustrationChip />
       {rows.map((row, i) => (
         <div key={row.label} className="flex items-center gap-3">
           <span className="w-[58px] shrink-0 text-[11.5px] text-dim">{row.label}</span>
@@ -252,13 +283,17 @@ function SentimentMini() {
 function PollMini() {
   return (
     <figure
-      aria-label="Example poll result: option A 47 percent, option B 53 percent"
+      aria-label="Illustration of a poll result on iPhone versus Android — not measured: iPhone 47 percent, Android 53 percent"
       className="m-0 flex flex-col gap-3 rounded-[16px] border border-veil/8 bg-surface-sunken p-5"
     >
       <figcaption className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="text-[13px] font-medium text-soft">Example poll</span>
-        <span className="text-[15px] font-semibold text-poll-soft">53% B</span>
+        <span className="text-[13px] font-medium text-soft">
+          <em className="not-italic text-cream">iPhone</em> vs{" "}
+          <em className="not-italic text-cream">Android</em>
+        </span>
+        <span className="text-[15px] font-semibold text-poll-soft">53% Android</span>
       </figcaption>
+      <IllustrationChip />
       <div className="flex h-9 gap-[3px]">
         <span
           className="flex origin-left animate-grow-x items-center justify-start rounded-[4px] pl-2.5 text-[13px] font-semibold text-[#07240f]"
@@ -274,8 +309,8 @@ function PollMini() {
         </span>
       </div>
       <div className="flex flex-wrap items-baseline justify-between gap-2 text-[11.5px]">
-        <span className="text-dim">Option A</span>
-        <span className="text-dim">Option B</span>
+        <span className="text-dim">iPhone</span>
+        <span className="text-dim">Android</span>
       </div>
       <figcaption className="border-t border-line pt-3 text-[11px] leading-[1.5] text-dim">
         An illustration of the shape. A real poll states its own margin and

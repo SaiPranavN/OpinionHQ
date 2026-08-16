@@ -3,6 +3,7 @@ import Link from "next/link";
 import { RotatingHeadline } from "@/components/landing/RotatingHeadline";
 
 import { formatNumber } from "@/lib/derive";
+import { POLL_CTA } from "@/lib/taxonomy";
 
 export function Hero({
   topicCount,
@@ -63,13 +64,18 @@ export function Hero({
           words are still ordinary text in the DOM, so nothing is hidden from a
           crawler.
 
-          Typography, centring and the reveal are unchanged; only the content of
-          the h1 is different.
+          THE TYPE IS SMALLER THAN IT WAS, and it had to come down a long way.
+          The phrases used to be three or four words; they now name what the
+          site covers, which is another nine. At the old 6.6rem the shortest of
+          them ran to four lines on a laptop and pushed the calls to action off
+          the first screen — and because the rotator reserves the height of the
+          tallest phrase, that space would have been held open permanently.
+          Two lines at every width above a phone, measured rather than guessed.
         */}
         <h1
           data-reveal
-          aria-label="Explore people’s opinions, give your own, and see who is winning in the polls."
-          className="ohq-reveal m-0 flex w-full justify-center font-display text-[clamp(2.9rem,7.4vw,6.6rem)] leading-[0.96] font-bold tracking-[-0.026em] text-cream-bright delay-[80ms] duration-[1150ms]"
+          aria-label="Explore people’s opinions, give your own, or pick a side — on movies, sports, politics, tech and much more."
+          className="ohq-reveal m-0 flex w-full justify-center font-display text-[clamp(1.75rem,4vw,3.5rem)] leading-[1.06] font-bold tracking-[-0.022em] text-cream-bright delay-[80ms] duration-[1150ms]"
         >
           <RotatingHeadline />
         </h1>
@@ -119,7 +125,7 @@ export function Hero({
             icon={<PollsIcon />}
             className="border border-poll/45 bg-poll/10 text-poll-soft transition-[background,border-color] hover:border-poll/70 hover:bg-poll/18"
           >
-            Participate in a poll
+            {POLL_CTA}
           </CTA>
         </div>
 

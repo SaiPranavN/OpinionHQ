@@ -35,6 +35,22 @@ export const SENTIMENT_VAR: Record<Sentiment, string> = {
 
 export const SPLIT_COLOR = "#D6D3CD";
 
+/**
+ * What a poll is called when somebody is being asked to take part in one.
+ *
+ * A DISPLAY LABEL AND NOTHING ELSE. The route is still `/polls`, the table is
+ * still `polls`, the type is still `Poll`, and every breadcrumb, dashboard tab
+ * and admin screen still says so. Renaming the concept would mean renaming a
+ * schema; this renames the invitation.
+ *
+ * Used in the two places the product owner asked for — the primary nav and the
+ * landing page's poll button — because those are the two that read as a call to
+ * do something rather than as a label for a section. It is a constant rather
+ * than two string literals so the two cannot end up saying different things,
+ * which is the entire failure mode of a rename applied by hand.
+ */
+export const POLL_CTA = "Pick a side";
+
 export function sentimentColor(sentiment: Sentiment): string {
   return SENTIMENT_COLOR[sentiment];
 }
