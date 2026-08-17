@@ -7,10 +7,10 @@ import { topicCountByCategory, trendingTopics } from "@/lib/topics";
 import { listTopics } from "@/lib/topics/queries";
 
 export const metadata: Metadata = {
-  // Matches the h1 on the page. A tab reading "Explore topics" over a heading
-  // reading "Explore opinions" is the kind of drift nobody notices until it is
-  // in a screenshot.
-  title: "Explore opinions",
+  // Matches the h1 on the page. A tab reading one thing over a heading reading
+  // another is the kind of drift nobody notices until it is in a screenshot —
+  // which is exactly how the previous pair was caught.
+  title: "Explore topics & give your opinion",
   description:
     "Explore active topics and see how OpinionHQ participants currently feel about them. Percentages describe OpinionHQ participants only.",
   alternates: { canonical: "/topics" },

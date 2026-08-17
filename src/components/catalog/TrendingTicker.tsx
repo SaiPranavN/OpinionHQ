@@ -231,7 +231,10 @@ function TickerButton({
       // 28px is below the 44px touch target the rest of the app keeps, and
       // deliberately: three of these at 44px would eat a third of a phone's
       // width. The padding widens the tappable box without widening the glyph.
-      className={`grid h-8 min-w-8 cursor-pointer place-items-center rounded-[7px] border border-veil/12 px-1.5 text-[11px] leading-none text-muted transition-[border-color,color] duration-300 outline-none hover:text-cream focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-ink ${skin.border} ${skin.ring}`}
+      // `rounded-full`, like every other control on these pages. Three 7px
+      // rectangles sitting directly above a row of pills was the only square
+      // corner on the catalog.
+      className={`grid h-8 min-w-8 cursor-pointer place-items-center rounded-full border border-veil/12 px-1.5 text-[11px] leading-none text-muted transition-[border-color,color] duration-300 outline-none hover:text-cream focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-ink ${skin.border} ${skin.ring}`}
     >
       {children}
     </button>

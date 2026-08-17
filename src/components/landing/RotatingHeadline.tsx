@@ -85,8 +85,20 @@ const PHRASES: Word[][] = [
   ],
 ];
 
-/** How long a phrase sits still. Inside the 2.5–3.5s the brief asked for. */
-const HOLD_MS = 3000;
+/**
+ * How long a phrase sits still.
+ *
+ * 3s was right when the phrases were three words. They are twelve now, and the
+ * hold has to cover reading them, not glancing at them — at an unhurried ~3.5
+ * words a second that is a little over three seconds of reading before the line
+ * starts to leave, which left no margin at all and none for a second reader who
+ * is slower than the first.
+ *
+ * 5.5s is the read plus a beat to finish it. It also matters more than it looks
+ * that the *whole* line turns over: there is no anchor word left on screen to
+ * re-orient against, so a phrase caught mid-read is simply lost.
+ */
+const HOLD_MS = 5500;
 
 /**
  * The roll.

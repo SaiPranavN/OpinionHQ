@@ -69,8 +69,8 @@ export function CatalogView({
 
       <header className="mt-4 flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         <div className="min-w-0">
-          <h1 className="m-0 font-display text-[clamp(2rem,4vw,3.1rem)] leading-[1.02] font-bold tracking-[-0.025em] text-cream-bright">
-            Explore <em>opinions</em>
+          <h1 className="m-0 font-display text-[clamp(1.75rem,3.4vw,2.8rem)] leading-[1.05] font-bold tracking-[-0.025em] text-balance text-cream-bright">
+            Explore topics &amp; <em>give your opinion</em>
           </h1>
           <p className="mt-2 mb-0 max-w-[560px] text-[14px] leading-[1.5] font-light text-muted">
             Explore active topics and see how <Brand /> participants currently feel
@@ -97,10 +97,16 @@ export function CatalogView({
         </div>
       </header>
 
-      {/* The search box takes a whole row to itself on a phone and shares one
-          from `sm` up. It used to sit inline at every width, which left it
-          about 40% of a 390px screen with "Search topics" already filling it. */}
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      {/* The search box takes a whole row on a phone and shares one from `sm`
+          up. It used to sit inline at every width, which left it about 40% of a
+          390px screen with "Search topics" already filling it.
+
+          The two selects are a two-column grid underneath it rather than more
+          wrapping flex items. Wrapped, they sized to their own content — a
+          narrow "Anywhere" beside a wide "Trending" with a gap of dead space
+          after them, and the pair re-splitting at every viewport width. A grid
+          gives them one width each and one row, always. */}
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
         <div className="flex w-full min-w-0 sm:w-auto sm:flex-1">
           <SearchField
             value={query}
@@ -110,12 +116,14 @@ export function CatalogView({
             placeholder="Search topics"
           />
         </div>
-        <PlaceFilter
-          value={place}
-          places={all.map((topic) => topic.place)}
-          onChange={setPlace}
-        />
-        <SortControl value={sort} onChange={setSort} />
+        <div className="grid grid-cols-2 gap-3 sm:flex sm:shrink-0 sm:items-center">
+          <PlaceFilter
+            value={place}
+            places={all.map((topic) => topic.place)}
+            onChange={setPlace}
+          />
+          <SortControl value={sort} onChange={setSort} />
+        </div>
       </div>
 
       <div className="mt-4">

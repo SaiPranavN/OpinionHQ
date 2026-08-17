@@ -108,8 +108,10 @@ export function SearchField({
 
   return (
     <div className="relative min-w-0 flex-1 sm:max-w-[560px]">
+      {/* `h-11`, not `h-12`. It was the tallest thing in a row of controls that
+          are all the same kind of thing; see ui/control.ts. */}
       <div
-        className={`flex h-12 items-center gap-2.5 rounded-full border bg-surface pr-2 pl-4 transition-[border-color,box-shadow] duration-300 ${
+        className={`flex h-11 items-center gap-2.5 rounded-full border bg-surface pr-2 pl-4 transition-[border-color,box-shadow] duration-300 ${
           focused ? tone.focus : "border-veil/10"
         }`}
       >

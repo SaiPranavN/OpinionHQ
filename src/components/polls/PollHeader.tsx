@@ -153,7 +153,9 @@ export function PollHeader({
             </li>
           ))}
         </ul>
-        <span className="ml-auto flex flex-wrap gap-2.5">
+        {/* Two even columns on a phone, an inline row from `sm` — the same
+            treatment as the topic header, for the same reason. */}
+        <span className="mt-1 grid w-full grid-cols-2 gap-2.5 [&>*]:w-full [&>*]:justify-center sm:mt-0 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap sm:[&>*]:w-auto">
           {/* A split bar says who won and nothing about why. The reasons are
               the interesting half, and they sit below three panels of
               cross-tabs — far enough down to be missed. */}

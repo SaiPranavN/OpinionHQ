@@ -13,6 +13,7 @@
  * about nowhere in particular.
  */
 
+import { CONTROL_LABEL, CONTROL_SHELL } from "@/components/ui/control";
 import {
   occupiedPlaces,
   placeCounts,
@@ -40,14 +41,14 @@ export function PlaceFilter({
   const options = placeOptions().filter((option) => live.has(option.id));
 
   return (
-    <label className="flex shrink-0 items-center gap-2 font-mono text-[10px] tracking-[0.14em] uppercase text-dim">
+    <label className={CONTROL_LABEL}>
       Place
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as PlaceFilterId)}
         aria-label="Filter by place"
-        className={`h-11 cursor-pointer rounded-full border px-4 font-sans text-[13.5px] tracking-[-0.01em] normal-case text-cream outline-none transition-colors duration-300 ${
-          value === "any" ? "border-veil/10 bg-surface" : ACTIVE[accent]
+        className={`cursor-pointer ${CONTROL_SHELL} ${
+          value === "any" ? "border-veil/10" : ACTIVE[accent]
         } ${FOCUS[accent]}`}
       >
         <option value="any">Anywhere</option>
@@ -65,9 +66,9 @@ export function PlaceFilter({
 /* Written out in full rather than interpolated: Tailwind scans source text for
    class names, and a name assembled at runtime is a name it never emits. */
 const ACTIVE: Record<string, string> = {
-  positive: "border-positive/45 bg-positive/10 text-positive-light",
-  poll: "border-poll/45 bg-poll/10 text-poll-soft",
-  private: "border-private/45 bg-private/10 text-private-soft",
+  positive: "border-positive/45 !bg-positive/10 text-positive-light",
+  poll: "border-poll/45 !bg-poll/10 text-poll-soft",
+  private: "border-private/45 !bg-private/10 text-private-soft",
 };
 
 const FOCUS: Record<string, string> = {

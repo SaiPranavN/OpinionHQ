@@ -129,7 +129,15 @@ export function TopicHeader({ topic, context, timeline }: TopicHeaderProps) {
             </span>
           </>
         )}
-        <span className="ml-auto flex flex-wrap gap-2.5">
+        {/* A two-column grid on a phone, an inline row from `sm`.
+            Wrapping, the four sized themselves to their own labels, so a narrow
+            screen got "Go to discussions" and "Export PDF" on one line and
+            "Follow" and "Share" on the next at completely different widths —
+            four pills, four widths, two ragged rows. The grid gives them one
+            width each; `[&>*]:w-full` reaches the three that are components
+            rather than markup, so their own classes do not have to know about
+            this layout. */}
+        <span className="mt-1 grid w-full grid-cols-2 gap-2.5 [&>*]:w-full [&>*]:justify-center sm:mt-0 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap sm:[&>*]:w-auto">
           {/* First in the row and the only filled one: reading the numbers is
               what a visitor came for, and reading what people said about them
               is what they want next. Export and Follow are for people who have

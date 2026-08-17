@@ -9,6 +9,7 @@ import { PollCard } from "@/components/polls/PollCard";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { SuggestButton } from "@/components/pro/SuggestButton";
 import { WelcomeOffer } from "@/components/pro/WelcomeOffer";
+import { CONTROL_LABEL, CONTROL_SHELL } from "@/components/ui/control";
 import { PlaceFilter } from "@/components/ui/PlaceFilter";
 import { SearchField } from "@/components/ui/SearchField";
 import { formatNumber } from "@/lib/derive-poll";
@@ -99,9 +100,12 @@ export function PollsCatalog({
         </div>
       </header>
 
-      {/* Full-width search on a phone, inline from `sm` up — see the same row
-          on the topics catalog. */}
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      {/* The same row as the topics catalog, laid out the same way and built
+          from the same pieces — see CatalogView for why the two selects are a
+          grid rather than more wrapping flex items. The sort control is a
+          local one only because a poll sorts by things a topic has no notion
+          of; it wears the shared shell. */}
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
         <div className="flex w-full min-w-0 sm:w-auto sm:flex-1">
           <SearchField
             value={query}
@@ -112,27 +116,29 @@ export function PollsCatalog({
             accent="poll"
           />
         </div>
-        <PlaceFilter
-          value={place}
-          places={polls.map((poll) => poll.place)}
-          onChange={setPlace}
-          accent="poll"
-        />
-        <label className="flex shrink-0 items-center gap-2 font-mono text-[10px] tracking-[0.14em] uppercase text-dim">
-          Sort
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as PollSortId)}
-            aria-label="Sort polls"
-            className="h-11 cursor-pointer rounded-full border border-veil/10 bg-surface px-4 font-sans text-[13.5px] tracking-[-0.01em] normal-case text-cream outline-none transition-colors duration-300 focus:border-poll/50"
-          >
-            {POLL_SORTS.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="grid grid-cols-2 gap-3 sm:flex sm:shrink-0 sm:items-center">
+          <PlaceFilter
+            value={place}
+            places={polls.map((poll) => poll.place)}
+            onChange={setPlace}
+            accent="poll"
+          />
+          <label className={CONTROL_LABEL}>
+            Sort
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as PollSortId)}
+              aria-label="Sort polls"
+              className={`cursor-pointer border-veil/10 ${CONTROL_SHELL} focus:border-poll/60 focus-visible:ring-2 focus-visible:ring-poll/40`}
+            >
+              {POLL_SORTS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       <div className="mt-4">
