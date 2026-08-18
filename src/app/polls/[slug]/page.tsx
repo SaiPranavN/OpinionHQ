@@ -3,6 +3,13 @@ import { notFound } from "next/navigation";
 
 import { RevealOnScroll } from "@/components/motion/RevealOnScroll";
 import { PollAudience } from "@/components/polls/PollAudience";
+import {
+  AudienceIcon,
+  DiscussionIcon,
+  ResultIcon,
+  SectionRail,
+  VoteIcon,
+} from "@/components/ui/SectionRail";
 import { ApprovalNotice } from "@/components/polls/ApprovalNotice";
 import { PollHeader } from "@/components/polls/PollHeader";
 import { PollHistory } from "@/components/polls/PollHistory";
@@ -92,15 +99,33 @@ export default async function PollPage({
         {/* History before the cross-tabs: "how did we get here" is the question
             a reader has immediately after seeing the split, and it is a worse
             answer once they have been through three breakdowns. */}
-        <PollHistory poll={poll} />
-        <PollAudience poll={poll} cells={audienceCells} />
-        <PollVotePanel poll={poll} />
+        <div id="result" className="scroll-mt-[calc(var(--ohq-nav-h)+18px)]">
+          <PollHistory poll={poll} />
+        </div>
+        <div id="audience" className="scroll-mt-[calc(var(--ohq-nav-h)+18px)]">
+          <PollAudience poll={poll} cells={audienceCells} />
+        </div>
+        <div id="vote" className="scroll-mt-[calc(var(--ohq-nav-h)+18px)]">
+          <PollVotePanel poll={poll} />
+        </div>
         <PollReasons
           poll={poll}
           reasons={reasons}
           replies={page.replies}
           myReasonVotes={page.myReasonVotes}
           myReplyVotes={page.myReplyVotes}
+        />
+
+        {/* Purple, because this is a poll — the rail wears the subject's own
+            colour, the same way every chart on the page does. */}
+        <SectionRail
+          sections={[
+            { id: "result", label: "The split", icon: <ResultIcon /> },
+            { id: "audience", label: "Who voted", icon: <AudienceIcon /> },
+            { id: "vote", label: "Cast your vote", icon: <VoteIcon /> },
+            { id: "discussion", label: "Reasons given", icon: <DiscussionIcon /> },
+          ]}
+          accent="var(--color-poll)"
         />
       </div>
       <Footer />

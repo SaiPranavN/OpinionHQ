@@ -1,6 +1,10 @@
 import Link from "next/link";
 
 import { RotatingHeadline } from "@/components/landing/RotatingHeadline";
+import {
+  SubjectTicker,
+  SUBJECT_TICKER_LABEL,
+} from "@/components/landing/SubjectTicker";
 
 import { formatNumber } from "@/lib/derive";
 import { POLL_CTA } from "@/lib/taxonomy";
@@ -46,12 +50,15 @@ export function Hero({
       />
 
       <div className="relative z-2 flex max-w-[1120px] flex-col items-center gap-[clamp(22px,3vw,34px)]">
-        <div
-          data-reveal
-          className="ohq-reveal flex items-center gap-[10px] rounded-full border border-veil/10 bg-veil/2 py-[7px] pr-[14px] pl-3 font-mono text-[11px] tracking-[0.14em] uppercase text-muted"
-        >
-          <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-positive" />
-          Opinion intelligence
+        {/* Examples of what gets argued about here, cycling.
+            This slot used to read "Opinion intelligence" — a category label for
+            the product, sitting above a headline that already says what the
+            product does. A concrete subject does that job faster and without
+            asking anyone to decode a noun. Named once for a screen reader, so a
+            line that changes every 2.6 seconds is not re-announced eight times
+            a minute at the top of the page. */}
+        <div role="img" aria-label={SUBJECT_TICKER_LABEL}>
+          <SubjectTicker />
         </div>
 
         {/*

@@ -862,3 +862,44 @@ select option {
 .ohq-search-input::-webkit-search-decoration {
   appearance: none;
 }
+
+/* ---------------------------------------------------------------- subjects */
+
+/*
+ * The example-subject ticker above the hero headline.
+ *
+ * A lift-and-fade, deliberately NOT the barrel roll the headline uses. The two
+ * sit within about eighty pixels of each other and cycle on different clocks;
+ * running the same motion twice at different speeds reads as one thing
+ * stuttering rather than two things moving. This one rises and settles, and it
+ * travels a short distance because it is a caption, not a heading.
+ */
+@keyframes ohq-subject-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.62em);
+    filter: blur(2px);
+  }
+  60% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes ohq-subject-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-0.62em);
+    filter: blur(2px);
+  }
+}

@@ -9,6 +9,15 @@ import { SentimentDonut } from "@/components/topic/SentimentDonut";
 import { SentimentTrend } from "@/components/topic/SentimentTrend";
 import { VotePanel } from "@/components/topic/VotePanel";
 import type { AudienceCell } from "@/lib/audience/cells";
+import {
+  AudienceIcon,
+  DiscussionIcon,
+  ResultIcon,
+  SectionRail,
+  VerifiedIcon,
+  VoteIcon,
+  type RailSection,
+} from "@/components/ui/SectionRail";
 import { categoryAccent } from "@/lib/taxonomy";
 import type {
   OpinionReply,
@@ -48,6 +57,24 @@ export function TopicDashboard({
   // rather than to a generic "premium" palette used site-wide.
   const accent = categoryAccent(topic.cat);
 
+  /**
+   * What the rail indexes.
+   *
+   * Verified updates is conditional because the panel itself renders nothing
+   * when a topic has no sourced developments — an index entry pointing at an
+   * element that is not on the page is a button that does nothing, and the
+   * reader has no way to know why.
+   */
+  const sections: RailSection[] = [
+    ...(timeline.length > 0
+      ? [{ id: "verified", label: "Verified updates", icon: <VerifiedIcon /> }]
+      : []),
+    { id: "result", label: "The reading", icon: <ResultIcon /> },
+    { id: "audience", label: "Who took part", icon: <AudienceIcon /> },
+    { id: "vote", label: "Add your opinion", icon: <VoteIcon /> },
+    { id: "discussion", label: "Discussion", icon: <DiscussionIcon /> },
+  ];
+
   return (
     <div
       className="mx-auto flex max-w-[1320px] flex-col gap-[clamp(26px,3.4vw,44px)] px-4 pb-[clamp(70px,9vw,120px)] sm:px-8 lg:px-14"
@@ -58,23 +85,27 @@ export function TopicDashboard({
       {/* The sourced record before any measurement of opinion. It was at the
           bottom of the Overview tab; see VerifiedUpdates for why that was the
           wrong order. */}
-      <VerifiedUpdates timeline={timeline} />
+      <div id="verified" className="scroll-mt-[calc(var(--ohq-nav-h)+18px)]">
+        <VerifiedUpdates timeline={timeline} />
+      </div>
 
       {/* 1 — What the numbers say. Everything measured, in one run.
           These wrappers are layout only: each panel inside is already its own
           labelled region, and nesting landmarks would just repeat itself. */}
       <div className="flex flex-col gap-[clamp(14px,1.6vw,20px)]">
-        <div className="flex flex-wrap gap-[clamp(14px,1.6vw,20px)]">
+        <div id="result" className="scroll-mt-[calc(var(--ohq-nav-h)+18px)] flex flex-wrap gap-[clamp(14px,1.6vw,20px)]">
           <SentimentDonut topic={topic} />
           <SentimentTrend topic={topic} />
           <ParticipationChart topic={topic} />
         </div>
         <KpiGrid topic={topic} />
-        <AudiencePanels topic={topic} cells={audienceCells} />
+        <div id="audience" className="scroll-mt-[calc(var(--ohq-nav-h)+18px)]">
+          <AudiencePanels topic={topic} cells={audienceCells} />
+        </div>
       </div>
 
       {/* 2 — Where you add yours: the headline vote, then the aspects under it. */}
-      <div className="flex flex-col gap-[clamp(14px,1.6vw,20px)]">
+      <div id="vote" className="scroll-mt-[calc(var(--ohq-nav-h)+18px)] flex flex-col gap-[clamp(14px,1.6vw,20px)]">
         <VotePanel topicId={topic.id} accent={accent} />
         <FacetPanel topic={topic} />
       </div>
@@ -88,6 +119,8 @@ export function TopicDashboard({
         timeline={timeline}
         accent={accent}
       />
+
+      <SectionRail sections={sections} accent={accent} />
     </div>
   );
 }
