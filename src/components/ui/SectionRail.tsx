@@ -40,6 +40,15 @@ export interface RailSection {
   icon: React.ReactNode;
 }
 
+/**
+ * Set by the effect, read by the click handler.
+ *
+ * Module-scoped rather than a ref because there is exactly one rail on a page
+ * and the alternative is threading a ref through two closures to carry a
+ * single number.
+ */
+let railLock: ((until: number) => void) | null = null;
+
 export function SectionRail({
   sections,
   accent = "var(--color-positive)",
@@ -74,11 +83,36 @@ export function SectionRail({
      * reads on a scroll that is already recalculating layout is not a cost
      * worth optimising, and the guard below keeps it to ten a second.
      */
-    const LINE = 0.4;
+    /**
+     * The reading line sits just under the fixed nav, not at 40% of the screen.
+     *
+     * A PROPORTION IS WRONG FOR A PAGE OF UNEQUAL PANELS. Sections land at
+     * `scroll-mt` — 96px, the nav plus a gap — when jumped to, so for the rail
+     * to agree with the button that was just pressed, the line has to fall
+     * inside a section that *starts* at 96. At 40% of an 812px phone that is
+     * 325px, and the verified-updates panel is 177px tall: jumping to it put
+     * the line 52px past its bottom edge and lit up the section below. Caught
+     * on the deployed page, on the one topic that has a short panel.
+     *
+     * `navH + 72` is about 150px, which is inside anything taller than a
+     * heading, and is also the honest answer to "where am I" — the first thing
+     * under the bar is what you are reading.
+     */
+    const OFFSET = 72;
     let last = 0;
+    let locked = 0;
 
     const measure = () => {
-      const line = window.innerHeight * LINE;
+      // A click sets the active section directly and then scrolls. Without
+      // this the scroll it triggers immediately overrules the press, which on
+      // a short section means the rail lights up a different entry than the
+      // one you pressed.
+      if (Date.now() < locked) return;
+      const navH =
+        parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue("--ohq-nav-h"),
+        ) || 0;
+      const line = navH + OFFSET;
       let best = "";
       let bestDistance = Infinity;
       for (const node of nodes) {
@@ -108,6 +142,11 @@ export function SectionRail({
     };
 
     measure();
+    // Exposed so the click handler can hold the rail on the section the reader
+    // actually chose until the scroll has settled.
+    railLock = (until: number) => {
+      locked = until;
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll, { passive: true });
     return () => {
@@ -120,10 +159,13 @@ export function SectionRail({
     const target = document.getElementById(id);
     if (!target) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Held for the length of the scroll, so the measurements taken on the way
+    // there cannot overrule the section that was actually pressed.
+    railLock?.(Date.now() + (reduce ? 120 : 900));
     target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-    // Set immediately rather than waiting for the observer. A smooth scroll
-    // takes most of a second, and a rail that only lights up once you arrive
-    // reads as a button that did not register the press.
+    // Set immediately rather than waiting to arrive. A smooth scroll takes most
+    // of a second, and a rail that only lights up at the end reads as a button
+    // that did not register the press.
     setActive(id);
   }, []);
 
