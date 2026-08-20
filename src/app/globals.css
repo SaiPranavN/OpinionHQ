@@ -109,6 +109,57 @@
      grow in once. Both are suppressed by the reduced-motion rule below. */
   --animate-flow: ohq-flow 2.4s linear infinite;
   --animate-grow-x: ohq-grow-x 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+
+  /*
+   * ------------------------------------------------------------------------
+   * shadcn / 21st.dev compatibility layer.
+   *
+   * Components pulled from 21st.dev are written against shadcn's token names —
+   * `bg-background`, `text-foreground`, `border-border`, `ring-ring`. None of
+   * those existed here, because this theme has its own vocabulary.
+   *
+   * ALIASES, NOT A SECOND PALETTE. Every name below points at a colour already
+   * defined above rather than introducing a new value. That is the whole point:
+   * a component dropped in from 21st.dev inherits this product's palette on
+   * arrival, and flips with `[data-theme="light"]` for free, because the
+   * indirection resolves at use time rather than at build time. Adding a
+   * parallel set of greys would give the site two design systems that agree
+   * today and drift by Thursday.
+   *
+   * ONE COLLISION, AND IT IS DELIBERATE. `--color-muted` already means *muted
+   * text* here and is used that way in dozens of components, whereas shadcn
+   * means a muted *surface*. It cannot be both. It keeps its existing meaning,
+   * so a 21st.dev component that says `bg-muted` will come in with a pale grey
+   * background and needs that one class swapped to `bg-surface-raised`. Check
+   * for it when pasting a component; it is the only name that does not map.
+   * ------------------------------------------------------------------------
+   */
+  --color-background: var(--color-ink);
+  --color-foreground: var(--color-cream);
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-cream);
+  --color-popover: var(--color-surface-raised);
+  --color-popover-foreground: var(--color-cream);
+  --color-primary: var(--color-positive);
+  --color-primary-foreground: var(--color-positive-ink);
+  --color-secondary: var(--color-surface-raised);
+  --color-secondary-foreground: var(--color-soft);
+  --color-muted-foreground: var(--color-dim);
+  --color-accent: var(--color-surface-raised);
+  --color-accent-foreground: var(--color-cream-bright);
+  --color-destructive: var(--color-negative);
+  --color-destructive-foreground: var(--color-cream-bright);
+  --color-border: var(--color-line);
+  --color-input: var(--color-line-strong);
+  --color-ring: var(--color-positive);
+
+  /* shadcn sizes its corners off one scale. Pitched at the 10–14px this
+     product already rounds most panels and controls to. */
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 }
 
 /*

@@ -41,6 +41,19 @@ export function PollRows({ polls, isAdmin }: { polls: AdminPollRow[]; isAdmin: b
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
 
+  /**
+   * The clock, read once when this list mounts.
+   *
+   * `Date.now()` in the row map is impure by React 19's rules — a value that
+   * changes on its own between renders of the same props — and a `useMemo`
+   * factory is still render-phase, so moving it there does not help. A lazy
+   * `useState` initialiser is the one place a component may read the outside
+   * world, and it gives the better answer anyway: one reading that every row
+   * is measured against, rather than each row asking the clock separately and
+   * two rows in the same table disagreeing about what time it is.
+   */
+  const [now] = useState(() => Date.now());
+
   const run = async (id: string, action: () => Promise<{ ok: boolean; message?: string }>) => {
     setBusy(id);
     setError(null);
@@ -70,7 +83,7 @@ export function PollRows({ polls, isAdmin }: { polls: AdminPollRow[]; isAdmin: b
           const live = Boolean(poll.publishedAt) && !poll.archivedAt;
           const state = poll.archivedAt ? "Archived" : poll.publishedAt ? "Live" : "Draft";
           const working = busy === poll.id;
-          const closed = poll.closesAt ? new Date(poll.closesAt).getTime() < Date.now() : false;
+          const closed = poll.closesAt ? new Date(poll.closesAt).getTime() < now : false;
 
           return (
             <article

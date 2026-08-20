@@ -25,3 +25,12 @@ coverage/
 
 # Claude Code: machine-local permission grants, not shared project config.
 .claude/settings.local.json
+
+# Claude Code tooling. Vendored skill data is several megabytes and is not
+# something this project ships or owns — the same reasoning as the ESLint
+# ignore. `launch.json` is the exception: it defines how to run this project's
+# dev server and its production-in-UTC preview, which is project config that
+# any collaborator needs. Git will not descend into an excluded directory, so
+# this has to be `.claude/*` with a negation rather than `.claude/`.
+.claude/*
+!.claude/launch.json

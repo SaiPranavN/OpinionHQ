@@ -20,6 +20,7 @@
  * "Following" over a row that was never written.
  */
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
@@ -27,6 +28,7 @@ import { readFollowState, toggleFollow, type FollowKind, type FollowState } from
 
 export function FollowButton({ kind, id }: { kind: FollowKind; id: string }) {
   const { toast } = usePrototype();
+  const router = useRouter();
   const [state, setState] = useState<FollowState | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -47,7 +49,11 @@ export function FollowButton({ kind, id }: { kind: FollowKind; id: string }) {
     // case of a session expiring while the page is open — say so rather than
     // no-opping under the cursor.
     if (!state.signedIn) {
-      window.location.href = `/signin?next=${encodeURIComponent(window.location.pathname)}`;
+      // `router.push`, not `window.location.href`. A full document load throws
+      // away the React tree and the Supabase client with it, to reach a route
+      // this app already owns — and it is the slow way to do it. Next 16's
+      // linter flags the assignment for exactly that reason.
+      router.push(`/signin?next=${encodeURIComponent(window.location.pathname)}`);
       return;
     }
 

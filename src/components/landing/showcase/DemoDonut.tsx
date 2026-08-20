@@ -73,12 +73,14 @@ export function DemoDonut({
   // Drawn largest-first so a small slice is never buried under a big one.
   const order = [...sentiment.keys()].sort((a, b) => (sentiment[b] ?? 0) - (sentiment[a] ?? 0));
 
-  let run = 0;
-  const arcs = smooth.map((pct) => {
+  // Each arc starts where the ones before it ended. Summed from the slice
+  // rather than carried in a mutable accumulator: React 19's `immutability`
+  // rule flags a variable reassigned during render, and the sibling component
+  // ScopeReading already computes the offset this way.
+  const arcs = smooth.map((pct, i) => {
+    const run = smooth.slice(0, i).reduce((sum, p) => sum + (p / 100) * C, 0);
     const len = (pct / 100) * C;
-    const arc = { dash: `${len} ${C - len}`, offset: -run };
-    run += len;
-    return arc;
+    return { dash: `${len} ${C - len}`, offset: -run };
   });
 
   const dominant = sentiment.indexOf(Math.max(...sentiment));
