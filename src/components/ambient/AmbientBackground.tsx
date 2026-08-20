@@ -84,6 +84,7 @@ export function AmbientBackground({ variant }: AmbientBackgroundProps) {
         count={config.contours}
         animate={layers.contoursAnimate}
         parallax={layers.parallax}
+        device={device}
         grid={config.grid}
       />
 

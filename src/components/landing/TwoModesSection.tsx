@@ -1,8 +1,22 @@
 import Link from "next/link";
 
+import { CardConveyor } from "@/components/landing/CardConveyor";
 import { SectionPurpose } from "@/components/landing/SectionPurpose";
+import { SlotMachineText } from "@/components/motion/SlotMachineText";
 import { Brand } from "@/components/ui/Brand";
 import { formatNumber } from "@/lib/derive";
+
+/**
+ * The heading, and the one string it is built from.
+ *
+ * Written once because it has to be identical in three places: the reels, the
+ * accessible name, and anything that reads the page without running the reels.
+ * The emphasis that used to be marked up here with `<em>` is gone — `em` is
+ * declared `font-style: normal` site-wide and was styling nothing, so all it
+ * did was split the line into fragments the slot machine would have had to be
+ * taught to reassemble.
+ */
+const MODES_HEADING = "Some questions need a scale. Others need a winner.";
 
 /**
  * The two *public* modes, side by side.
@@ -34,32 +48,44 @@ export function TwoModesSection({
       className="relative border-t border-veil/5 px-5 py-[clamp(72px,11vw,140px)] sm:px-10 lg:px-20"
     >
       <div className="mx-auto max-w-[1200px]">
-        <div data-reveal className="ohq-reveal mx-auto max-w-[760px] text-center">
-          <span className="ohq-eyebrow">Two ways to ask in public</span>
-          <h2 className="mt-4 mb-5 font-display text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.02] font-bold tracking-[-0.025em] text-balance text-cream-bright">
-            Some questions need a <em>scale.</em> Others need a{" "}
-            <em>winner.</em>
-          </h2>
-          <p className="m-0 text-[16px] leading-[1.6] font-light text-pretty text-muted">
-            Asking &ldquo;how do you feel about the fee hike?&rdquo; and &ldquo;IIT or
-            Ivy League?&rdquo; are different jobs. <Brand /> keeps them apart, because a
-            forced choice and a sentiment reading should never be averaged together.
-            Both are public — the private one comes next.
-          </p>
-          <div className="mt-5">
-            <SectionPurpose
-              problem="Opinion lives in replies and group chats, where nobody can read it"
-              solution="Two public instruments: a sentiment scale, and a forced choice"
-            />
-          </div>
-        </div>
-
-        <div className="mt-[clamp(38px,6vw,70px)] grid grid-cols-1 gap-[clamp(16px,2vw,24px)] lg:grid-cols-2">
-          {/* Mode one — sentiment. */}
-          <article
-            data-reveal
-            className="ohq-panel-raised ohq-reveal flex flex-col gap-6 p-6 delay-[80ms] sm:p-9"
-          >
+        <CardConveyor
+          header={
+            <div data-reveal className="ohq-reveal mx-auto max-w-[760px] text-center">
+              <span className="ohq-eyebrow">Two ways to ask in public</span>
+              {/* `leading-[1.06]`, up from 1.02. The reels clip to one line box
+                  each, and at 1.02 a display face's descenders sit fractionally
+                  outside it — so the tails of the g and the q were being cut off
+                  by the very thing that makes the characters land. */}
+              <h2
+                aria-label={MODES_HEADING}
+                className="mt-4 mb-5 font-display text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.06] font-bold tracking-[-0.025em] text-balance text-cream-bright"
+              >
+                <SlotMachineText text={MODES_HEADING} />
+              </h2>
+              <p className="m-0 text-[16px] leading-[1.6] font-light text-pretty text-muted">
+                Asking &ldquo;how do you feel about the fee hike?&rdquo; and &ldquo;IIT or
+                Ivy League?&rdquo; are different jobs. <Brand /> keeps them apart, because a
+                forced choice and a sentiment reading should never be averaged together.
+                Both are public — the private one comes next.
+              </p>
+              <div className="mt-5">
+                <SectionPurpose
+                  problem="Opinion lives in replies and group chats, where nobody can read it"
+                  solution="Two public instruments: a sentiment scale, and a forced choice"
+                />
+              </div>
+            </div>
+          }
+          cards={[
+            /* Mode one — sentiment. `data-reveal` is gone from both articles and
+               lives on the conveyor's wrapper instead: the entrance is the
+               conveyor's job when it is scrubbing and the reveal system's when
+               it is not, and two things animating one element's opacity is how
+               a card ends up invisible. */
+            <article
+              key="topics"
+              className="ohq-panel-raised flex h-full flex-col gap-6 p-6 sm:p-9"
+            >
             <header className="flex flex-col gap-3">
               <span className="flex items-center gap-2.5 font-mono text-[10.5px] tracking-[0.14em] uppercase text-positive-light">
                 <span className="h-1.5 w-1.5 rounded-full bg-positive" />
@@ -115,13 +141,13 @@ export function TwoModesSection({
                 </span>
               </a>
             </footer>
-          </article>
+            </article>,
 
-          {/* Mode two — polling. */}
-          <article
-            data-reveal
-            className="ohq-panel-raised ohq-reveal flex flex-col gap-6 p-6 delay-[160ms] sm:p-9"
-          >
+            /* Mode two — polling. */
+            <article
+              key="polls"
+              className="ohq-panel-raised flex h-full flex-col gap-6 p-6 sm:p-9"
+            >
             <header className="flex flex-col gap-3">
               <span className="flex items-center gap-2.5 font-mono text-[10.5px] tracking-[0.14em] uppercase text-poll-soft">
                 <span className="h-1.5 w-1.5 rounded-full bg-poll" />
@@ -178,8 +204,9 @@ export function TwoModesSection({
                 </span>
               </a>
             </footer>
-          </article>
-        </div>
+            </article>,
+          ]}
+        />
       </div>
     </section>
   );

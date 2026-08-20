@@ -1,10 +1,7 @@
 import Link from "next/link";
 
 import { RotatingHeadline } from "@/components/landing/RotatingHeadline";
-import {
-  SubjectTicker,
-  SUBJECT_TICKER_LABEL,
-} from "@/components/landing/SubjectTicker";
+import { SubjectTicker } from "@/components/landing/SubjectTicker";
 
 import { formatNumber } from "@/lib/derive";
 import { POLL_CTA } from "@/lib/taxonomy";
@@ -50,16 +47,14 @@ export function Hero({
       />
 
       <div className="relative z-2 flex max-w-[1120px] flex-col items-center gap-[clamp(22px,3vw,34px)]">
-        {/* Examples of what gets argued about here, cycling.
+        {/* Examples of what gets argued about here, rolling.
             This slot used to read "Opinion intelligence" — a category label for
             the product, sitting above a headline that already says what the
             product does. A concrete subject does that job faster and without
-            asking anyone to decode a noun. Named once for a screen reader, so a
-            line that changes every 2.6 seconds is not re-announced eight times
-            a minute at the top of the page. */}
-        <div role="img" aria-label={SUBJECT_TICKER_LABEL}>
-          <SubjectTicker />
-        </div>
+            asking anyone to decode a noun. The set is named once for a screen
+            reader inside the roller, so a line that changes every 1.8 seconds is
+            not re-announced at the top of the page for as long as it is open. */}
+        <SubjectTicker />
 
         {/*
           The rotating headline.

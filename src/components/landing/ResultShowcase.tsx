@@ -27,6 +27,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
+import { ScrollScene } from "@/components/motion/ScrollScene";
+import { SlotMachineText } from "@/components/motion/SlotMachineText";
+import { StageSteps, type Step } from "@/components/landing/showcase/StageSteps";
 import { SectionPurpose } from "@/components/landing/SectionPurpose";
 import { DemoAspects } from "@/components/landing/showcase/DemoAspects";
 import { DemoBreakdown } from "@/components/landing/showcase/DemoBreakdown";
@@ -48,6 +51,15 @@ import {
   type Filter,
   type Mode,
 } from "@/components/landing/showcase/data";
+
+/**
+ * The heading, as one string.
+ *
+ * Same reason as the one in TwoModesSection: the slot machine needs the plain
+ * line for the reels and the accessible name, and a heading split across
+ * elements would have to be reassembled to be spun.
+ */
+const INSIDE_HEADING = "One number, and then the questions about it.";
 
 export function ResultShowcase() {
   const [mode, setMode] = useState<Mode>("topic");
@@ -106,8 +118,15 @@ export function ResultShowcase() {
       <div className="relative mx-auto max-w-[1200px]">
         <div data-reveal className="ohq-reveal mx-auto max-w-[780px] text-center">
           <span className="ohq-eyebrow">Inside a result</span>
-          <h2 className="mt-4 mb-5 font-display text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.02] font-bold tracking-[-0.025em] text-balance text-cream-bright">
-            One number, and then the <em>questions about it.</em>
+          {/* `leading-[1.06]` for the same reason as the modes heading: the slot
+              reels clip to one line box each, and 1.02 cut the descenders. */}
+          <h2
+            aria-label={INSIDE_HEADING}
+            className="mt-4 mb-5 font-display text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.06] font-bold tracking-[-0.025em] text-balance text-cream-bright"
+          >
+            {/* Offset from the modes heading above so the two land in sequence
+                rather than together if a tall window shows both at once. */}
+            <SlotMachineText text={INSIDE_HEADING} delayMs={120} />
           </h2>
           <p className="m-0 text-[16px] leading-[1.6] font-light text-pretty text-muted">
             &ldquo;70% positive&rdquo; is where most polls stop. It is where a subject
@@ -137,86 +156,151 @@ export function ResultShowcase() {
         />
 
         {/* -------------------------------------------------------- the stage */}
-        <div
-          data-reveal
-          className="ohq-panel-raised ohq-reveal relative mt-[clamp(34px,5vw,58px)] overflow-hidden delay-[60ms]"
-        >
-          <StageChrome mode={mode} onMode={setMode} />
+        <ScrollScene distance={2.8} className="mt-[clamp(34px,5vw,58px)]">
+          {({ progress, scrubbing }) => {
+            /*
+             * The four acts, each with a line saying what it is for.
+             *
+             * Built here rather than inside the stepper because every one of
+             * them reads from `filter` — that is the point of the showcase, and
+             * it survives the rewrite intact: cross-filtering still re-reads
+             * every panel, including the ones that are currently off screen, so
+             * stepping back to act one after clicking Karnataka in act two
+             * shows the Karnataka reading.
+             */
+            const steps: Step[] = [
+              {
+                n: "01",
+                title: "The reading, and how it got there",
+                line:
+                  mode === "topic"
+                    ? "The distribution, and the three weeks that produced it — with what happened plotted on the line."
+                    : "The split, and the three weeks that produced it — with what happened plotted on the line.",
+                body: (
+                  <div className="grid h-full grid-cols-1 gap-[clamp(16px,2vw,24px)] lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
+                    <div className="ohq-panel flex flex-col gap-4 p-5">
+                      <span className="ohq-eyebrow">
+                        {mode === "topic" ? "Sentiment distribution" : "The split"}
+                      </span>
+                      {mode === "topic" ? (
+                        <DemoDonut sentiment={reading.sentiment} scope={scope} />
+                      ) : (
+                        <DemoSplit shares={reading.poll} scope={scope} />
+                      )}
+                      <VoteStrip mode={mode} />
+                    </div>
 
-          <div className="flex flex-col gap-[clamp(26px,3.4vw,42px)] p-[clamp(16px,2.6vw,34px)]">
-            <SubjectLine mode={mode} question={subject.question} prompt={subject.prompt} />
-
-            <ScopeBar filter={filter} onPick={pick} onClear={() => setFilter({})} />
-
-            {/* Act one — the reading, beside how it moved. */}
-            <Act n="01" title="The reading, and how it got there">
-              <div className="grid grid-cols-1 gap-[clamp(16px,2vw,24px)] lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
-                <div className="ohq-panel flex flex-col gap-4 p-5">
-                  <span className="ohq-eyebrow">
-                    {mode === "topic" ? "Sentiment distribution" : "The split"}
-                  </span>
-                  {mode === "topic" ? (
-                    <DemoDonut sentiment={reading.sentiment} scope={scope} />
-                  ) : (
-                    <DemoSplit shares={reading.poll} scope={scope} />
-                  )}
-                  <VoteStrip mode={mode} />
-                </div>
-
-                <div className="ohq-panel flex flex-col gap-3.5 p-5">
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                    <span className="ohq-eyebrow">How it moved</span>
-                    <span className="text-[11.5px] text-dim">
-                      21 days · 2 events plotted
-                    </span>
+                    <div className="ohq-panel flex flex-col gap-3.5 p-5">
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                        <span className="ohq-eyebrow">How it moved</span>
+                        <span className="text-[11.5px] text-dim">
+                          21 days · 2 events plotted
+                        </span>
+                      </div>
+                      <DemoTrend points={points} mode={mode} scope={scope} />
+                    </div>
                   </div>
-                  <DemoTrend points={points} mode={mode} scope={scope} />
+                ),
+              },
+              {
+                n: "02",
+                title: "Who took part, and where the split flips",
+                line:
+                  "Every bar is a group and every stack is how that group answered — click one and every panel re-reads as them.",
+                body: (
+                  <div className="ohq-panel flex flex-col gap-[clamp(14px,1.8vw,22px)] p-5">
+                    <p className="m-0 max-w-[640px] text-[13px] leading-[1.55] text-dim">
+                      Bar length is how much of the sample a group is. The stack inside it
+                      is how that group split. The figure on the right is how far that
+                      group sits from the reading above, in points, on whichever answer is
+                      currently leading —{" "}
+                      <strong className="font-medium text-soft">click any row</strong> to
+                      re-read every panel as that group.
+                    </p>
+                    <DemoBreakdown filter={filter} mode={mode} onPick={pick} />
+                    {odd ? <AgainstTheGrain contrarian={odd} mode={mode} /> : null}
+                    {/* The withholding caveat is dropped from the stepped view
+                        only. It is a screenful-costing paragraph that repeats
+                        what the stage footer says two inches below it, and the
+                        footer is on screen the whole time the stage is pinned. */}
+                    {scrubbing ? null : (
+                      <p className="m-0 border-t border-line pt-4 text-[12px] leading-[1.55] text-dim">
+                        On a live subject, location, age and occupation are optional and
+                        self-declared, and a segment too small to publish without
+                        identifying the people in it is withheld rather than shown.
+                      </p>
+                    )}
+                  </div>
+                ),
+              },
+              /* Act three — what the argument is actually about. Topic-only: a
+                 poll has no aspects, it has one forced choice. */
+              mode === "topic"
+                ? {
+                    n: "03",
+                    title: "The parts people actually argue about",
+                    line:
+                      "A subject is not one question. Each part of it is asked separately, so a film can be liked and its ending disliked.",
+                    body: (
+                      <div className="ohq-panel p-5">
+                        <DemoAspects />
+                      </div>
+                    ),
+                  }
+                : {
+                    n: "03",
+                    title: "Why the margin is stated in words",
+                    line:
+                      "A four-point lead and a forty-point lead are different findings, so a poll says which one it is in plain English.",
+                    body: <MarginNote shares={reading.poll} />,
+                  },
+              {
+                n: "04",
+                title: mode === "topic" ? "What people wrote" : "The case for each side",
+                line:
+                  mode === "topic"
+                    ? "The written half, kept in the same list as the numbers and carrying the position its author voted."
+                    : "Reasons grouped by pick, so each side's best argument sits with its own side and nobody is replying to anybody.",
+                body: <DemoDiscussion mode={mode} compact={scrubbing} />,
+              },
+            ];
+
+            return (
+              <div
+                {...(scrubbing ? {} : { "data-reveal": true })}
+                className={
+                  scrubbing
+                    ? "flex min-h-svh flex-col pt-[calc(var(--ohq-nav-h)+10px)] pb-5"
+                    : "ohq-reveal delay-[60ms]"
+                }
+              >
+                <div className="ohq-panel-raised relative flex min-h-0 flex-1 flex-col overflow-hidden">
+                  <StageChrome mode={mode} onMode={setMode} />
+
+                  <div className="flex min-h-0 flex-1 flex-col gap-[clamp(12px,1.6vw,20px)] p-[clamp(14px,2.2vw,30px)]">
+                    <SubjectLine
+                      mode={mode}
+                      question={subject.question}
+                      prompt={subject.prompt}
+                      compact={scrubbing}
+                    />
+
+                    <ScopeBar filter={filter} onPick={pick} onClear={() => setFilter({})} />
+
+                    <StageSteps steps={steps} progress={progress} scrubbing={scrubbing} />
+                  </div>
+
+                  <StageFooter
+                    mode={mode}
+                    filtered={filtered}
+                    scope={scope}
+                    compact={scrubbing}
+                  />
                 </div>
               </div>
-            </Act>
-
-            {/* Act two — the cross-tabs, and the group that flips. */}
-            <Act n="02" title="Who took part, and where the split flips">
-              <div className="ohq-panel flex flex-col gap-[clamp(16px,2vw,22px)] p-5">
-                <p className="m-0 max-w-[640px] text-[13px] leading-[1.55] text-dim">
-                  Bar length is how much of the sample a group is. The stack inside it is
-                  how that group split. The figure on the right is how far that group sits
-                  from the reading above, in points, on whichever answer is currently
-                  leading — <strong className="font-medium text-soft">click any row</strong>{" "}
-                  to re-read every panel as that group.
-                </p>
-                <DemoBreakdown filter={filter} mode={mode} onPick={pick} />
-                {odd ? <AgainstTheGrain contrarian={odd} mode={mode} /> : null}
-                <p className="m-0 border-t border-line pt-4 text-[12px] leading-[1.55] text-dim">
-                  On a live subject, location, age and occupation are optional and
-                  self-declared, and a segment too small to publish without identifying
-                  the people in it is withheld rather than shown.
-                </p>
-              </div>
-            </Act>
-
-            {/* Act three — what the argument is actually about. Topic-only:
-                a poll has no aspects, it has one forced choice. */}
-            {mode === "topic" ? (
-              <Act n="03" title="The parts people actually argue about">
-                <div className="ohq-panel p-5">
-                  <DemoAspects />
-                </div>
-              </Act>
-            ) : (
-              <Act n="03" title="Why the margin is stated in words">
-                <MarginNote shares={reading.poll} />
-              </Act>
-            )}
-
-            {/* Act four — the written half. */}
-            <Act n="04" title={mode === "topic" ? "What people wrote" : "The case for each side"}>
-              <DemoDiscussion mode={mode} />
-            </Act>
-          </div>
-
-          <StageFooter mode={mode} filtered={filtered} scope={scope} />
-        </div>
+            );
+          }}
+        </ScrollScene>
       </div>
     </section>
   );
@@ -300,24 +384,52 @@ function StageChrome({ mode, onMode }: { mode: Mode; onMode: (m: Mode) => void }
   );
 }
 
+/**
+ * The subject the stage is running on.
+ *
+ * `compact` is the pinned layout: the eyebrow moves onto the same line as the
+ * title and the prompt goes. It is the difference between about 110px and about
+ * 55px, and in a stage that has to fit a viewport that is roughly a tenth of the
+ * space the acts have to share. The prompt is the right thing to lose — it
+ * explains the *example*, and the example is not the point of the section.
+ */
 function SubjectLine({
   mode,
   question,
   prompt,
+  compact = false,
 }: {
   mode: Mode;
   question: string;
   prompt: string;
+  compact?: boolean;
 }) {
   const accent = mode === "topic" ? "text-positive-light" : "text-poll-soft";
   const dot = mode === "topic" ? "bg-positive" : "bg-poll";
 
+  const eyebrow = (
+    <span
+      className={`flex shrink-0 items-center gap-2.5 font-mono text-[10px] tracking-[0.14em] uppercase ${accent}`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+      {SUBJECT[mode].eyebrow}
+    </span>
+  );
+
+  if (compact) {
+    return (
+      <header className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <h3 className="font-display m-0 text-[clamp(1.25rem,2.2vw,1.8rem)] leading-[1.15] font-bold tracking-[-0.02em] text-cream-bright">
+          {question}
+        </h3>
+        <span className="ml-auto">{eyebrow}</span>
+      </header>
+    );
+  }
+
   return (
     <header className="flex flex-col gap-2">
-      <span className={`flex items-center gap-2.5 font-mono text-[10px] tracking-[0.14em] uppercase ${accent}`}>
-        <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-        {SUBJECT[mode].eyebrow}
-      </span>
+      {eyebrow}
       <h3 className="font-display m-0 text-[clamp(1.6rem,3.2vw,2.6rem)] leading-[1.06] font-bold tracking-[-0.02em] text-balance text-cream-bright">
         {question}
       </h3>
@@ -382,28 +494,6 @@ function ScopeBar({
         </>
       )}
     </div>
-  );
-}
-
-/**
- * A numbered act.
- *
- * The rule to the right of the title draws itself across when the block is
- * released by the scroll observer — the same `[data-shown]` flag `.ohq-reveal`
- * already keys off, so the whole thing is one CSS rule and no second observer.
- */
-function Act({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
-  return (
-    <section data-reveal className="ohq-reveal flex flex-col gap-3.5">
-      <header className="flex items-center gap-3">
-        <span className="font-mono text-[10.5px] tracking-[0.16em] text-positive-light">{n}</span>
-        <h3 className="font-display m-0 text-[15px] leading-[1.25] font-semibold tracking-[-0.015em] whitespace-nowrap text-cream-bright sm:text-[16.5px]">
-          {title}
-        </h3>
-        <span aria-hidden className="ohq-rule h-px min-w-0 flex-1 bg-veil/12" />
-      </header>
-      {children}
-    </section>
   );
 }
 
@@ -521,23 +611,47 @@ function MarginNote({ shares }: { shares: [number, number, number] }) {
   );
 }
 
-/** The disclaimer, and the way out to the real thing. */
+/**
+ * The disclaimer, and the way out to the real thing.
+ *
+ * THE DISCLAIMER SHORTENS IN THE PINNED LAYOUT BUT IT NEVER LEAVES. This
+ * codebase has twice had to delete invented figures that read exactly like
+ * measurements, and both times a caveat existed somewhere on the page while the
+ * number sat above it uncontested. The stage badge says "Illustration" at the
+ * top of the panel and this says why at the bottom; in the pinned layout both
+ * are on screen for the whole of every act, which is more than was true of the
+ * long version a reader had to scroll to reach.
+ */
 function StageFooter({
   mode,
   filtered,
   scope,
+  compact = false,
 }: {
   mode: Mode;
   filtered: boolean;
   scope: string;
+  compact?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-line bg-surface-sunken/60 px-[clamp(14px,2.2vw,26px)] py-4">
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-line bg-surface-sunken/60 px-[clamp(14px,2.2vw,26px)] py-3">
       <p className="m-0 max-w-[620px] text-[12px] leading-[1.55] text-dim">
-        A worked example, not a measurement. No headcount appears anywhere in it and
-        nobody was asked — the model behind it exists so the panels agree with each other
-        while you filter{filtered ? `, which is what you are looking at now: ${scope}.` : "."}{" "}
-        Every figure on a live subject page is counted from votes.
+        {compact ? (
+          <>
+            A worked example, not a measurement — nobody was asked and no headcount
+            appears in it
+            {filtered ? `. You are reading it as: ${scope}.` : "."} Every figure on a live
+            subject page is counted from votes.
+          </>
+        ) : (
+          <>
+            A worked example, not a measurement. No headcount appears anywhere in it and
+            nobody was asked — the model behind it exists so the panels agree with each
+            other while you filter
+            {filtered ? `, which is what you are looking at now: ${scope}.` : "."} Every
+            figure on a live subject page is counted from votes.
+          </>
+        )}
       </p>
       <Link
         href={mode === "topic" ? "/topics" : "/polls"}

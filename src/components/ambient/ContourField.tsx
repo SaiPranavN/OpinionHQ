@@ -15,36 +15,53 @@
  * the ones crossing the content column — faintest of all.
  */
 
-import { ALPHA, DURATION, PARALLAX } from "@/lib/motion/config";
+import { ALPHA, DURATION, PARALLAX, type DeviceTier } from "@/lib/motion/config";
 import { contourBands, CONTOUR_VIEWBOX } from "@/lib/motion/contours";
 
 interface ContourFieldProps {
   count: number;
   animate: boolean;
   parallax: boolean;
+  /** Decides the fit and the edge fade. See the two constants below. */
+  device: DeviceTier;
   /** Draws the faint fragmented grid behind the contours. Internal pages. */
   grid?: boolean;
 }
 
+/**
+ * The edge fade, per shape of screen.
+ *
+ * A 78%-wide ellipse on a 1440px desktop leaves ~300px of field either side of
+ * the content column with something in it. The same ellipse on a 390px phone is
+ * 304px wide, and since the content column *is* the screen there, it dissolves
+ * the lines exactly where they are the only thing to see. The portrait fade is
+ * wider and holds full strength further out.
+ */
 const EDGE_FADE =
   "radial-gradient(ellipse 78% 68% at 50% 46%, #000 32%, rgba(0,0,0,0.55) 62%, transparent 88%)";
+const EDGE_FADE_PORTRAIT =
+  "radial-gradient(ellipse 108% 76% at 50% 46%, #000 46%, rgba(0,0,0,0.62) 74%, transparent 97%)";
 
 export function ContourField({
   count,
   animate,
   parallax,
+  device,
   grid = false,
 }: ContourFieldProps) {
   const bands = contourBands(count);
   if (bands.length === 0 && !grid) return null;
+
+  const portrait = device === "mobile";
+  const fade = portrait ? EDGE_FADE_PORTRAIT : EDGE_FADE;
 
   return (
     <div
       aria-hidden
       className="absolute inset-0"
       style={{
-        maskImage: EDGE_FADE,
-        WebkitMaskImage: EDGE_FADE,
+        maskImage: fade,
+        WebkitMaskImage: fade,
         ...(parallax
           ? {
               transform: `translate3d(0, calc(var(--ohq-scroll, 0) * ${-PARALLAX.contour}px), 0)`,
@@ -73,10 +90,25 @@ export function ContourField({
         />
       ) : null}
 
+      {/*
+        `slice` on a phone is why there were barely any lines to see.
+
+        The field is authored in a 1200×700 landscape box. Covering a 390×844
+        portrait viewport with `slice` scales it by 1.21 to match the *height*,
+        which renders the field 1447px wide inside a 390px window — so a phone
+        was shown the middle 27% of it, magnified past the point where any of the
+        curvature survives. Seven bands became seven almost-straight lines, and
+        then the edge mask took most of those.
+
+        `none` shows the whole field instead. It squashes horizontally, which
+        raises the wave frequency — on a texture at 5.5% alpha that reads as
+        more of the thing rather than as distortion, and `non-scaling-stroke`
+        below keeps every line a true hairline through it.
+      */}
       <svg
         className="absolute inset-0 h-full w-full"
         viewBox={`0 0 ${CONTOUR_VIEWBOX.width} ${CONTOUR_VIEWBOX.height}`}
-        preserveAspectRatio="xMidYMid slice"
+        preserveAspectRatio={portrait ? "none" : "xMidYMid slice"}
         // Decorative: the contours carry no information a reader could lose.
         aria-hidden
         focusable="false"

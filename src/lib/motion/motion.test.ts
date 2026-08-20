@@ -85,18 +85,33 @@ describe("reduced motion", () => {
 });
 
 describe("mobile budget", () => {
-  it("drops the canvas, parallax and pointer work but keeps the gradient", () => {
+  it("drops parallax and pointer work but keeps the gradient and the nodes", () => {
+    // The canvas used to be dropped here too, which is why a phone saw a
+    // gradient and nothing else — the node-and-link layer is the one part of
+    // this system that reads as *this* product, and it was the one part a phone
+    // never got. It runs now at DENSITY.mobile. What stays off is the work that
+    // is per-scroll and per-pointer-move, which is the work that actually costs.
     const layers = resolveLayers({
       variant: "landing",
       motion: "full",
       device: "mobile",
       pointerFine: true,
     });
-    expect(layers.nodes).toBe(false);
+    expect(layers.nodes).toBe(true);
     expect(layers.cursor).toBe(false);
     expect(layers.parallax).toBe(false);
     expect(layers.contoursAnimate).toBe(false);
     expect(layers.meshAnimates).toBe(true);
+  });
+
+  it("keeps the phone's field a fraction of the desktop one", () => {
+    // Denser than it was, but the ordering is the promise: a phone must never
+    // be asked to draw a desktop field.
+    expect(DENSITY.mobile.count).toBeLessThan(DENSITY.desktop.count / 2);
+    expect(DENSITY.mobile.maxLinks).toBeLessThan(DENSITY.desktop.maxLinks);
+    // Bigger dots, not brighter ones — the alpha ceiling is what protects the
+    // contrast of the type above it, and it is not device-dependent.
+    expect(DENSITY.mobile.scale).toBeGreaterThan(DENSITY.desktop.scale);
   });
 
   it("never runs pointer effects without a fine pointer", () => {

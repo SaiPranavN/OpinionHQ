@@ -164,11 +164,17 @@ export function OpinionNodeField({
         } else {
           hx = rand() * width;
           hy = rand() * height;
-          // Thin the field through the middle third, where the content column
-          // and the headline live. Pushed outward rather than deleted, so the
-          // edges stay populated and the count is honest.
+          // Thin the field through the middle, where the content column and the
+          // headline live. Pushed outward rather than deleted, so the edges stay
+          // populated and the count is honest.
+          //
+          // The corridor is per-device (see DENSITY): a desktop has margins to
+          // push into, a phone does not, and pushing a phone's nodes out by a
+          // fifth of a 390px viewport just lines them up against the bezels.
           const cx = hx / width - 0.5;
-          if (Math.abs(cx) < 0.22) hx += Math.sign(cx || 1) * 0.2 * width;
+          if (Math.abs(cx) < budget.corridor) {
+            hx += Math.sign(cx || 1) * budget.corridorPush * width;
+          }
         }
 
         // In an opposing field the tone follows the side, so the left camp
@@ -192,7 +198,7 @@ export function OpinionNodeField({
           fy: 0.04 + rand() * 0.07,
           px: rand() * Math.PI * 2,
           py: rand() * Math.PI * 2,
-          r: 0.9 + rand() * 1.15,
+          r: (0.9 + rand() * 1.15) * budget.scale,
           tone,
           pulse: rand() * Math.PI * 2,
           side,
@@ -338,7 +344,9 @@ export function OpinionNodeField({
         ctx.moveTo(x1, y1);
         ctx.quadraticCurveTo(cx, cy, x2, y2);
         ctx.strokeStyle = grad;
-        ctx.lineWidth = 0.9;
+        // Scaled with the dots, for the same reason: a sub-pixel hairline is
+        // what a phone throws away first.
+        ctx.lineWidth = 0.9 * budget.scale;
         ctx.stroke();
       }
     };

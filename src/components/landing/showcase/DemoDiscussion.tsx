@@ -104,26 +104,49 @@ function stanceOf(stance: SampleOpinion["stance"]) {
   return SENTIMENT_ROWS[STANCE_ROW[stance]];
 }
 
-export function DemoDiscussion({ mode }: { mode: Mode }) {
-  return mode === "topic" ? <Opinions /> : <Reasons />;
+/**
+ * `compact` is what lets this panel appear inside the stepped stage.
+ *
+ * That stage pins the section to the viewport and shows one act at a time, so
+ * an act has to fit a screen. This one does not: it is a composer, five
+ * contributions, two of them long-form with named sections, and an expandable
+ * reply thread under each — a deliberately generous demonstration that runs to
+ * well over a screenful on a laptop.
+ *
+ * The compact version drops the composer and the threads and keeps the first
+ * two contributions. Nothing about the *claim* changes — the point of this act
+ * is that written opinion sits in the same list as the numbers and carries the
+ * position its author voted, and two cards make that as well as five do. The
+ * full version is still what a phone and a reduced-motion visitor see, because
+ * neither of those gets a pinned stage to fit inside.
+ */
+export function DemoDiscussion({
+  mode,
+  compact = false,
+}: {
+  mode: Mode;
+  compact?: boolean;
+}) {
+  return mode === "topic" ? <Opinions compact={compact} /> : <Reasons compact={compact} />;
 }
 
 /* ------------------------------------------------------------------ topic */
 
-function Opinions() {
+function Opinions({ compact }: { compact: boolean }) {
   const [open, setOpen] = useState<string | null>(SAMPLE_OPINIONS[0]?.id ?? null);
+  const shown = compact ? SAMPLE_OPINIONS.slice(0, 2) : SAMPLE_OPINIONS;
 
   return (
     <div className="flex flex-col gap-3">
-      <Composer
+      {compact ? null : <Composer
         stance="Positive"
         placeholder="Why do you feel that way? One or two sentences is plenty."
         note="The written half is optional — a vote counts on its own. What you write appears in the list below, carries the position you voted, and can be posted under your name or anonymously."
         chips={["Post anonymously", "Attach a link or image", "Long-form format"]}
-      />
-      {SAMPLE_OPINIONS.map((opinion) => {
+      />}
+      {shown.map((opinion) => {
         const stance = stanceOf(opinion.stance);
-        const expanded = open === opinion.id;
+        const expanded = !compact && open === opinion.id;
         const pro = Boolean(opinion.sections?.length);
 
         return (
@@ -161,7 +184,7 @@ function Opinions() {
                   Structured
                 </span>
               ) : null}
-              {opinion.replies.length > 0 ? (
+              {opinion.replies.length > 0 && !compact ? (
                 <button
                   type="button"
                   onClick={() => setOpen(expanded ? null : opinion.id)}
@@ -251,15 +274,15 @@ function Opinions() {
 
 /* ------------------------------------------------------------------- poll */
 
-function Reasons() {
+function Reasons({ compact }: { compact: boolean }) {
   return (
     <div className="flex flex-col gap-3">
-      <Composer
+      {compact ? null : <Composer
         stance="IMAX 70mm"
         placeholder="Why that one? The strongest case for a side is usually one sentence."
         note="The reason box opens the moment you pick a side, and what you write lands in that side’s column below. Voting without writing is fine — most people do."
         chips={["Post anonymously", "Attach a link or image"]}
-      />
+      />}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {POLL_OPTIONS.map((option, i) => {

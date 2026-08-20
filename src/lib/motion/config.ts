@@ -55,17 +55,48 @@ export interface NodeDensity {
   linkRadius: number;
   /** Hard cap on simultaneous connections — the anti-neural-network rule. */
   maxLinks: number;
+  /**
+   * Dot radius multiplier.
+   *
+   * A 1.2px dot that reads correctly on a 27" panel is a smudge on a phone held
+   * at arm's length in daylight. Scaling the radius rather than the alpha keeps
+   * the field under the contrast ceiling — a bigger dot at the same opacity is
+   * still ambient; a brighter one starts competing with type.
+   */
+  scale: number;
+  /**
+   * How wide the thinned corridor down the middle is, as a fraction of the
+   * viewport, and how far a node inside it is pushed out.
+   *
+   * Desktop has margins to push into. A phone does not — the content column *is*
+   * the screen — so pushing hard there just stacks every node against the two
+   * edges and leaves the middle of the page looking empty, which is most of why
+   * the field read as missing on a phone even before the canvas was enabled.
+   */
+  corridor: number;
+  corridorPush: number;
 }
 
 /**
  * Sparse by mandate. The brief's test is that a reader notices the nodes only
  * after looking for a moment, which puts the desktop count in the dozens, not
- * the hundreds. Mobile drops to a handful and mostly stops moving.
+ * the hundreds.
+ *
+ * DENSITY WENT UP ACROSS THE BOARD, at the product owner's request and by a
+ * deliberately modest step — "a bit more than the current density", not a
+ * lattice. The counts are ~35% up and the link caps with them; what keeps this
+ * from tipping into the cyberpunk-diagram look the brief rules out is that
+ * `maxLinks` is still a hard cap sorted by strength, so a denser field competes
+ * for the same small number of connections rather than drawing all of them.
+ *
+ * Mobile is the big change and it is a different kind of change: the canvas was
+ * never mounted on a phone at all, so this row was dead configuration. See
+ * `resolveLayers`.
  */
 export const DENSITY: Record<DeviceTier, NodeDensity> = {
-  desktop: { count: 34, linkRadius: 190, maxLinks: 7 },
-  tablet: { count: 20, linkRadius: 165, maxLinks: 4 },
-  mobile: { count: 8, linkRadius: 130, maxLinks: 2 },
+  desktop: { count: 46, linkRadius: 205, maxLinks: 10, scale: 1, corridor: 0.22, corridorPush: 0.2 },
+  tablet: { count: 30, linkRadius: 180, maxLinks: 7, scale: 1.05, corridor: 0.18, corridorPush: 0.15 },
+  mobile: { count: 18, linkRadius: 150, maxLinks: 5, scale: 1.3, corridor: 0.1, corridorPush: 0.07 },
 };
 
 /* ---------------------------------------------------------------- opacity */
@@ -156,7 +187,7 @@ export const VARIANTS: Record<AmbientVariant, VariantConfig> = {
       { color: "var(--color-private)", x: 52, y: 44, size: 48, alpha: 0.08, drift: 2 },
       { color: "var(--color-positive)", x: 68, y: 8, size: 40, alpha: 0.07, drift: 3 },
     ],
-    contours: 7,
+    contours: 9,
     nodeScale: 1,
     tones: { positive: 5, neutral: 6, negative: 1, poll: 2 },
     cursorGlow: true,
@@ -307,10 +338,21 @@ export interface ResolvedLayers {
  *   1. A reduced-motion request wins over everything. Nothing moves, and the
  *      variant collapses to `static` so the page keeps colour and contour but
  *      no loops of any kind.
- *   2. Mobile keeps the gradient and drops everything that costs a frame
- *      budget: no canvas, no parallax, no pointer work.
+ *   2. Mobile keeps the gradient and the node field, and drops the two things
+ *      that genuinely cost a frame budget: scroll parallax and pointer work.
  *   3. Pointer effects additionally require a fine pointer, so a tablet with a
  *      mouse gets a glow and a laptop trackpad user is unaffected.
+ *
+ * RULE 2 USED TO DROP THE CANVAS TOO, and that was the whole reason the
+ * background looked empty on a phone: `nodes` was gated on `device !== "mobile"`,
+ * so the node-and-link layer — the one part of the system that is unmistakably
+ * *this* product rather than a gradient — was the one part a phone never saw.
+ *
+ * It is back on, at the reduced budget in DENSITY.mobile: eighteen dots and at
+ * most five links, drawn on a canvas capped at 2x. That is a handful of arcs and
+ * a few hundred distance checks a frame, which is not what drains a phone.
+ * Parallax and the pointer glow stay off, because those are per-scroll and
+ * per-move layout reads, and they are what actually cost.
  */
 export function resolveLayers(input: {
   variant: AmbientVariant;
@@ -341,7 +383,9 @@ export function resolveLayers(input: {
     // like a different product from the desktop one.
     meshAnimates: true,
     contoursAnimate: rich,
-    nodes: rich && config.nodeScale > 0,
+    // Every device with a variant that wants nodes gets nodes. The *amount* is
+    // DENSITY's job, not this function's.
+    nodes: config.nodeScale > 0,
     cursor: rich && pointerFine && config.cursorGlow,
     parallax: rich,
   };

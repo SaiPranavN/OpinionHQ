@@ -273,90 +273,21 @@
 }
 
 /*
- * The rotating hero headline — a drum turning behind the words.
+ * All that survives of the hand-rolled hero rotation.
  *
- * PERSPECTIVE IS IN THE TRANSFORM, NOT ON AN ANCESTOR, and that is the whole
- * reason this reads as a barrel now. The `perspective` property only applies to
- * an element's *direct* children; the animating spans sit three levels below the
- * container that had it, so every `rotateX` was being flattened to a vertical
- * squash. `perspective()` as a transform function applies to the element itself
- * and cannot be broken by anything wrapping it.
- *
- * The two halves are one rotation. Picture a drum whose front face travels
- * upward: the outgoing word is on that face and tips away over its bottom edge
- * as it rises, and the incoming word arrives from underneath, its lower edge
- * swinging forward until the face is flat again. Same direction of spin, which
- * is why they hinge on opposite edges.
- *
- * THE ARRIVAL OVERSHOOTS AND SETTLES. It passes about seven degrees beyond flat,
- * comes back two, and stops — a drum with mass in it does not halt dead on the
- * mark. The amplitudes are small on purpose: enough to feel like inertia, not
- * enough to read as a bounce.
- *
- * Opacity is deliberately not linear with the rotation. The word is fully solid
- * for most of its travel and only fades at the far ends, so the roll is legible
- * rather than a ghost turning over.
- *
- * THE NUMBERS ARE TUNED, not picked. 1100px of perspective rather than 520, and
- * 68 degrees rather than 82: at the short depth and steep angle the word went
- * far enough over to render as a foreshortened sliver, and a heavily distorted
- * trapezoid mid-flight reads as something broken rather than something turning.
- * Shallower rotation through a longer lens is unmistakably a barrel and never
- * stops looking like the word it is.
+ * There used to be four keyframes here — `ohq-headline-in`/`-out` and
+ * `ohq-subject-in`/`-out` — approximating a barrel with a `rotateX` on a flat
+ * element, one pair for the headline and a differently-tuned pair for the pill.
+ * Both are now one drum with actual geometry in it; see CylinderRoller. This is
+ * the reduced-motion path it falls back to: the change still happens, it just
+ * does not travel.
  */
-@keyframes ohq-headline-in {
-  0% {
-    opacity: 0;
-    transform: perspective(1100px) translateY(0.46em) rotateX(-68deg);
-  }
-  28% {
-    opacity: 1;
-  }
-  58% {
-    transform: perspective(1100px) translateY(-0.045em) rotateX(7deg);
-  }
-  79% {
-    transform: perspective(1100px) translateY(0.012em) rotateX(-2.4deg);
-  }
-  92% {
-    transform: perspective(1100px) translateY(0) rotateX(0.8deg);
-  }
-  100% {
-    opacity: 1;
-    transform: perspective(1100px) translateY(0) rotateX(0deg);
-  }
-}
-
-@keyframes ohq-headline-out {
-  0% {
-    opacity: 1;
-    transform: perspective(1100px) translateY(0) rotateX(0deg);
-  }
-  62% {
-    opacity: 0.42;
-  }
-  100% {
-    opacity: 0;
-    transform: perspective(1100px) translateY(-0.52em) rotateX(70deg);
-  }
-}
-
-/* prefers-reduced-motion: the same choreography with the movement taken out. */
 @keyframes ohq-headline-fade {
   from {
     opacity: 0;
   }
   to {
     opacity: 1;
-  }
-}
-
-@keyframes ohq-headline-fade-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
   }
 }
 
@@ -914,43 +845,77 @@ select option {
   appearance: none;
 }
 
-/* ---------------------------------------------------------------- subjects */
+/* ------------------------------------------------------------ slot machine */
 
-/*
- * The example-subject ticker above the hero headline.
+/**
+ * Section headings whose characters land like the reels of a slot machine.
  *
- * A lift-and-fade, deliberately NOT the barrel roll the headline uses. The two
- * sit within about eighty pixels of each other and cycle on different clocks;
- * running the same motion twice at different speeds reads as one thing
- * stuttering rather than two things moving. This one rises and settles, and it
- * travels a short distance because it is a caption, not a heading.
+ * See components/motion/SlotMachineText for the markup. Two things about this
+ * block are load-bearing and easy to undo by accident:
+ *
+ * THE RESTING TRANSFORM ALREADY SHOWS THE REAL TEXT. `.ohq-slot-reel` sits at
+ * `--ohq-slot-travel` — the end of its own travel — whenever nothing is
+ * animating it. That is what makes the heading correct with JavaScript off,
+ * before hydration, to a crawler, and if the reveal observer never fires. The
+ * animation runs *away* from the truth and back to it, so there is no path on
+ * which an `<h2>` renders as scrambled alphabet.
+ *
+ * THE CELL IS ONE LINE BOX, not one em. `1lh` is exactly the height a line of
+ * this heading occupies, so a character inside a clipped reel lands on the same
+ * baseline as the punctuation beside it that has no reel at all. In `em` the
+ * two would disagree by the difference between the font size and the leading,
+ * which on a display heading at `leading-[1.06]` is a visible step.
  */
-@keyframes ohq-subject-in {
-  from {
-    opacity: 0;
-    transform: translateY(0.62em);
-    filter: blur(2px);
-  }
-  60% {
-    opacity: 1;
-    filter: blur(0);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
-  }
+.ohq-slot {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  height: var(--ohq-slot-cell, 1lh);
 }
 
-@keyframes ohq-subject-out {
-  from {
-    opacity: 1;
+.ohq-slot-reel {
+  display: block;
+  transform: translateY(var(--ohq-slot-travel, 0));
+  will-change: transform;
+}
+
+.ohq-slot-cell {
+  display: block;
+  height: var(--ohq-slot-cell, 1lh);
+}
+
+/* Released by the same `[data-shown]` flag `.ohq-reveal` keys off, so the whole
+   effect costs one entry in the page's existing IntersectionObserver and no
+   component of its own. */
+[data-shown="true"] .ohq-slot-reel {
+  animation-name: ohq-slot-spin;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+
+/*
+ * The spin, and it decelerates rather than easing.
+ *
+ * The stops carry the curve instead of a timing function because a reel does
+ * not move like a tween: it runs at speed, brakes hard, passes the mark and
+ * settles back onto it. Three percent past and a half of a percent back — the
+ * same small overshoot the hero drum's spring produces, arrived at the other
+ * way round.
+ */
+@keyframes ohq-slot-spin {
+  0% {
     transform: translateY(0);
-    filter: blur(0);
   }
-  to {
-    opacity: 0;
-    transform: translateY(-0.62em);
-    filter: blur(2px);
+  55% {
+    transform: translateY(calc(var(--ohq-slot-travel) * 0.7));
+  }
+  80% {
+    transform: translateY(calc(var(--ohq-slot-travel) * 1.03));
+  }
+  92% {
+    transform: translateY(calc(var(--ohq-slot-travel) * 0.995));
+  }
+  100% {
+    transform: translateY(var(--ohq-slot-travel));
   }
 }
