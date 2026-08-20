@@ -76,7 +76,12 @@ export function FitBox({
     observer.observe(box);
     observer.observe(content);
     return () => observer.disconnect();
-  }, [min, enabled, children]);
+    // `children` is deliberately not a dependency. It is a new React element on
+    // every render, so listing it would tear the observer down and rebuild it
+    // several times a second while a scene is being scrubbed — and it would buy
+    // nothing, because the observer is watching the rendered content directly
+    // and already fires when swapping children changes its height.
+  }, [min, enabled]);
 
   const clipped = scale <= min + 0.001 && scale < 1;
 
