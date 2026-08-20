@@ -20,6 +20,11 @@ const eslintConfig = [
       "node_modules/**",
       "out/**",
       "next-env.d.ts",
+      // Vendored Claude Code skill scripts. They are tooling that happens to
+      // live in the repo, not application source, and they are written in
+      // CommonJS — linting them only produces `no-require-imports` noise about
+      // files this project does not own or ship.
+      ".claude/**",
     ],
   },
 ];
