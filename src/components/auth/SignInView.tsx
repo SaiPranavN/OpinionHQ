@@ -80,12 +80,9 @@ import { Brand } from "@/components/ui/Brand";
 import {
   confirmSignUpCode,
   detailsAreComplete,
-  hasSavedInterests,
-  interestOfferSkipped,
   resendSignUpCode,
   saveAccountDetails,
   saveInterests,
-  skipInterestOffer,
   setPassword as setAccountPassword,
   startGoogle,
   startSignUp,
@@ -124,31 +121,19 @@ export function SignInView() {
   //   password — somebody who opened the "or use this link instead" link in the
   //              code email. They are signed in and have no password, which is
   //              an account they cannot sign into again without a reset.
-  //   interests — a complete account that predates the interests step. Nothing
-  //              is missing except a reading preference, which is an offer
-  //              rather than an obligation — see `offering` below. It is the
-  //              one resume that cannot skip anything, because there is nothing
-  //              after it but the page they were going to anyway.
   //
-  // Only these three resume. Anything else starts at the beginning rather than
+  // Only these two resume. Anything else starts at the beginning rather than
   // trusting a step name off a query string to skip verification.
+  //
+  // `interests` IS DELIBERATELY NOT ON THIS LIST. It was, briefly, as part of
+  // offering the picker to accounts that predate it — see the note on the
+  // sign-in branch below for why that came out.
   const resumeStep = params.get("step");
   const [step, setStep] = useState<SignupStep>(
-    resumeStep === "details" || resumeStep === "password" || resumeStep === "interests"
+    resumeStep === "details" || resumeStep === "password"
       ? (resumeStep as SignupStep)
       : "account",
   );
-  /**
-   * The interests screen is an offer to an existing account, not step five.
-   *
-   * Same picker, different contract. In sign-up it is the last thing standing
-   * between somebody and their account and it asks for at least one. Here the
-   * account already exists and works — they were signing in to do something
-   * else — so it gets its own heading and a way past it, and "Not now" is
-   * remembered so the offer is made once per browser rather than at every
-   * sign-in for the rest of time.
-   */
-  const [offering, setOffering] = useState(resumeStep === "interests");
   // Only the details resume implies Google. Arriving at the password step means
   // the opposite — a Google account has no password to set.
   const [viaGoogle, setViaGoogle] = useState(resumeStep === "details");
@@ -265,16 +250,25 @@ export function SignInView() {
         return;
       }
 
-      // An account from before the interests step exists, has never been asked,
-      // and has not waved the question away on this browser. Ask once, here,
-      // where they are already stopped — the dashboard panel is the answer for
-      // somebody who goes looking, and this is the answer for everybody else.
-      if (!interestOfferSkipped() && !(await hasSavedInterests())) {
-        setOffering(true);
-        setStep("interests");
-        return;
-      }
-
+      /*
+       * STRAIGHT OUT. NOTHING GOES BETWEEN A SUCCESSFUL SIGN-IN AND LEAVING.
+       *
+       * There was an offer here: an account created before the interests step
+       * got the picker on its way in. It broke signing in outright, and the
+       * mechanism is worth writing down because it is not obvious from either
+       * half on its own.
+       *
+       * `finish` is the only thing that calls `signInWith`, which is what flips
+       * `signedIn` for the prototype layer. Diverting to the interests screen
+       * skipped `finish`, so `signedIn` never turned true — and the interests
+       * screen was gated on `signedIn`. It therefore never rendered, the
+       * sign-in form rendered instead, and pressing "Sign in" put you back on
+       * the sign-in form with correct credentials and no error. It looks
+       * exactly like a rejected password.
+       *
+       * Anything added here has to survive that: this is the one path where the
+       * only correct behaviour is to leave.
+       */
       await finish(false);
       return;
     }
@@ -454,18 +448,7 @@ export function SignInView() {
       setError(result.message);
       return;
     }
-    // `false` when this was an offer: nothing was created, and `withWelcome`
-    // opens the founding-member panel — which would be a strange thing to show
-    // somebody who has had an account for months.
-    await finish(!offering);
-  };
-
-  /** "Not now". Remembered, so it is asked once rather than at every sign-in. */
-  const declineInterests = async () => {
-    if (busy) return;
-    skipInterestOffer();
-    setBusy(true);
-    await finish(false);
+    await finish(true);
   };
 
   /** Leaves for Google and comes back at `/auth/callback`. */
@@ -557,17 +540,15 @@ export function SignInView() {
   // An unfinished account has only one thing left to do, so the page shows only
   // that — not a sign-in form it would be nonsense to fill in.
   /**
-   * `ready && signedIn`, not just the step name.
+   * The step name alone, and it must stay that way.
    *
-   * The picker writes to an account, so there has to be one. Sign-up reaches
-   * this step with a session already open — it was opened at the verify step,
-   * three screens back — so the guard costs that path nothing, and it is what
-   * stops `?step=interests` typed by a signed-out visitor from rendering a
-   * picker attached to a save that can only answer "you are not signed in".
-   * They get the sign-in form instead, which is the honest response, and the
-   * offer finds them again on the other side of it.
+   * This was `step === "interests" && ready && signedIn`, which was the direct
+   * cause of sign-in appearing to fail — `signedIn` is flipped by `finish`, and
+   * nothing on the way to this screen had called it. The only way to reach this
+   * step now is out of step four, where the session has been open since step
+   * two, so there is nothing left for a session check to add.
    */
-  const onInterests = step === "interests" && ready && signedIn;
+  const onInterests = step === "interests";
   const onDetails = !onInterests && (unfinished || (signup && step === "details"));
   const position = stepPosition(step, viaGoogle);
   // The two screens that are forms rather than a handful of fields.
@@ -737,21 +718,11 @@ export function SignInView() {
         <form onSubmit={submitInterests} className="flex flex-col gap-5">
           <Heading
             title={
-              offering ? (
-                <>
-                  Welcome back. What should we <em>show you first</em>?
-                </>
-              ) : (
-                <>
-                  What are you <em>interested in</em>?
-                </>
-              )
+              <>
+                What are you <em>interested in</em>?
+              </>
             }
-            blurb={
-              offering
-                ? "This is new since you last signed in. Pick a few subjects and your topic and poll catalogs will open on them instead of on everything."
-                : "Pick the subjects worth your time. Topics and polls will open on these — it changes what you see first, never what a result says."
-            }
+            blurb="Pick the subjects worth your time. Topics and polls will open on these — it changes what you see first, never what a result says."
           />
 
           <InterestPicker
@@ -776,33 +747,18 @@ export function SignInView() {
 
           <div className="flex flex-col gap-2.5">
             <PrimaryButton type="submit" disabled={busy}>
-              {busy ? "Saving…" : offering ? "Save and continue" : "Create account"}
+              {busy ? "Creating…" : "Create account"}
             </PrimaryButton>
-            {/* Only on the offer. During sign-up there is nothing to skip to —
-                the account is already made and this is the last screen — but
-                for somebody who signed in to do something else, a picker with
-                no way past it is a wall in front of the thing they came for. */}
-            {offering ? (
-              <button
-                type="button"
-                onClick={() => void declineInterests()}
-                disabled={busy}
-                className="cursor-pointer text-center text-[12.5px] text-muted transition-colors hover:text-cream disabled:cursor-default disabled:text-dim/60"
-              >
-                Not now — show me everything
-              </button>
-            ) : null}
           </div>
         </form>
       ) : null}
 
       {/* --------------------------------------- sign in, or step one of up */}
-      {/* `!onInterests` is load-bearing, and it was missing.
-          This block's condition is satisfied by `!signup` alone, and the
-          interests offer runs in sign-in mode — so the whole sign-in form
-          rendered *underneath* the picker, on the real path, for anybody who
-          had just signed in. Two forms on one screen, the second one asking
-          for credentials the person had already given. */}
+      {/* `!onInterests` is belt-and-braces. Nothing reaches the interests step
+          outside sign-up any more, where `signup` already excludes this block —
+          but this condition is satisfied by `!signup` alone, so if anything
+          ever puts that step in sign-in mode again, the whole sign-in form
+          would render underneath the picker rather than instead of it. */}
       {!unfinished && !onInterests && (!signup || step === "account") ? (
         <form onSubmit={submitAccount} className="flex flex-col gap-5">
           <Heading
