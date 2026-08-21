@@ -45,7 +45,18 @@ const CONTRIBUTE = { href: "/contribute", label: "Contribute" } as const;
 
 export function Nav() {
   const { signedIn, displayName, signOut } = usePrototype();
-  const { isEditor } = useSession();
+  const { isEditor, account } = useSession();
+  /**
+   * The wordmark says "OpinionHQ Pro" for an account that is one.
+   *
+   * `account.pro` is the same three conditions `is_pro()` applies in SQL —
+   * live subscription, not revoked, not expired — mirrored in SessionProvider.
+   * It is a label and only a label: every Pro capability is gated by a row
+   * policy, so a stale `true` here puts a word in a header and grants nothing.
+   * Rendered only once the session has answered, so it does not appear a beat
+   * after the page for somebody who was never Pro.
+   */
+  const pro = Boolean(account?.pro);
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -69,9 +80,21 @@ export function Nav() {
       <div className="flex items-center justify-between gap-3 px-4 py-[18px] sm:gap-6 sm:px-8 lg:px-14">
         <Link
           href="/"
+          aria-label={pro ? "OpinionHQ Pro — home" : "OpinionHQ — home"}
           className="flex shrink-0 items-baseline gap-px text-[19px] font-semibold tracking-[-0.03em] text-cream"
         >
           Opinion<span className="text-positive">HQ</span>
+          {/* `aria-hidden`, with the whole name on the link above instead. Read
+              out on its own this lands as "OpinionHQ, Pro" with a pause in the
+              middle, which sounds like two links rather than one wordmark. */}
+          {pro ? (
+            <span
+              aria-hidden
+              className="ml-1.5 self-center rounded-full border border-positive/35 bg-positive/12 px-1.5 py-[2px] font-mono text-[9px] leading-none tracking-[0.14em] uppercase text-positive-light"
+            >
+              Pro
+            </span>
+          ) : null}
         </Link>
 
         {/* Wide screens only. Below `sm` these live in the sheet instead of

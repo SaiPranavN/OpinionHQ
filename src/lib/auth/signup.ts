@@ -157,11 +157,26 @@ export function ageOn(dob: string, today: Date): number | null {
   return age;
 }
 
-/** Loose on shape, strict on nothing else — numbering plans differ by country. */
+/**
+ * The shape a phone number would have to have, kept for when one is asked for
+ * again.
+ *
+ * NOTHING ASKS FOR ONE RIGHT NOW. The field was removed from the form: it was
+ * the only thing collected that no chart, no cross-tab and no page ever read,
+ * justified as account recovery on a product where recovery goes through the
+ * verified email address. Collecting a phone number you have no use for is a
+ * liability you are storing on somebody else's behalf, so the form stopped
+ * asking and `validateDetails` stopped requiring it.
+ *
+ * The column still exists and the value is still written when one is supplied,
+ * so a number given before this change is neither destroyed nor orphaned. Only
+ * the asking is gone.
+ */
 const MOBILE_RE = /^[+]?[0-9\s-]{7,18}$/;
 
 export interface AccountDetailsDraft {
   dob?: string;
+  /** Not asked for. Validated only if something supplies one. */
   mobile?: string;
   gender?: string;
   occupation?: string;
@@ -182,9 +197,11 @@ export type DetailErrors = Partial<Record<keyof AccountDetailsDraft, string>>;
  * failure than no chart: it looks like a measurement and is a self-selected
  * sample.
  *
- * `mobile` is the exception worth noticing — nothing on the product charts it.
- * It is collected for account recovery, and it is the one field that could be
- * dropped without losing a single graph.
+ * `mobile` WAS the exception worth noticing — nothing on the product charted
+ * it, and it was the one field that could be dropped without losing a single
+ * graph. So it was dropped. It is no longer asked for and no longer required;
+ * a value that arrives anyway is still checked for shape, because the rule
+ * being unused is not a reason for it to be wrong.
  */
 export function validateDetails(
   details: AccountDetailsDraft,
@@ -202,8 +219,10 @@ export function validateDetails(
     else if (age > 120) errors.dob = "Check the year — that reads as over 120.";
   }
 
-  if (!details.mobile?.trim()) errors.mobile = "Used to recover your account.";
-  else if (!MOBILE_RE.test(details.mobile.trim())) errors.mobile = "That does not look like a phone number.";
+  // Absent is fine — the form no longer asks. Present and malformed is not.
+  if (details.mobile?.trim() && !MOBILE_RE.test(details.mobile.trim())) {
+    errors.mobile = "That does not look like a phone number.";
+  }
 
   if (!details.gender) errors.gender = "Needed for the gender breakdowns.";
   if (!details.occupation) errors.occupation = "Needed for the occupation breakdowns.";
@@ -220,23 +239,32 @@ export function hasErrors(errors: DetailErrors): boolean {
 
 /* ------------------------------------------------------------------ steps */
 
-export type SignupStep = "account" | "verify" | "password" | "details";
+export type SignupStep = "account" | "verify" | "password" | "details" | "interests";
 
 export const SIGNUP_STEPS: readonly { id: SignupStep; label: string }[] = [
   { id: "account", label: "Your details" },
   { id: "verify", label: "Verify email" },
   { id: "password", label: "Password" },
   { id: "details", label: "About you" },
+  { id: "interests", label: "What you read" },
 ] as const;
 
 /**
- * Where a step sits, 1-based, for "Step 2 of 4".
+ * Where a step sits, 1-based, for "Step 2 of 5".
  *
  * Google skips two of them — an OAuth address arrives already verified and
  * there is no password to set — so the count it shows is its own, shorter one
- * rather than a four-step bar with two crossed out.
+ * rather than a five-step bar with two crossed out.
+ *
+ * INTERESTS COMES LAST, AND NOT BECAUSE IT IS LEAST IMPORTANT. It is the only
+ * step that is pleasant to fill in, and putting it after the demographics means
+ * the flow ends on picking things you like rather than on typing a date of
+ * birth. It is also the only one that can be changed later without
+ * consequence, so it is the safest place for somebody to lose patience.
  */
 export function stepPosition(step: SignupStep, viaGoogle: boolean): { index: number; total: number } {
-  const flow: SignupStep[] = viaGoogle ? ["account", "details"] : ["account", "verify", "password", "details"];
+  const flow: SignupStep[] = viaGoogle
+    ? ["account", "details", "interests"]
+    : ["account", "verify", "password", "details", "interests"];
   return { index: Math.max(flow.indexOf(step), 0) + 1, total: flow.length };
 }

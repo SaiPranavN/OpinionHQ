@@ -54,7 +54,7 @@ export function PollAudience({
       series={series}
       shape="bar"
       noun="voter"
-      title="Who voted, and where the split flips"
+      title="Demographic and geographic distribution"
       optIn={poll.demographicOptIn}
       participants={poll.total}
       note={

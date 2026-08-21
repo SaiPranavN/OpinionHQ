@@ -31,7 +31,19 @@ export type CategoryId =
   // participant-created topics and polls; editors do not publish into it.
   | "other";
 
-export type CategoryFilterId = "All" | CategoryId;
+/**
+ * What the leading chip on a catalog means.
+ *
+ * "All" is every row. "ForYou" is the categories this account picked at
+ * sign-up, and it is the one the catalogs open on — but only for an account
+ * that has picked some. A visitor who is signed out, and an account created
+ * before the step existed, has no list for it to mean anything against, so the
+ * chip is rendered as "All" and this value never enters their state. That
+ * fallback is why `filterAndSort` treats an empty interest list as no filter
+ * rather than as a filter matching nothing: a leading tab that can show an
+ * empty catalog is worse than one that shows everything.
+ */
+export type CategoryFilterId = "All" | "ForYou" | CategoryId;
 
 export interface Category {
   id: CategoryId;

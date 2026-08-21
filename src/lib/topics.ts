@@ -10,10 +10,12 @@
  * filters eventually move into SQL for scale.
  */
 
+import { matchesCategoryFilter } from "@/lib/interests";
 import { matchesPlaceFilter, type PlaceFilterId } from "@/lib/places";
 import type { SuggestItem } from "@/lib/suggest";
 import type {
   CategoryFilterId,
+  CategoryId,
   DecoratedTopic,
   SortId,
   TickerItem,
@@ -57,16 +59,21 @@ export interface CatalogFilters {
   query: string;
   /** "any" is no filter at all — see `lib/places.ts`. */
   place: PlaceFilterId;
+  /**
+   * The categories this account chose at sign-up. Only consulted when the
+   * chosen filter is "ForYou"; empty means no filter — see `lib/interests.ts`.
+   */
+  interests?: readonly CategoryId[];
 }
 
 export function filterAndSort(
   topics: DecoratedTopic[],
-  { category, sort, query, place }: CatalogFilters,
+  { category, sort, query, place, interests }: CatalogFilters,
 ): DecoratedTopic[] {
   const q = query.trim().toLowerCase();
 
   const matched = topics.filter((e) => {
-    if (category !== "All" && e.cat !== category) return false;
+    if (!matchesCategoryFilter(category, e.cat, interests)) return false;
     if (!matchesPlaceFilter(place, e.place)) return false;
     if (!q) return true;
     // Name, category label, place, tags, status and summary are all searchable.

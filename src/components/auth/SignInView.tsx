@@ -10,28 +10,36 @@
  * argument on the left is sticky so it stays put while a long step scrolls,
  * and below `lg` the card is the only thing on screen.
  *
- * CREATING AN ACCOUNT IS FOUR STEPS, in this order for a reason:
+ * CREATING AN ACCOUNT IS FIVE STEPS, in this order for a reason:
  *
  *   1. Name, address, and a bot check.
  *   2. Prove the address before anything is built on it.
  *   3. Set a password, twice.
  *   4. The demographics the product's charts are made of.
+ *   5. What they actually want to read.
  *
  * Verifying before the password means a mistyped address fails while nobody has
  * invested anything, and — the part that matters on a product whose claim is
  * "one account, one vote" — no account can exist against an address its owner
  * never confirmed. An unverified account is a vote somebody manufactured.
  *
+ * Step five is last because it is the one step that is pleasant to fill in and
+ * the one step that costs nothing to get wrong: the demographics are what every
+ * cross-tab is made of, and the interests only decide which chip a catalog
+ * opens on. Ending on "pick what you like" rather than on a date of birth is
+ * worth the ordering by itself.
+ *
  * Google skips steps 2 and 3: an OAuth address arrives verified and there is no
- * password to set. It does not skip step 4, because nothing in an OAuth profile
- * says where somebody lives or what they do — so it comes back from
- * `/auth/callback` at `?step=details` rather than at the catalog.
+ * password to set. It does not skip 4 or 5, because nothing in an OAuth profile
+ * says where somebody lives, what they do, or what they came here to read — so
+ * it comes back from `/auth/callback` at `?step=details` rather than at the
+ * catalog.
  *
  * IT IS REAL NOW, and the order above survived the change. The obvious mapping
  * onto Supabase — `signUp({ email, password })` — would have forced the password
  * a step earlier and reordered the screens. `signInWithOtp` does not: it creates
  * the account from the address alone and leaves the password to `updateUser`
- * afterwards, so the four steps map one to one. See `lib/auth/account.ts`.
+ * afterwards, so the steps map one to one. See `lib/auth/account.ts`.
  *
  * NOTHING HERE IS A PLACEHOLDER ANY MORE. The bot check is Cloudflare Turnstile
  * and its token is verified by the auth service, not by this page; the code is
@@ -59,6 +67,7 @@ import {
   readIdentifier,
 } from "@/components/auth/CredentialForm";
 import { GoogleButton } from "@/components/auth/GoogleSignIn";
+import { InterestPicker } from "@/components/auth/InterestPicker";
 import { OtpInput } from "@/components/auth/OtpInput";
 import {
   ProfileFields,
@@ -73,12 +82,15 @@ import {
   detailsAreComplete,
   resendSignUpCode,
   saveAccountDetails,
+  saveInterests,
   setPassword as setAccountPassword,
   startGoogle,
   startSignUp,
 } from "@/lib/auth/account";
 import { signInWithIdentifier } from "@/lib/auth/actions";
 import { safeNext, withWelcome } from "@/lib/auth/redirect";
+import { interestsAreEnough, MIN_INTERESTS } from "@/lib/interests";
+import type { CategoryId } from "@/lib/types";
 import {
   CODE_LENGTH,
   MIN_PASSWORD_LENGTH,
@@ -128,6 +140,7 @@ export function SignInView() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [profile, setProfile] = useState<ProfileDetails>({ country: "India" });
+  const [interests, setInterests] = useState<CategoryId[]>([]);
 
   const [captcha, setCaptcha] = useState<CaptchaState>("idle");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
@@ -180,6 +193,7 @@ export function SignInView() {
     setPassword("");
     setConfirm("");
     setCode("");
+    setInterests([]);
     refreshCaptcha();
     setError(null);
     setDetailErrors({});
@@ -368,7 +382,43 @@ export function SignInView() {
 
     setBusy(true);
     setError(null);
+    // No `interests` key at all, which is what stops this write blanking a list
+    // chosen on a previous visit — see `saveAccountDetails`.
     const result = await saveAccountDetails({ ...profile, displayName: name.trim() });
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+    setStep("interests");
+  };
+
+  /* ----------------------------------------------------------- step five */
+
+  /**
+   * The account is already complete by the time this screen is reached.
+   *
+   * Which is the point: step four wrote the demographics and the display name,
+   * so somebody who closes the tab here has a working account with a "For you"
+   * that falls back to showing everything. Nothing about this step can leave a
+   * half-built account behind, and that is why it is the one placed last.
+   */
+  const submitInterests = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (busy) return;
+
+    if (!interestsAreEnough(interests)) {
+      setError(
+        MIN_INTERESTS === 1
+          ? "Pick at least one — you can change these later."
+          : `Pick at least ${MIN_INTERESTS}.`,
+      );
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    const result = await saveInterests(interests);
     setBusy(false);
     if (!result.ok) {
       setError(result.message);
@@ -405,7 +455,20 @@ export function SignInView() {
    *
    * A session is not evidence that sign-up finished. Being at a later step is.
    */
-  const midFlow = signup && (step === "verify" || step === "password");
+  /**
+   * `step === "interests"` is on this list unconditionally, and it has to be.
+   *
+   * By the time that screen renders, the demographics have been written but the
+   * session context has not been re-read — `refresh()` happens in `finish`, at
+   * the very end. So `needsDetails` is still true, `unfinished` below would
+   * still be true, and the details form would render *underneath* the interest
+   * picker: the same person filling in the same date of birth twice on one
+   * screen. It cannot be reached from a query string either — `?step=` accepts
+   * only `details` and `password` — so nothing can arrive here without having
+   * been through step four first.
+   */
+  const midFlow =
+    (signup && (step === "verify" || step === "password")) || step === "interests";
 
   /**
    * Signed in, and the flow was never finished — on some earlier visit.
@@ -452,7 +515,8 @@ export function SignInView() {
 
   // An unfinished account has only one thing left to do, so the page shows only
   // that — not a sign-in form it would be nonsense to fill in.
-  const onDetails = unfinished || (signup && step === "details");
+  const onInterests = step === "interests";
+  const onDetails = !onInterests && (unfinished || (signup && step === "details"));
   const position = stepPosition(step, viaGoogle);
 
   return (
@@ -461,7 +525,7 @@ export function SignInView() {
           `unfinished` is true on the details screen of a normal sign-up — the
           account exists by then and its demographics are still blank — so
           gating on it alone hid the progress bar exactly where somebody most
-          wants to see "Step 4 of 4". The one case that should not show it is a
+          wants to see "Step 5 of 5". The one case that should not show it is a
           returning visitor who is dropped straight onto details having done
           none of the earlier steps. */}
       {signup && !(unfinished && step === "account") ? (
@@ -601,6 +665,46 @@ export function SignInView() {
           />
 
           <ProfilePrivacyNote />
+
+          {error ? <ErrorLine>{error}</ErrorLine> : null}
+
+          <div className="flex flex-col gap-2.5">
+            <PrimaryButton type="submit" disabled={busy}>
+              {busy ? "Saving…" : "Continue"}
+            </PrimaryButton>
+          </div>
+        </form>
+      ) : null}
+
+      {/* -------------------------------------------------- what you read */}
+      {onInterests ? (
+        <form onSubmit={submitInterests} className="flex flex-col gap-5">
+          <Heading
+            title={
+              <>
+                What are you <em>interested in</em>?
+              </>
+            }
+            blurb="Pick the subjects worth your time. Topics and polls will open on these — it changes what you see first, never what a result says."
+          />
+
+          <InterestPicker
+            value={interests}
+            onChange={(next) => {
+              setInterests(next);
+              setError(null);
+            }}
+          />
+
+          <p className="m-0 rounded-[12px] border border-veil/10 bg-veil/3 p-3.5 text-[12px] leading-[1.6] text-dim">
+            <strong className="font-semibold text-soft">This one is only about reading.</strong>{" "}
+            Your picks decide which topics and polls a catalog shows you first.
+            They are never part of a breakdown, never shown to anyone else, and
+            every category stays one tap away whatever you choose here.
+            <span className="mt-1.5 block text-dim/80">
+              You can change them any time from your dashboard.
+            </span>
+          </p>
 
           {error ? <ErrorLine>{error}</ErrorLine> : null}
 

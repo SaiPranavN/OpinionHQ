@@ -1,24 +1,44 @@
 "use client";
 
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
+import { hasInterests } from "@/lib/interests";
 import { CATEGORIES } from "@/lib/taxonomy";
-import type { CategoryFilterId } from "@/lib/types";
+import type { CategoryFilterId, CategoryId } from "@/lib/types";
 
 /**
- * Eleven categories will never fit one row, so the chips scroll horizontally
+ * Fifteen categories will never fit one row, so the chips scroll horizontally
  * with the row itself as the scroll container. Each chip is a real button with
  * `aria-pressed`, so the active state is exposed to assistive tech too.
+ *
+ * ── The leading chip is "For you", and sometimes it is "All" ─────────────────
+ *
+ * It used to be "All", always. It is now the categories the account chose at
+ * sign-up — which is only a meaningful thing to offer somebody who has chosen
+ * some. A signed-out visitor has not; neither has an account created before
+ * that step existed. Both get the old chip, with the old label and the old
+ * behaviour, because a tab called "For you" that quietly means "everything" is
+ * a worse lie than a tab called "All" that means it.
+ *
+ * The count next to it follows the same rule: the number of rows the chip will
+ * actually show, not the size of the catalog.
  */
 export function CategoryFilter({
   value,
   counts,
+  interests,
   onChange,
 }: {
   value: CategoryFilterId;
   counts: Map<string, number>;
+  /** From the session. Empty for a signed-out visitor. */
+  interests?: readonly CategoryId[];
   onChange: (next: CategoryFilterId) => void;
 }) {
   const total = [...counts.values()].reduce((sum, n) => sum + n, 0);
+  const personal = hasInterests(interests);
+  const mine = personal
+    ? (interests ?? []).reduce((sum, id) => sum + (counts.get(id) ?? 0), 0)
+    : total;
 
   return (
     <div
@@ -27,10 +47,16 @@ export function CategoryFilter({
       className="ohq-scroll-x -mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
     >
       <Chip
-        active={value === "All"}
-        label="All"
-        count={total}
-        onClick={() => onChange("All")}
+        active={value === (personal ? "ForYou" : "All")}
+        label={personal ? "For you" : "All"}
+        count={mine}
+        icon={personal ? <StarGlyph /> : undefined}
+        title={
+          personal
+            ? "The categories you picked when you signed up. Change them on your dashboard."
+            : undefined
+        }
+        onClick={() => onChange(personal ? "ForYou" : "All")}
       />
       {CATEGORIES.filter((category) => {
         // The catch-all is only worth a chip once something is actually in it —
@@ -87,5 +113,24 @@ function Chip({
         {count}
       </span>
     </button>
+  );
+}
+
+/** Outlined, at the same weight as the category glyphs beside it. */
+function StarGlyph() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="m12 3.6 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.8l5.9-.9z" />
+    </svg>
   );
 }

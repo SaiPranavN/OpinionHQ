@@ -130,7 +130,7 @@ describe("details", () => {
     expect(hasErrors(validateDetails(complete, TODAY))).toBe(false);
   });
 
-  it("requires every field — none of them are optional any more", () => {
+  it("requires every demographic — none of them are optional any more", () => {
     // The point of the change: an optional demographic field produces a chart
     // drawn from whoever felt like answering, which looks like a measurement
     // and is a self-selected sample.
@@ -140,10 +140,18 @@ describe("details", () => {
       "country",
       "dob",
       "gender",
-      "mobile",
       "occupation",
       "state",
     ]);
+  });
+
+  it("does not ask for a phone number", () => {
+    // `mobile` is deliberately absent from the list above. It was the one field
+    // nothing in the product ever read, and a number with no use is a liability
+    // held on somebody else's behalf. An account with no phone number is
+    // complete.
+    expect(hasErrors(validateDetails({ ...complete, mobile: undefined }, TODAY))).toBe(false);
+    expect(validateDetails({}, TODAY).mobile).toBeUndefined();
   });
 
   it("refuses an account below the age floor", () => {
@@ -159,6 +167,8 @@ describe("details", () => {
     expect(validateDetails({ ...complete, dob: "1850-01-01" }, TODAY).dob).toContain("120");
   });
 
+  // The shape rule survives the field being removed: nothing on the site asks
+  // for a number now, and a number that arrives anyway is still checked.
   it("accepts international phone shapes", () => {
     for (const mobile of ["+91 9876543210", "9876543210", "+1 555-0100", "+44 20 7946 0958"]) {
       expect(validateDetails({ ...complete, mobile }, TODAY).mobile, mobile).toBeUndefined();
@@ -175,15 +185,28 @@ describe("details", () => {
 });
 
 describe("step position", () => {
-  it("counts four steps on the credential path", () => {
-    expect(stepPosition("account", false)).toEqual({ index: 1, total: 4 });
-    expect(stepPosition("details", false)).toEqual({ index: 4, total: 4 });
+  it("counts five steps on the credential path", () => {
+    expect(stepPosition("account", false)).toEqual({ index: 1, total: 5 });
+    expect(stepPosition("details", false)).toEqual({ index: 4, total: 5 });
+    expect(stepPosition("interests", false)).toEqual({ index: 5, total: 5 });
   });
 
-  it("counts two on the Google path", () => {
+  it("counts three on the Google path", () => {
     // An OAuth address arrives verified and there is no password to set, so
-    // showing a four-step bar with two crossed out would be theatre.
-    expect(stepPosition("account", true)).toEqual({ index: 1, total: 2 });
-    expect(stepPosition("details", true)).toEqual({ index: 2, total: 2 });
+    // showing a five-step bar with two crossed out would be theatre. Interests
+    // are not skipped: nothing in an OAuth profile says what somebody came
+    // here to read.
+    expect(stepPosition("account", true)).toEqual({ index: 1, total: 3 });
+    expect(stepPosition("details", true)).toEqual({ index: 2, total: 3 });
+    expect(stepPosition("interests", true)).toEqual({ index: 3, total: 3 });
+  });
+
+  it("puts interests last on both paths", () => {
+    // The step that is pleasant to fill in, after the one that is not — and
+    // the only one that can be abandoned without leaving a half-built account.
+    for (const viaGoogle of [false, true]) {
+      const { index, total } = stepPosition("interests", viaGoogle);
+      expect(index).toBe(total);
+    }
   });
 });

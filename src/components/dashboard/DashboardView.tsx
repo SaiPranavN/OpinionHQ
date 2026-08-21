@@ -27,6 +27,7 @@ import { useEffect, useMemo, useState } from "react";
 import { readMyFollowCount } from "@/lib/follows";
 import { readMyContributions, type MyContribution } from "@/lib/topics/contributions";
 
+import { InterestSettings } from "@/components/dashboard/InterestSettings";
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { relativeTime } from "@/lib/ask/derive";
@@ -207,6 +208,10 @@ export function DashboardView({ topics }: { topics: DecoratedTopic[] }) {
             )}
           </span>
         </section>
+
+        {/* Under the plan, because it is the same kind of thing: a setting
+            stated as a fact with one control beside it. */}
+        <InterestSettings />
       </header>
 
       <div

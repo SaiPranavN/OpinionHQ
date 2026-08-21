@@ -6,9 +6,15 @@
  * logic, which is pure and is where the tests point.
  */
 
+import { matchesCategoryFilter } from "@/lib/interests";
 import { matchesPlaceFilter, type PlaceFilterId } from "@/lib/places";
 import type { SuggestItem } from "@/lib/suggest";
-import type { CategoryFilterId, DecoratedPoll, TickerItem } from "@/lib/types";
+import type {
+  CategoryFilterId,
+  CategoryId,
+  DecoratedPoll,
+  TickerItem,
+} from "@/lib/types";
 
 /** Top polls by trending score, highest first. */
 export function hotPolls(polls: readonly DecoratedPoll[], limit = 6): DecoratedPoll[] {
@@ -60,18 +66,21 @@ export function filterAndSortPolls(
     sort,
     query,
     place,
+    interests,
   }: {
     category: CategoryFilterId;
     sort: PollSortId;
     query: string;
     /** "any" is no filter at all — see `lib/places.ts`. */
     place: PlaceFilterId;
+    /** Only consulted for "ForYou"; empty means no filter. */
+    interests?: readonly CategoryId[];
   },
 ): DecoratedPoll[] {
   const q = query.trim().toLowerCase();
 
   const matched = polls.filter((poll) => {
-    if (category !== "All" && poll.cat !== category) return false;
+    if (!matchesCategoryFilter(category, poll.cat, interests)) return false;
     if (!matchesPlaceFilter(place, poll.place)) return false;
     if (!q) return true;
     const haystack = [

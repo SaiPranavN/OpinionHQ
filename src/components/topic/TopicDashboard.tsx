@@ -3,7 +3,6 @@ import { TopicHeader } from "@/components/topic/TopicHeader";
 import { VerifiedUpdates } from "@/components/topic/VerifiedUpdates";
 import { TopicTabs } from "@/components/topic/TopicTabs";
 import { FacetPanel } from "@/components/topic/FacetPanel";
-import { KpiGrid } from "@/components/topic/KpiGrid";
 import { ParticipationChart } from "@/components/topic/ParticipationChart";
 import { SentimentDonut } from "@/components/topic/SentimentDonut";
 import { SentimentTrend } from "@/components/topic/SentimentTrend";
@@ -98,7 +97,15 @@ export function TopicDashboard({
           <SentimentTrend topic={topic} />
           <ParticipationChart topic={topic} />
         </div>
-        <KpiGrid topic={topic} />
+        {/* THE FOUR-CARD KPI ROW USED TO BE HERE, and it was three quarters
+            duplication. Participants, written opinions and the seven-day change
+            are already the largest thing on the page under the topic's name —
+            see TopicHeader — so the row restated them in smaller type a screen
+            further down. The one figure it added was the polarization index,
+            which is the least self-explanatory number on the site and was doing
+            its explaining in a four-word caption. It survives where it can be
+            read properly: in the exported report, next to the split it is
+            derived from. */}
         <div id="audience" className="scroll-mt-[calc(var(--ohq-nav-h)+18px)]">
           <AudiencePanels topic={topic} cells={audienceCells} />
         </div>

@@ -88,18 +88,13 @@ export function ProfileFields({
         />
       </AuthField>
 
-      <AuthField label="Mobile number" required error={errors.mobile}>
-        <input
-          type="tel"
-          inputMode="tel"
-          value={value.mobile ?? ""}
-          onChange={(e) => set("mobile", e.target.value)}
-          placeholder="+91 98765 43210"
-          autoComplete="tel"
-          aria-invalid={Boolean(errors.mobile) || undefined}
-          className={`${authInput} ${errors.mobile ? "border-negative/55" : ""}`}
-        />
-      </AuthField>
+      {/* NO PHONE NUMBER. There was one here, marked required, justified as
+          account recovery. It was the only thing this form collected that
+          nothing in the product ever read — no chart, no cross-tab, no page —
+          and recovery on this site goes through the address that was verified
+          two steps earlier. A number with no use is a liability held on
+          somebody else's behalf, so it stopped being asked for. The column and
+          any value already in it are untouched; see `lib/auth/signup.ts`. */}
 
       <AuthField label="Gender" required error={errors.gender} htmlFor="ohq-gender">
         <Select
@@ -191,8 +186,8 @@ export function ProfilePrivacyNote() {
       those rows are read from exactly these fields — which is why they are asked
       for rather than left optional. None of it is ever shown against your name:
       it appears inside aggregate percentages, and a group is withheld entirely
-      until enough people have shared theirs. Your email and mobile number are
-      never shown to anyone.
+      until enough people have shared theirs. Your email address is never shown
+      to anyone, and no phone number is asked for.
       <span className="mt-1.5 block text-dim/80">
         These are stored against your account, not in this browser. You can change
         them later, and deleting your account deletes them with it.

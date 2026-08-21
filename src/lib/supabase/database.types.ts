@@ -2351,6 +2351,7 @@ export type Database = {
           created_at: string
           dob: string | null
           gender: Database["public"]["Enums"]["gender"] | null
+          interests: string[]
           mobile: string | null
           occupation: string | null
           place_id: string | null
@@ -2364,6 +2365,7 @@ export type Database = {
           created_at?: string
           dob?: string | null
           gender?: Database["public"]["Enums"]["gender"] | null
+          interests?: string[]
           mobile?: string | null
           occupation?: string | null
           place_id?: string | null
@@ -2377,6 +2379,7 @@ export type Database = {
           created_at?: string
           dob?: string | null
           gender?: Database["public"]["Enums"]["gender"] | null
+          interests?: string[]
           mobile?: string | null
           occupation?: string | null
           place_id?: string | null

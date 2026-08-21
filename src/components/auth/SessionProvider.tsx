@@ -23,8 +23,10 @@ import type { User } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { enabledProviders } from "@/lib/auth/account";
+import { readInterests } from "@/lib/interests";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import type { CategoryId } from "@/lib/types";
 
 /** The demographic half. Readable only by its owner — see the identity migration. */
 export interface PrivateDetails {
@@ -36,6 +38,12 @@ export interface PrivateDetails {
   state: string | null;
   city: string | null;
   placeId: string | null;
+  /**
+   * Categories chosen at sign-up, in taxonomy order and already filtered to ids
+   * that still exist. Empty for an account created before the step existed,
+   * which is what the catalogs check before offering "For you".
+   */
+  interests: CategoryId[];
 }
 
 export interface Account {
@@ -64,6 +72,15 @@ interface SessionValue {
   isEditor: boolean;
   isAdmin: boolean;
   /**
+   * The categories this account chose, or empty when signed out.
+   *
+   * Exposed here rather than reached for through `account.details` so callers
+   * get a *stable* array. `account?.details.interests ?? []` allocates a fresh
+   * empty array on every render, which is a dependency that never compares
+   * equal — enough to re-run a catalog's `useMemo` on every keystroke.
+   */
+  interests: CategoryId[];
+  /**
    * Whether this deployment has Google configured. False until the answer
    * arrives, so a button that would lead to an error page is never rendered
    * during the gap.
@@ -84,10 +101,30 @@ const SessionContext = createContext<SessionValue | null>(null);
  * three sequential ones on a cold cache. Both are row-level-secured to this
  * account: the embed cannot widen what the caller was allowed to see.
  */
-const ACCOUNT_QUERY =
+const PRIVATE_COLUMNS = "dob, mobile, occupation, gender, country, state, city, place_id";
+
+const accountQuery = (withInterests: boolean) =>
   "id, display_name, initials, username, headline, role, suspended_at, " +
-  "profile_private(dob, mobile, occupation, gender, country, state, city, place_id), " +
+  `profile_private(${PRIVATE_COLUMNS}${withInterests ? ", interests" : ""}), ` +
   "subscriptions(status, current_period_end, revoked_at)";
+
+/**
+ * Whether this deployment's database has the `interests` column yet.
+ *
+ * ORDERING INSURANCE, AND IT EARNS ITS KEEP. Code ships when a branch is pushed;
+ * a migration is applied by hand. So there is always a window where the new
+ * bundle is live against the old schema, and PostgREST answers a select naming
+ * an unknown column with an error for the *whole request* — not a null for that
+ * one field. Without this, that window is not "interests quietly missing", it
+ * is `loadAccount` bailing out, `account` staying null, and every signed-in
+ * person on the site being shown a "Sign in" button until somebody runs the
+ * migration. A reading preference is not worth that failure mode.
+ *
+ * One retry, and the answer is remembered for the tab: a schema does not gain
+ * the column halfway through somebody's visit, and re-asking on every profile
+ * read would double the requests for the life of the session.
+ */
+let interestsColumnExists = true;
 
 type PrivateRow = {
   dob: string | null;
@@ -98,7 +135,11 @@ type PrivateRow = {
   state: string | null;
   city: string | null;
   place_id: string | null;
+  interests: string[] | null;
 };
+
+/** One frozen empty array, so "signed out" is a stable dependency. */
+const NO_INTERESTS: CategoryId[] = [];
 
 /** PostgREST returns an embedded one-to-one as either an object or a 1-length
  *  array depending on how it inferred the relationship. Take either. */
@@ -114,11 +155,21 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [googleEnabled, setGoogleEnabled] = useState(false);
 
   const loadAccount = useCallback(async (id: string) => {
-    const { data, error } = await supabaseBrowser()
-      .from("profiles")
-      .select(ACCOUNT_QUERY)
-      .eq("id", id)
-      .maybeSingle();
+    const read = (withInterests: boolean) =>
+      supabaseBrowser()
+        .from("profiles")
+        .select(accountQuery(withInterests))
+        .eq("id", id)
+        .maybeSingle();
+
+    let { data, error } = await read(interestsColumnExists);
+
+    // A schema that predates the interests migration. Ask again without it
+    // rather than leaving a signed-in person looking at a signed-out site.
+    if (error && interestsColumnExists) {
+      interestsColumnExists = false;
+      ({ data, error } = await read(false));
+    }
 
     if (error || !data) {
       setAccount(null);
@@ -163,6 +214,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         state: priv?.state ?? null,
         city: priv?.city ?? null,
         placeId: priv?.place_id ?? null,
+        interests: readInterests(priv?.interests),
       },
     });
   }, []);
@@ -252,6 +304,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         (!details?.dob || !details?.occupation || !details?.country || !details?.gender),
       isEditor: account?.role === "editor" || account?.role === "admin",
       isAdmin: account?.role === "admin",
+      interests: details?.interests ?? NO_INTERESTS,
       googleEnabled,
       refresh,
       signOut: doSignOut,

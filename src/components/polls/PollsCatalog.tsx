@@ -33,8 +33,12 @@ export function PollsCatalog({
   counts: Map<string, number>;
   totalVotes: number;
 }) {
-  const { isEditor } = useSession();
-  const [category, setCategory] = useState<CategoryFilterId>("All");
+  const { isEditor, interests } = useSession();
+  // Derived, not initial state — see CatalogView for why the session arriving
+  // late makes an initial `useState` value the wrong tool here.
+  const [picked, setPicked] = useState<CategoryFilterId | null>(null);
+  const category: CategoryFilterId = picked ?? (interests.length > 0 ? "ForYou" : "All");
+  const setCategory = setPicked;
   const [sort, setSort] = useState<PollSortId>("trending");
   const [query, setQuery] = useState("");
   const [place, setPlace] = useState<PlaceFilterId>("any");
@@ -44,16 +48,23 @@ export function PollsCatalog({
   // which meant two visitors on the same page saw two different catalogs, and
   // the counts beside the filters described neither.
   const results = useMemo(
-    () => filterAndSortPolls(polls, { category, sort, query, place }),
-    [polls, category, sort, query, place],
+    () => filterAndSortPolls(polls, { category, sort, query, place, interests }),
+    [polls, category, sort, query, place, interests],
   );
 
   const index = useMemo(() => pollIndex(polls), [polls]);
 
   const scope = [
-    category === "All" ? "" : ` in ${categoryOf(category).label}`,
+    category === "All"
+      ? ""
+      : category === "ForYou"
+        ? " in the categories you picked"
+        : ` in ${categoryOf(category).label}`,
     place === "any" ? "" : ` for ${placeLabel(place)}`,
   ].join("");
+  // The empty catalog is a different problem when it is the reader's own
+  // categories that are empty rather than a filter they set on this page.
+  const onlyForYou = category === "ForYou" && !query && place === "any";
   const noun = results.length === 1 ? "poll" : "polls";
   const summary =
     results.length === polls.length
@@ -142,19 +153,24 @@ export function PollsCatalog({
       </div>
 
       <div className="mt-4">
-        <CategoryFilter value={category} counts={counts} onChange={setCategory} />
+        <CategoryFilter
+          value={category}
+          counts={counts}
+          interests={interests}
+          onChange={setCategory}
+        />
       </div>
 
       <div className="mt-4 mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-veil/8 pb-3">
         <p aria-live="polite" className="m-0 text-[12.5px] text-dim">
           {summary}
         </p>
-        {query || category !== "All" || place !== "any" ? (
+        {query || (category !== "All" && category !== "ForYou") || place !== "any" ? (
           <button
             type="button"
             onClick={() => {
               setQuery("");
-              setCategory("All");
+              setCategory(interests.length > 0 ? "ForYou" : "All");
               setPlace("any");
             }}
             className="cursor-pointer rounded-full border border-veil/12 px-3 py-1 text-[11.5px] text-muted transition-colors duration-300 outline-none hover:border-veil/28 hover:text-cream focus-visible:ring-2 focus-visible:ring-poll/60"
@@ -175,17 +191,36 @@ export function PollsCatalog({
           <p className="m-0 font-display font-bold text-[clamp(1.5rem,3vw,2.2rem)] tracking-[-0.02em] text-cream-bright">
             No polls here <em>yet.</em>
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              setQuery("");
-              setCategory("All");
-              setPlace("any");
-            }}
-            className="cursor-pointer rounded-full border border-poll/40 bg-poll/12 px-5 py-2.5 text-[13.5px] font-medium text-poll-soft outline-none focus-visible:ring-2 focus-visible:ring-poll/60"
-          >
-            Clear filters
-          </button>
+          {/* "Clear filters" would reset the category to "For you", which on
+              an account whose chosen categories are empty is the filter that
+              was already showing nothing — a button that visibly does not
+              work. Widening is the only move that helps. See CatalogView. */}
+          {onlyForYou ? (
+            <>
+              <p className="m-0 max-w-[420px] text-[14px] font-light text-muted">
+                Nothing is open yet in the categories you picked.
+              </p>
+              <button
+                type="button"
+                onClick={() => setCategory("All")}
+                className="cursor-pointer rounded-full border border-poll/40 bg-poll/12 px-5 py-2.5 text-[13.5px] font-medium text-poll-soft outline-none focus-visible:ring-2 focus-visible:ring-poll/60"
+              >
+                Show every poll
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setCategory(interests.length > 0 ? "ForYou" : "All");
+                setPlace("any");
+              }}
+              className="cursor-pointer rounded-full border border-poll/40 bg-poll/12 px-5 py-2.5 text-[13.5px] font-medium text-poll-soft outline-none focus-visible:ring-2 focus-visible:ring-poll/60"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       )}
     </section>

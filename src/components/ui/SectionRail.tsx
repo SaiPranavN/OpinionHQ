@@ -20,8 +20,23 @@
  * exactly 1280 and nowhere else — the width where `max-w` stops binding and the
  * gutter is at its narrowest. Measured rather than eyeballed for that reason.
  *
- * Below `lg` it is hidden rather than shrunk: on a phone there is no gutter to
- * live in, and a floating rail over the content is worse than no rail.
+ * ── It is on phones now, and it does float over the content ─────────────────
+ *
+ * It used to be hidden below `lg`, on the argument that a phone has no gutter
+ * to live in and a rail over the content is worse than no rail. Half of that
+ * was right and the conclusion was not: a phone is where a five-screen
+ * dashboard is *most* expensive to scroll through, and hiding the index there
+ * meant the people who needed it most were the only ones who never got it.
+ *
+ * So below `lg` it shrinks instead of disappearing — 26px buttons in a 32px
+ * pill, 4px from the edge, over a blurred translucent ground. The page's own
+ * padding is 16px, so it sits over the outer ~16px of a card, which is inside
+ * that card's own padding at every panel on both dashboards. What it costs is
+ * a strip of empty card edge; what it buys is the bottom half of the page.
+ *
+ * The hover labels stay desktop-only. There is no hover on a touch screen, the
+ * flyout would open leftward across the content it is meant to help you read,
+ * and `aria-label` already names every button for anybody not looking at it.
  *
  * IT FOLLOWS AS WELL AS LEADS. An index that only jumps is half an index — the
  * useful half is knowing where you already are, which is why the effect below
@@ -172,9 +187,9 @@ export function SectionRail({
   return (
     <nav
       aria-label="Sections on this page"
-      className="fixed top-1/2 right-1.5 z-40 hidden -translate-y-1/2 lg:block"
+      className="fixed top-1/2 right-1 z-40 -translate-y-1/2 lg:right-1.5"
     >
-      <ul className="m-0 flex list-none flex-col items-center gap-1 rounded-full border border-veil/10 bg-surface/80 p-1 backdrop-blur-[10px]">
+      <ul className="m-0 flex list-none flex-col items-center gap-0.5 rounded-full border border-veil/10 bg-surface/80 p-[3px] backdrop-blur-[10px] lg:gap-1 lg:p-1">
         {sections.map((section) => {
           const on = active === section.id;
           return (
@@ -184,7 +199,7 @@ export function SectionRail({
                 onClick={() => go(section.id)}
                 aria-current={on ? "true" : undefined}
                 aria-label={`Jump to ${section.label}`}
-                className="grid h-8 w-8 cursor-pointer place-items-center rounded-full transition-[background,color] duration-300 outline-none focus-visible:ring-2 focus-visible:ring-positive/60"
+                className="grid h-[26px] w-[26px] cursor-pointer place-items-center rounded-full transition-[background,color] duration-300 outline-none focus-visible:ring-2 focus-visible:ring-positive/60 lg:h-8 lg:w-8"
                 style={{
                   color: on ? accent : "var(--color-dim)",
                   background: on
@@ -201,7 +216,7 @@ export function SectionRail({
                   anybody who never sees it. */}
               <span
                 aria-hidden
-                className="pointer-events-none absolute right-[calc(100%+10px)] rounded-full border border-veil/10 bg-surface-raised px-2.5 py-1 text-[11.5px] whitespace-nowrap text-soft opacity-0 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.8)] transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
+                className="pointer-events-none absolute right-[calc(100%+10px)] hidden rounded-full border border-veil/10 bg-surface-raised px-2.5 py-1 text-[11.5px] whitespace-nowrap text-soft opacity-0 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.8)] transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100 lg:block"
               >
                 {section.label}
               </span>

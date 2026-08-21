@@ -29,6 +29,7 @@
 import type { Session, User } from "@supabase/supabase-js";
 
 import { supabaseBrowser } from "@/lib/supabase/client";
+import type { Database } from "@/lib/supabase/database.types";
 import { supabaseEnv } from "@/lib/supabase/env";
 
 export type AuthResult = { ok: true } | { ok: false; message: string };
@@ -186,6 +187,12 @@ export interface AccountDetailsInput {
   country?: string;
   state?: string;
   city?: string;
+  /**
+   * Category ids from the last step. Omitted rather than empty when the caller
+   * is not writing them — see `saveAccountDetails` for why the difference
+   * matters.
+   */
+  interests?: readonly string[];
 }
 
 /**
@@ -215,18 +222,56 @@ export async function saveAccountDetails(details: AccountDetailsInput): Promise<
     if (error) return fail(readable(error.message));
   }
 
+  /**
+   * `interests` is written only when the caller passed some.
+   *
+   * The demographics screen and the interests screen are two steps that both
+   * end in this function, and the first of them knows nothing about the second.
+   * Sending `interests: []` from the demographics step would wipe a list the
+   * person had already chosen — which is exactly what happens to somebody
+   * resuming a half-finished sign-up, the one case where the data is most
+   * easily lost and least easily noticed. Undefined means "not my column"; an
+   * explicit empty array is still respected, because deselecting everything is
+   * a thing the picker can legitimately produce.
+   */
+  const patch: Database["public"]["Tables"]["profile_private"]["Update"] = {
+    dob: details.dob || null,
+    mobile: details.mobile?.trim() || null,
+    gender: (details.gender || null) as never,
+    occupation: details.occupation || null,
+    country: details.country || null,
+    state: details.state?.trim() || null,
+    city: details.city?.trim() || null,
+    place_id: placeFor(details.country, details.state),
+  };
+  if (details.interests) patch.interests = [...details.interests];
+
   const { error } = await supabase
     .from("profile_private")
-    .update({
-      dob: details.dob || null,
-      mobile: details.mobile?.trim() || null,
-      gender: (details.gender || null) as never,
-      occupation: details.occupation || null,
-      country: details.country || null,
-      state: details.state?.trim() || null,
-      city: details.city?.trim() || null,
-      place_id: placeFor(details.country, details.state),
-    })
+    .update(patch)
+    .eq("user_id", user.id);
+
+  return error ? fail(readable(error.message)) : ok;
+}
+
+/**
+ * Just the reading preferences, without touching a demographic.
+ *
+ * A separate call rather than a flag on the one above, because the two are
+ * written at different moments by different screens and the demographics patch
+ * sets eight columns to whatever the caller happens to be holding. Somebody
+ * changing their interests later should not be able to blank their own date of
+ * birth by way of a form that never showed it to them.
+ */
+export async function saveInterests(interests: readonly string[]): Promise<AuthResult> {
+  const supabase = supabaseBrowser();
+  const { data: auth } = await supabase.auth.getUser();
+  const user = auth.user;
+  if (!user) return fail("You are not signed in.");
+
+  const { error } = await supabase
+    .from("profile_private")
+    .update({ interests: [...interests] })
     .eq("user_id", user.id);
 
   return error ? fail(readable(error.message)) : ok;

@@ -25,8 +25,20 @@ export function CatalogView({
   topics: DecoratedTopic[];
   counts: Map<string, number>;
 }) {
-  const { isEditor } = useSession();
-  const [category, setCategory] = useState<CategoryFilterId>("All");
+  const { isEditor, interests } = useSession();
+  /**
+   * The catalog opens on "For you" and falls back to "All".
+   *
+   * `interests` starts empty on every render — the session is read
+   * asynchronously — so this cannot be an initial `useState` value: the first
+   * paint would set "All" and never revisit it, and a signed-in reader would
+   * get the whole catalog with a "For you" chip sitting inactive beside it.
+   * Deriving it instead means the chip lights up the moment the answer lands,
+   * and stops being derived as soon as anybody presses anything.
+   */
+  const [picked, setPicked] = useState<CategoryFilterId | null>(null);
+  const category: CategoryFilterId = picked ?? (interests.length > 0 ? "ForYou" : "All");
+  const setCategory = setPicked;
   const [sort, setSort] = useState<SortId>("trending");
   const [query, setQuery] = useState("");
   const [place, setPlace] = useState<PlaceFilterId>("any");
@@ -43,14 +55,21 @@ export function CatalogView({
   const liveCounts = counts;
 
   const results = useMemo(
-    () => filterAndSort(all, { category, sort, query, place }),
-    [all, category, sort, query, place],
+    () => filterAndSort(all, { category, sort, query, place, interests }),
+    [all, category, sort, query, place, interests],
   );
 
   const index = useMemo(() => topicIndex(all), [all]);
 
+  // "For you" names itself here rather than reading as an unexplained shortfall.
+  // Without it the line said "12 of 40 topics sorted by Trending", which states
+  // that 28 are being withheld and not why.
   const scope = [
-    category === "All" ? "" : ` in ${categoryOf(category).label}`,
+    category === "All"
+      ? ""
+      : category === "ForYou"
+        ? " in the categories you picked"
+        : ` in ${categoryOf(category).label}`,
     place === "any" ? "" : ` for ${placeLabel(place)}`,
   ].join("");
   const noun = results.length === 1 ? "topic" : "topics";
@@ -127,19 +146,24 @@ export function CatalogView({
       </div>
 
       <div className="mt-4">
-        <CategoryFilter value={category} counts={liveCounts} onChange={setCategory} />
+        <CategoryFilter
+          value={category}
+          counts={liveCounts}
+          interests={interests}
+          onChange={setCategory}
+        />
       </div>
 
       <div className="mt-4 mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-veil/8 pb-3">
         <p aria-live="polite" className="m-0 text-[12.5px] text-dim">
           {summary}
         </p>
-        {(query || category !== "All" || place !== "any") && (
+        {(query || (category !== "All" && category !== "ForYou") || place !== "any") && (
           <button
             type="button"
             onClick={() => {
               setQuery("");
-              setCategory("All");
+              setCategory(interests.length > 0 ? "ForYou" : "All");
               setPlace("any");
             }}
             className="cursor-pointer rounded-full border border-veil/12 px-3 py-1 text-[11.5px] text-muted transition-colors duration-300 outline-none hover:border-veil/28 hover:text-cream focus-visible:ring-2 focus-visible:ring-positive/60"
@@ -175,20 +199,38 @@ export function CatalogView({
           <p className="m-0 max-w-[420px] text-[14px] font-light text-muted">
             {all.length === 0
               ? "The first topics are being written now. Every number that appears here will be a real one — nothing is seeded."
-              : "Editors publish topics in curated batches, so some categories are still thin during the private beta."}
+              : category === "ForYou" && !query && place === "any"
+                ? "Nothing has been published yet in the categories you picked. Editors publish in curated batches, so some are still thin during the private beta."
+                : "Editors publish topics in curated batches, so some categories are still thin during the private beta."}
           </p>
+          {/* A THIRD NOTHING, and it needed its own button. "Clear filters"
+              resets the category to "For you", so on an account whose chosen
+              categories happen to be empty it clears the filters back to the
+              filter that was already showing nothing — a button that visibly
+              does not work. Widening to everything is the only move that
+              helps, so that is what it offers. */}
           {all.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => {
-                setQuery("");
-                setCategory("All");
-                setPlace("any");
-              }}
-              className="cursor-pointer rounded-full border border-positive/40 bg-positive/12 px-5 py-2.5 text-[13.5px] font-medium text-positive-light outline-none focus-visible:ring-2 focus-visible:ring-positive/60"
-            >
-              Clear filters
-            </button>
+            category === "ForYou" && !query && place === "any" ? (
+              <button
+                type="button"
+                onClick={() => setCategory("All")}
+                className="cursor-pointer rounded-full border border-positive/40 bg-positive/12 px-5 py-2.5 text-[13.5px] font-medium text-positive-light outline-none focus-visible:ring-2 focus-visible:ring-positive/60"
+              >
+                Show every topic
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  setCategory(interests.length > 0 ? "ForYou" : "All");
+                  setPlace("any");
+                }}
+                className="cursor-pointer rounded-full border border-positive/40 bg-positive/12 px-5 py-2.5 text-[13.5px] font-medium text-positive-light outline-none focus-visible:ring-2 focus-visible:ring-positive/60"
+              >
+                Clear filters
+              </button>
+            )
           ) : null}
         </div>
       )}

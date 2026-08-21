@@ -73,7 +73,7 @@ export function AudiencePanels({
       series={SENTIMENT_SERIES}
       shape="donut"
       noun="participant"
-      title="Who is participating, and where the split flips"
+      title="Demographic and geographic distribution"
       optIn={topic.demographicOptIn}
       participants={topic.participants}
       note={
