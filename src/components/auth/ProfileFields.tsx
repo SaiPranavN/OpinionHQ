@@ -58,6 +58,16 @@ const INDIAN_STATES: SelectOption[] = PLACES.filter(
   (place) => place.level === "state" && place.parent === "india",
 ).map((place) => ({ value: place.label, label: place.label }));
 
+/**
+ * Written out in full rather than composed, because Tailwind reads source for
+ * class names — `grid-cols-${n}` produces no CSS at all.
+ */
+const COLUMNS: Record<1 | 2 | 3, string> = {
+  1: "flex flex-col gap-4",
+  2: "grid grid-cols-1 gap-4 sm:grid-cols-2",
+  3: "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3",
+};
+
 export function ProfileFields({
   value,
   onChange,
@@ -67,8 +77,18 @@ export function ProfileFields({
   value: ProfileDetails;
   onChange: (next: ProfileDetails) => void;
   errors?: DetailErrors;
-  /** 1 on the narrow page panel, 2 in the wider sheet. */
-  columns?: 1 | 2;
+  /**
+   * How wide the form is allowed to get.
+   *
+   * 1 stacks, 2 pairs from `sm`, 3 goes to three across at `lg`. Six fields at
+   * three across is two tidy rows — which is the point of offering it: stacked,
+   * this form is six full-width controls and a privacy note, and on a desktop
+   * that is a column of boxes taller than the screen with two thirds of the
+   * page empty either side of it. Every option still collapses to one column on
+   * a phone, where a side-by-side date of birth and gender would be two
+   * cramped controls rather than one comfortable one.
+   */
+  columns?: 1 | 2 | 3;
 }) {
   const set = <K extends keyof ProfileDetails>(key: K, next: ProfileDetails[K]) =>
     onChange({ ...value, [key]: next });
@@ -76,7 +96,7 @@ export function ProfileFields({
   const inIndia = value.country === "India";
 
   return (
-    <div className={columns === 2 ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "flex flex-col gap-4"}>
+    <div className={COLUMNS[columns]}>
       <AuthField label="Date of birth" required error={errors.dob}>
         <input
           type="date"

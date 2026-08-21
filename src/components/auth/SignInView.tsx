@@ -80,9 +80,12 @@ import { Brand } from "@/components/ui/Brand";
 import {
   confirmSignUpCode,
   detailsAreComplete,
+  hasSavedInterests,
+  interestOfferSkipped,
   resendSignUpCode,
   saveAccountDetails,
   saveInterests,
+  skipInterestOffer,
   setPassword as setAccountPassword,
   startGoogle,
   startSignUp,
@@ -121,15 +124,31 @@ export function SignInView() {
   //   password — somebody who opened the "or use this link instead" link in the
   //              code email. They are signed in and have no password, which is
   //              an account they cannot sign into again without a reset.
+  //   interests — a complete account that predates the interests step. Nothing
+  //              is missing except a reading preference, which is an offer
+  //              rather than an obligation — see `offering` below. It is the
+  //              one resume that cannot skip anything, because there is nothing
+  //              after it but the page they were going to anyway.
   //
-  // Only these two resume. Anything else starts at the beginning rather than
+  // Only these three resume. Anything else starts at the beginning rather than
   // trusting a step name off a query string to skip verification.
   const resumeStep = params.get("step");
   const [step, setStep] = useState<SignupStep>(
-    resumeStep === "details" || resumeStep === "password"
+    resumeStep === "details" || resumeStep === "password" || resumeStep === "interests"
       ? (resumeStep as SignupStep)
       : "account",
   );
+  /**
+   * The interests screen is an offer to an existing account, not step five.
+   *
+   * Same picker, different contract. In sign-up it is the last thing standing
+   * between somebody and their account and it asks for at least one. Here the
+   * account already exists and works — they were signing in to do something
+   * else — so it gets its own heading and a way past it, and "Not now" is
+   * remembered so the offer is made once per browser rather than at every
+   * sign-in for the rest of time.
+   */
+  const [offering, setOffering] = useState(resumeStep === "interests");
   // Only the details resume implies Google. Arriving at the password step means
   // the opposite — a Google account has no password to set.
   const [viaGoogle, setViaGoogle] = useState(resumeStep === "details");
@@ -245,6 +264,17 @@ export function SignInView() {
         setError(result.message);
         return;
       }
+
+      // An account from before the interests step exists, has never been asked,
+      // and has not waved the question away on this browser. Ask once, here,
+      // where they are already stopped — the dashboard panel is the answer for
+      // somebody who goes looking, and this is the answer for everybody else.
+      if (!interestOfferSkipped() && !(await hasSavedInterests())) {
+        setOffering(true);
+        setStep("interests");
+        return;
+      }
+
       await finish(false);
       return;
     }
@@ -424,7 +454,18 @@ export function SignInView() {
       setError(result.message);
       return;
     }
-    await finish(true);
+    // `false` when this was an offer: nothing was created, and `withWelcome`
+    // opens the founding-member panel — which would be a strange thing to show
+    // somebody who has had an account for months.
+    await finish(!offering);
+  };
+
+  /** "Not now". Remembered, so it is asked once rather than at every sign-in. */
+  const declineInterests = async () => {
+    if (busy) return;
+    skipInterestOffer();
+    setBusy(true);
+    await finish(false);
   };
 
   /** Leaves for Google and comes back at `/auth/callback`. */
@@ -515,12 +556,25 @@ export function SignInView() {
 
   // An unfinished account has only one thing left to do, so the page shows only
   // that — not a sign-in form it would be nonsense to fill in.
-  const onInterests = step === "interests";
+  /**
+   * `ready && signedIn`, not just the step name.
+   *
+   * The picker writes to an account, so there has to be one. Sign-up reaches
+   * this step with a session already open — it was opened at the verify step,
+   * three screens back — so the guard costs that path nothing, and it is what
+   * stops `?step=interests` typed by a signed-out visitor from rendering a
+   * picker attached to a save that can only answer "you are not signed in".
+   * They get the sign-in form instead, which is the honest response, and the
+   * offer finds them again on the other side of it.
+   */
+  const onInterests = step === "interests" && ready && signedIn;
   const onDetails = !onInterests && (unfinished || (signup && step === "details"));
   const position = stepPosition(step, viaGoogle);
+  // The two screens that are forms rather than a handful of fields.
+  const wide = onDetails || onInterests;
 
   return (
-    <Shell>
+    <Shell wide={wide}>
       {/* Shown while walking the flow, including its last step.
           `unfinished` is true on the details screen of a normal sign-up — the
           account exists by then and its demographics are still blank — so
@@ -661,7 +715,9 @@ export function SignInView() {
               setError(null);
             }}
             errors={detailErrors}
-            columns={1}
+            // Two rows of three on a desktop, pairs on a tablet, stacked on a
+            // phone. See the note on `Shell`'s wide frame.
+            columns={3}
           />
 
           <ProfilePrivacyNote />
@@ -681,11 +737,21 @@ export function SignInView() {
         <form onSubmit={submitInterests} className="flex flex-col gap-5">
           <Heading
             title={
-              <>
-                What are you <em>interested in</em>?
-              </>
+              offering ? (
+                <>
+                  Welcome back. What should we <em>show you first</em>?
+                </>
+              ) : (
+                <>
+                  What are you <em>interested in</em>?
+                </>
+              )
             }
-            blurb="Pick the subjects worth your time. Topics and polls will open on these — it changes what you see first, never what a result says."
+            blurb={
+              offering
+                ? "This is new since you last signed in. Pick a few subjects and your topic and poll catalogs will open on them instead of on everything."
+                : "Pick the subjects worth your time. Topics and polls will open on these — it changes what you see first, never what a result says."
+            }
           />
 
           <InterestPicker
@@ -710,14 +776,34 @@ export function SignInView() {
 
           <div className="flex flex-col gap-2.5">
             <PrimaryButton type="submit" disabled={busy}>
-              {busy ? "Creating…" : "Create account"}
+              {busy ? "Saving…" : offering ? "Save and continue" : "Create account"}
             </PrimaryButton>
+            {/* Only on the offer. During sign-up there is nothing to skip to —
+                the account is already made and this is the last screen — but
+                for somebody who signed in to do something else, a picker with
+                no way past it is a wall in front of the thing they came for. */}
+            {offering ? (
+              <button
+                type="button"
+                onClick={() => void declineInterests()}
+                disabled={busy}
+                className="cursor-pointer text-center text-[12.5px] text-muted transition-colors hover:text-cream disabled:cursor-default disabled:text-dim/60"
+              >
+                Not now — show me everything
+              </button>
+            ) : null}
           </div>
         </form>
       ) : null}
 
       {/* --------------------------------------- sign in, or step one of up */}
-      {!unfinished && (!signup || step === "account") ? (
+      {/* `!onInterests` is load-bearing, and it was missing.
+          This block's condition is satisfied by `!signup` alone, and the
+          interests offer runs in sign-in mode — so the whole sign-in form
+          rendered *underneath* the picker, on the real path, for anybody who
+          had just signed in. Two forms on one screen, the second one asking
+          for credentials the person had already given. */}
+      {!unfinished && !onInterests && (!signup || step === "account") ? (
         <form onSubmit={submitAccount} className="flex flex-col gap-5">
           <Heading
             title={
@@ -966,12 +1052,37 @@ function ErrorLine({ children }: { children: React.ReactNode }) {
  * The frame.
  *
  * `items-start` with real padding rather than a centred full-height grid: the
- * four-step flow is much taller than a sign-in box, and centring it meant the
+ * five-step flow is much taller than a sign-in box, and centring it meant the
  * bottom of the tallest step fell off the screen. The argument on the left is
  * sticky so it stays in view while a long step scrolls, and it is dropped
  * entirely below `lg` where the form is the whole job.
+ *
+ * ── Two shapes, and the wide one is not a bigger version of the narrow one ──
+ *
+ * A 468px column is right for the screens that hold two or three controls. It
+ * is wrong for the two that hold a form: the demographics are six fields and
+ * the interests are fifteen toggles, and in a 468px column on a 1440px display
+ * both become a tall stack of full-width boxes running past the fold with two
+ * thirds of the page empty on either side. Somebody scrolls a settings screen
+ * to fill in six answers they can see all of at once.
+ *
+ * So those two get their own frame: no sticky argument, one centred panel at
+ * 900px, and the fields laid out across it. The argument on the left is worth
+ * reading while you decide whether to make an account — it is not worth a third
+ * of the screen while you are already filling one in.
  */
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
+  if (wide) {
+    return (
+      <section
+        className="mx-auto w-full max-w-[900px] px-4 py-[clamp(28px,5vw,64px)] sm:px-8"
+        style={{ paddingTop: "calc(var(--ohq-nav-h) + clamp(28px,5vw,64px))" }}
+      >
+        <div className="ohq-panel flex w-full flex-col gap-6 p-6 sm:p-8">{children}</div>
+      </section>
+    );
+  }
+
   return (
     // `paddingTop` clears the fixed nav, which is 78px of opaque bar over the
     // top of the page. Without it the "Sign in to OpinionHQ" heading rendered

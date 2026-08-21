@@ -58,16 +58,20 @@ export function InterestPicker({
         </span>
       </div>
 
-      {/* Two columns, and `short` rather than `label`.
-          The sign-in panel is a fixed 468px at every viewport above it, so a
-          card here is about 210px however wide the screen is — and
-          "National & International Events" wraps to *three* lines in that,
-          stretching its whole row and making the grid read as broken. `short`
-          is the taxonomy's own field for exactly this case ("used where
-          horizontal room is tight"), it is what the ticker and the compact
-          chips already use, and it puts every one of the fifteen on one line.
-          The full label and the blurb are on the button's `title`. */}
-      <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0">
+      {/* `short` rather than `label`, at every width.
+          "National & International Events" wraps to *three* lines in a card of
+          about 210px, stretching its whole row and making the grid read as
+          broken. `short` is the taxonomy's own field for exactly this case
+          ("used where horizontal room is tight"), it is what the ticker and the
+          compact chips already use, and it puts every one of the fifteen on one
+          line. The full label and the blurb are on the button's `title`.
+
+          One column on a phone rather than two: at 390px a card is about 150px
+          and "Controversies" does not fit beside its glyph and its tick, so two
+          columns bought density by truncating the labels. Three across from
+          `lg`, which is where the wide frame gives this 900px to work in —
+          fifteen toggles in five rows instead of eight. */}
+      <ul className="m-0 grid list-none grid-cols-1 gap-2 p-0 sm:grid-cols-2 lg:grid-cols-3">
         {CATEGORIES.map((category) => {
           const on = chosen.has(category.id);
           return (
