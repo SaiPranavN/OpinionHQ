@@ -850,8 +850,16 @@ select option {
 /**
  * Section headings whose characters land like the reels of a slot machine.
  *
- * See components/motion/SlotMachineText for the markup. Two things about this
- * block are load-bearing and easy to undo by accident:
+ * See components/motion/SlotMachineText for the markup. Three things here are
+ * load-bearing and easy to undo by accident:
+ *
+ * THE GHOST DECIDES THE WIDTH, THE REEL DECIDES NOTHING. `.ohq-slot-ghost` is a
+ * hidden copy of the *real* character and the only child in normal flow, so the
+ * slot is exactly as wide as the letter it lands on. The reel is absolute and
+ * contributes no width at all. The first version had it the other way round —
+ * block cells inside the clipped inline-block — which sized every slot to the
+ * widest random decoy in its reel and turned "Some questions" into
+ * "Some quest i ons" in the finished, settled heading.
  *
  * THE RESTING TRANSFORM ALREADY SHOWS THE REAL TEXT. `.ohq-slot-reel` sits at
  * `--ohq-slot-travel` — the end of its own travel — whenever nothing is
@@ -867,14 +875,21 @@ select option {
  * which on a display heading at `leading-[1.06]` is a visible step.
  */
 .ohq-slot {
+  position: relative;
   display: inline-block;
   overflow: hidden;
   vertical-align: top;
   height: var(--ohq-slot-cell, 1lh);
 }
 
+.ohq-slot-ghost {
+  visibility: hidden;
+}
+
 .ohq-slot-reel {
-  display: block;
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
   transform: translateY(var(--ohq-slot-travel, 0));
   will-change: transform;
 }
@@ -882,6 +897,9 @@ select option {
 .ohq-slot-cell {
   display: block;
   height: var(--ohq-slot-cell, 1lh);
+  /* Centred, because a decoy wider than the real letter is clipped on both
+     sides rather than losing its whole right-hand half. */
+  text-align: center;
 }
 
 /* Released by the same `[data-shown]` flag `.ohq-reveal` keys off, so the whole

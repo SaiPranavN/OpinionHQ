@@ -6,7 +6,10 @@ import {
   clamp01,
   conveyorSeat,
   CONVEYOR_FROM,
+  CONVEYOR_HEAD_START,
+  conveyorSeatNarrow,
   DECK_DEPTH,
+  narrowBandOf,
   dealAt,
   deckSeat,
   smooth,
@@ -93,13 +96,34 @@ describe("the card conveyor", () => {
     expect(conveyorSeat(0.95).opacity).toBe(1);
   });
 
+  it("opens with the first card already arriving, never on an empty stage", () => {
+    // The scene begins the instant the stage sticks to the viewport. At a head
+    // start of zero that first frame is a held, full-screen, empty panel — which
+    // is exactly what "the cards are coming late, I don't want to see that empty
+    // space" was describing.
+    const opening = conveyorSeat(smooth(bandOf(0, 0, 2)));
+    expect(bandOf(0, 0, 2)).toBeCloseTo(CONVEYOR_HEAD_START, 6);
+    expect(opening.opacity).toBeGreaterThan(0.5);
+  });
+
   it("reaches both cards, and reaches the second one last", () => {
-    expect(bandOf(0, 0, 2)).toBe(0);
     expect(bandOf(1, 1, 2)).toBe(1);
     // The green card is fully landed before the scene ends...
     expect(bandOf(1, 0, 2)).toBe(1);
-    // ...and the purple one has not started when the green one begins.
-    expect(bandOf(0, 1, 2)).toBe(0);
+    // ...and it lands in the first half, not two thirds of the way through.
+    const landed = sweep().find((p) => bandOf(p, 0, 2) >= 1) ?? 1;
+    expect(landed).toBeLessThan(0.45);
+    // ...and the purple one is behind it the whole way.
+    for (const p of sweep()) {
+      expect(bandOf(p, 1, 2), `progress ${p}`).toBeLessThanOrEqual(bandOf(p, 0, 2));
+    }
+  });
+
+  it("ends with both cards settled, and holds there", () => {
+    // The last thing the section says is the pair side by side. Landing the
+    // second card exactly as the scene releases would flick it past.
+    const settled = sweep().find((p) => bandOf(p, 1, 2) >= 1) ?? 1;
+    expect(settled).toBeLessThan(0.9);
   });
 
   it("staggers them without separating them", () => {
@@ -120,10 +144,68 @@ describe("the card conveyor", () => {
     for (const p of sweep()) {
       const first = conveyorSeat(smooth(bandOf(p, 0, 2)));
       const second = conveyorSeat(smooth(bandOf(p, 1, 2)));
+      // "In flight" means visibly off its mark, not merely not-yet-exact. A
+      // spring-like ease approaches its target asymptotically, so a strict
+      // `!== 0%` test calls a card that is four hundredths of a percent out
+      // still travelling, and the assertion becomes about float precision
+      // rather than about anything a reader could see.
       const travelling = (s: typeof first) =>
-        s.opacity > 0.5 && !s.transform.startsWith("translateX(0.00%)");
+        s.opacity > 0.5 && Math.abs(Number(/translateX\((-?[\d.]+)%\)/.exec(s.transform)![1])) > 4;
       expect(travelling(first) && travelling(second), `progress ${p}`).toBe(false);
     }
+  });
+});
+
+describe("the card conveyor, on a phone", () => {
+  // One slot, two cards taking turns in it. The failure to guard against is two
+  // legible cards on top of each other, because on a phone they share a column.
+  const seatAt = (progress: number, i: number) =>
+    conveyorSeatNarrow(narrowBandOf(progress, i, 2), i === 1);
+  const shiftOf = (t: string) => Number(/translateX\((-?[\d.]+)%\)/.exec(t)![1]);
+
+  it("opens with the first card arriving and closes with the second settled", () => {
+    // Already visible on the opening frame, for the same reason as the wide
+    // layout: the stage is held, and a held empty screen reads as broken.
+    expect(seatAt(0, 0).opacity).toBeGreaterThan(0.5);
+    expect(seatAt(0.25, 0).opacity).toBe(1);
+    expect(seatAt(1, 1).opacity).toBe(1);
+    expect(seatAt(1, 1).transform).toContain("translateX(0.00%)");
+    expect(seatAt(1, 1).filter).toBe("none");
+  });
+
+  it("never has two cards settled in the one slot", () => {
+    // They do overlap — a handover without one would leave the slot empty
+    // between cards. What must never happen is two cards *at rest*, squarely
+    // on the mark, on top of each other. While they cross, one is left of
+    // centre and turned away and the other is right of centre and turning in.
+    for (const p of sweep()) {
+      const settled = [seatAt(p, 0), seatAt(p, 1)].filter(
+        (s) => s.opacity > 0.85 && Math.abs(shiftOf(s.transform)) < 8,
+      );
+      expect(settled.length, `progress ${p}`).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("never leaves the slot empty", () => {
+    // A held screen with nothing on it reads as broken, and on a phone it is
+    // also a screen the reader cannot scroll past without faith.
+    for (const p of sweep()) {
+      const best = Math.max(seatAt(p, 0).opacity, seatAt(p, 1).opacity);
+      expect(best, `progress ${p}`).toBeGreaterThan(0.5);
+    }
+  });
+
+  it("sends the first card out the way the second comes in", () => {
+    // Leaving to the left, arriving from the right: one conveyor, not a card
+    // that reverses out of the way of the next.
+    expect(shiftOf(seatAt(0.47, 0).transform)).toBeLessThan(0);
+    expect(shiftOf(seatAt(0.44, 1).transform)).toBeGreaterThan(0);
+  });
+
+  it("keeps the last card on screen for good", () => {
+    // Nothing follows it, so nothing should take it away.
+    expect(seatAt(1, 1).opacity).toBe(1);
+    expect(conveyorSeatNarrow(1, true).opacity).toBe(1);
   });
 });
 

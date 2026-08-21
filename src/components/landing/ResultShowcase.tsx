@@ -102,7 +102,7 @@ export function ResultShowcase() {
   return (
     <section
       id="inside"
-      className="relative border-t border-veil/5 px-5 py-[clamp(72px,11vw,140px)] sm:px-10 lg:px-20"
+      className="relative border-t border-veil/5 px-3 py-[clamp(72px,11vw,140px)] sm:px-10 lg:px-20"
     >
       {/* The same bloom the hero uses, pushed to the top edge so the stage
           below sits in a pool of light rather than on a flat page. */}
@@ -156,8 +156,15 @@ export function ResultShowcase() {
         />
 
         {/* -------------------------------------------------------- the stage */}
-        <ScrollScene distance={2.8} className="mt-[clamp(34px,5vw,58px)]">
-          {({ progress, scrubbing }) => {
+        <ScrollScene
+          distance={2.8}
+          // Four acts on a phone need more room to breathe than four on a laptop:
+          // each one is taller relative to the screen, so each needs longer to
+          // be read before the next arrives.
+          narrowDistance={3.6}
+          className="mt-[clamp(34px,5vw,58px)]"
+        >
+          {({ progress, scrubbing, narrow }) => {
             /*
              * The four acts, each with a line saying what it is for.
              *
@@ -208,16 +215,34 @@ export function ResultShowcase() {
                 line:
                   "Every bar is a group and every stack is how that group answered — click one and every panel re-reads as them.",
                 body: (
-                  <div className="ohq-panel flex flex-col gap-[clamp(14px,1.8vw,22px)] p-5">
-                    <p className="m-0 max-w-[640px] text-[13px] leading-[1.55] text-dim">
-                      Bar length is how much of the sample a group is. The stack inside it
-                      is how that group split. The figure on the right is how far that
-                      group sits from the reading above, in points, on whichever answer is
-                      currently leading —{" "}
-                      <strong className="font-medium text-soft">click any row</strong> to
-                      re-read every panel as that group.
-                    </p>
-                    <DemoBreakdown filter={filter} mode={mode} onPick={pick} />
+                  <div
+                    className={`ohq-panel flex flex-col gap-[clamp(12px,1.8vw,22px)] ${
+                      scrubbing && narrow ? "p-3" : "p-5"
+                    }`}
+                  >
+                    {/* Dropped in the held layout: the step heading above now
+                        carries this act's one-line explanation, and six lines
+                        saying it again is six lines of the ~440px a step gets
+                        on a phone. The stacked layout keeps the long version,
+                        where there is room and no heading line to lean on. */}
+                    {scrubbing ? null : (
+                      <p className="m-0 max-w-[640px] text-[13px] leading-[1.55] text-dim">
+                        Bar length is how much of the sample a group is. The stack inside
+                        it is how that group split. The figure on the right is how far
+                        that group sits from the reading above, in points, on whichever
+                        answer is currently leading —{" "}
+                        <strong className="font-medium text-soft">click any row</strong>{" "}
+                        to re-read every panel as that group.
+                      </p>
+                    )}
+                    <DemoBreakdown
+                      filter={filter}
+                      mode={mode}
+                      onPick={pick}
+                      // Swipeable rather than stacked in the held layout on a
+                      // phone: three blocks is 600px of act in a 420px slot.
+                      rail={scrubbing && narrow}
+                    />
                     {odd ? <AgainstTheGrain contrarian={odd} mode={mode} /> : null}
                     {/* The withholding caveat is dropped from the stepped view
                         only. It is a screenful-costing paragraph that repeats
@@ -270,22 +295,32 @@ export function ResultShowcase() {
                 {...(scrubbing ? {} : { "data-reveal": true })}
                 className={
                   scrubbing
-                    ? "flex min-h-svh flex-col pt-[calc(var(--ohq-nav-h)+10px)] pb-5"
+                    ? "flex h-full flex-col pt-[calc(var(--ohq-nav-h)+8px)] pb-4"
                     : "ohq-reveal delay-[60ms]"
                 }
               >
                 <div className="ohq-panel-raised relative flex min-h-0 flex-1 flex-col overflow-hidden">
-                  <StageChrome mode={mode} onMode={setMode} />
+                  <StageChrome mode={mode} onMode={setMode} narrow={scrubbing && narrow} />
 
-                  <div className="flex min-h-0 flex-1 flex-col gap-[clamp(12px,1.6vw,20px)] p-[clamp(14px,2.2vw,30px)]">
+                  <div
+                    className={`flex min-h-0 flex-1 flex-col gap-[clamp(10px,1.6vw,20px)] ${
+                      scrubbing && narrow ? "p-3" : "p-[clamp(14px,2.2vw,30px)]"
+                    }`}
+                  >
                     <SubjectLine
                       mode={mode}
                       question={subject.question}
                       prompt={subject.prompt}
                       compact={scrubbing}
+                      narrow={scrubbing && narrow}
                     />
 
-                    <ScopeBar filter={filter} onPick={pick} onClear={() => setFilter({})} />
+                    <ScopeBar
+                      filter={filter}
+                      onPick={pick}
+                      onClear={() => setFilter({})}
+                      narrow={scrubbing && narrow}
+                    />
 
                     <StageSteps steps={steps} progress={progress} scrubbing={scrubbing} />
                   </div>
@@ -295,6 +330,7 @@ export function ResultShowcase() {
                     filtered={filtered}
                     scope={scope}
                     compact={scrubbing}
+                    narrow={scrubbing && narrow}
                   />
                 </div>
               </div>
@@ -313,9 +349,23 @@ export function ResultShowcase() {
  * right. Modelled on a window chrome so the panel below it reads as a
  * self-contained instrument rather than as more page.
  */
-function StageChrome({ mode, onMode }: { mode: Mode; onMode: (m: Mode) => void }) {
+function StageChrome({
+  mode,
+  onMode,
+  narrow = false,
+}: {
+  mode: Mode;
+  onMode: (m: Mode) => void;
+  narrow?: boolean;
+}) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-line bg-surface-sunken/60 px-[clamp(14px,2.2vw,26px)] py-3">
+    // `flex-nowrap` in the held layout. Wrapping put the badge on a second row
+    // and cost about fifty pixels of a step's slot for no information at all.
+    <div
+      className={`flex items-center gap-x-3 border-b border-line bg-surface-sunken/60 px-[clamp(12px,2.2vw,26px)] ${
+        narrow ? "flex-nowrap py-2" : "flex-wrap gap-y-3 py-3"
+      }`}
+    >
       {/*
        * A segmented control, on a GRID rather than a flex row.
        *
@@ -376,7 +426,11 @@ function StageChrome({ mode, onMode }: { mode: Mode; onMode: (m: Mode) => void }
       {/* The badge is the one thing on this panel that must never wrap into a
           second line of monospace on a phone, so the qualifier goes rather than
           the word. "Illustration" alone still says it. */}
-      <span className="ml-auto inline-flex items-center gap-2 rounded-full border border-veil/12 px-3 py-1.5 font-mono text-[9.5px] tracking-[0.14em] whitespace-nowrap uppercase text-dim">
+      <span
+        className={`ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-veil/12 font-mono tracking-[0.12em] whitespace-nowrap uppercase text-dim ${
+          narrow ? "px-2 py-1 text-[8.5px]" : "px-3 py-1.5 text-[9.5px]"
+        }`}
+      >
         <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-veil/40" />
         Illustration<span className="hidden sm:inline"> — nothing here is counted</span>
       </span>
@@ -398,11 +452,13 @@ function SubjectLine({
   question,
   prompt,
   compact = false,
+  narrow = false,
 }: {
   mode: Mode;
   question: string;
   prompt: string;
   compact?: boolean;
+  narrow?: boolean;
 }) {
   const accent = mode === "topic" ? "text-positive-light" : "text-poll-soft";
   const dot = mode === "topic" ? "bg-positive" : "bg-poll";
@@ -419,10 +475,14 @@ function SubjectLine({
   if (compact) {
     return (
       <header className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <h3 className="font-display m-0 text-[clamp(1.25rem,2.2vw,1.8rem)] leading-[1.15] font-bold tracking-[-0.02em] text-cream-bright">
+        <h3 className="font-display m-0 min-w-0 text-[clamp(1.1rem,2.2vw,1.8rem)] leading-[1.15] font-bold tracking-[-0.02em] text-cream-bright">
           {question}
         </h3>
-        <span className="ml-auto">{eyebrow}</span>
+        {/* The eyebrow goes on a phone. It has nowhere to sit beside a subject
+            line that already fills the width, so it wrapped to a row of its own
+            — thirty pixels to repeat what the mode switch says two inches
+            above it. */}
+        {narrow ? null : <span className="ml-auto">{eyebrow}</span>}
       </header>
     );
   }
@@ -443,10 +503,12 @@ function ScopeBar({
   filter,
   onPick,
   onClear,
+  narrow = false,
 }: {
   filter: Filter;
   onPick: (dim: Dim, value: string | undefined) => void;
   onClear: () => void;
+  narrow?: boolean;
 }) {
   const chips = (["state", "age", "work"] as Dim[]).flatMap((dim) => {
     const value = filterValue(filter, dim);
@@ -454,7 +516,11 @@ function ScopeBar({
   });
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-[14px] border border-veil/8 bg-surface-sunken px-3.5 py-2.5">
+    <div
+      className={`flex flex-wrap items-center gap-2 rounded-[14px] border border-veil/8 bg-surface-sunken px-3 ${
+        narrow ? "py-1.5" : "py-2.5"
+      }`}
+    >
       <span className="font-mono text-[9.5px] tracking-[0.12em] uppercase text-dim">
         Reading
       </span>
@@ -462,7 +528,7 @@ function ScopeBar({
         <span className="text-[13px] text-soft">
           Everyone
           <span className="ml-2 text-dim">
-            — pick a group below to re-read every panel as that group
+            {narrow ? "— tap a group to re-read" : "— pick a group below to re-read every panel as that group"}
           </span>
         </span>
       ) : (
@@ -627,16 +693,34 @@ function StageFooter({
   filtered,
   scope,
   compact = false,
+  narrow = false,
 }: {
   mode: Mode;
   filtered: boolean;
   scope: string;
   compact?: boolean;
+  narrow?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-line bg-surface-sunken/60 px-[clamp(14px,2.2vw,26px)] py-3">
-      <p className="m-0 max-w-[620px] text-[12px] leading-[1.55] text-dim">
-        {compact ? (
+    <div
+      className={`flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line bg-surface-sunken/60 px-[clamp(12px,2.2vw,26px)] ${
+        narrow ? "py-2" : "py-3"
+      }`}
+    >
+      <p
+        className={`m-0 max-w-[620px] leading-[1.5] text-dim ${
+          narrow ? "text-[10.5px]" : "text-[12px]"
+        }`}
+      >
+        {narrow ? (
+          /* The shortest form that still says the two things that matter: it is
+             not a measurement, and real pages are. It never goes below this. */
+          <>
+            A worked example, not a measurement
+            {filtered ? `, read as: ${scope}` : ""}. Figures on a live page are counted
+            from votes.
+          </>
+        ) : compact ? (
           <>
             A worked example, not a measurement — nobody was asked and no headcount
             appears in it
@@ -655,7 +739,9 @@ function StageFooter({
       </p>
       <Link
         href={mode === "topic" ? "/topics" : "/polls"}
-        className={`ohq-press ml-auto inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[13.5px] font-semibold duration-500 ease-ohq ${
+        className={`ohq-press ml-auto inline-flex shrink-0 items-center gap-2 rounded-full font-semibold duration-500 ease-ohq ${
+          narrow ? "px-4 py-1.5 text-[12px]" : "px-5 py-2.5 text-[13.5px]"
+        } ${
           mode === "topic"
             ? "bg-positive text-positive-ink hover:bg-[#25CC61]"
             : "bg-poll text-poll-ink hover:bg-[#B9A2FC]"

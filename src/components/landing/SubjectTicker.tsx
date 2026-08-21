@@ -32,20 +32,29 @@ interface Subject {
 }
 
 /**
- * Products, formats and open questions — never a named private individual.
- * The politicians category exists and carries its own approval notice for
- * exactly this reason; the hero is not the place to put a person's name beside
- * an invitation to judge them.
+ * Products, formats, institutions and open questions — never a named private
+ * individual. The politicians category exists and carries its own approval
+ * notice for exactly this reason; the hero is not the place to put a person's
+ * name beside an invitation to judge them.
+ *
+ * WEIGHTED THE WAY THE PRODUCT IS, not the way the seed data happens to be.
+ * This list was half films and shows, which is an accident of entertainment
+ * being the one category seeded so far — and it made the first thing on the
+ * page look like a review site. Exams, colleges, tech and careers lead now,
+ * because those are the subjects people here argue about with something at
+ * stake, and one film reference is plenty.
  */
 const SUBJECTS: Subject[] = [
-  { text: "Opinion on the iPhone Fold", kind: "opinion" },
-  { text: "How good was The Odyssey?", kind: "opinion" },
-  { text: "Pickleball vs Tennis", kind: "poll" },
-  { text: "Is the four-day week worth it?", kind: "opinion" },
-  { text: "Theatre or streaming", kind: "poll" },
-  { text: "Was the exam paper fair?", kind: "opinion" },
+  { text: "Was the NEET paper set fairly?", kind: "opinion" },
+  { text: "IIT or a top private university", kind: "poll" },
+  { text: "Opinion on the first foldable iPhone", kind: "opinion" },
+  { text: "Coaching centre or self-study", kind: "poll" },
+  { text: "Is a CS degree still worth four years?", kind: "opinion" },
   { text: "Remote, hybrid or office", kind: "poll" },
-  { text: "Android or iPhone", kind: "poll" },
+  { text: "How good was the placement season?", kind: "opinion" },
+  { text: "AI assistants: help or crutch?", kind: "poll" },
+  { text: "Should boards be held twice a year?", kind: "opinion" },
+  { text: "Theatre or streaming", kind: "poll" },
 ];
 
 /**

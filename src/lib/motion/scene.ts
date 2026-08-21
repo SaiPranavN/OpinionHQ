@@ -54,11 +54,29 @@ export function stageOf(progress: number, index: number, count: number): number 
  * How much of the next card's arrival overlaps the previous card's.
  *
  * 0 would give each card the scene to itself and read as two disconnected
- * events with a dead patch of scrolling between them. A third and they arrive
- * together and the stagger disappears. This is the "slight stagger" — the
- * second card starts turning while the first is finishing its settle.
+ * events with a dead patch of scrolling between them. This is the "slight
+ * stagger" — the second card starts turning while the first is finishing its
+ * settle. It went from 0.16 to 0.3 along with the head start below: with the
+ * green card landing a third of the way in, 0.16 left a visible pause before
+ * the purple one moved.
  */
-export const BAND_OVERLAP = 0.16;
+export const BAND_OVERLAP = 0.3;
+
+/**
+ * How far into its arrival the first card already is when the scene begins.
+ *
+ * Zero is the obvious value and it is wrong. The scene begins at the moment the
+ * stage sticks to the viewport, and at zero that moment is a full-screen empty
+ * panel — the reader gets a held screen with nothing on it and has to scroll
+ * blind to find out why. Starting the green card a third of the way through its
+ * turn means the stage is never empty for a single frame: it arrives already
+ * arriving.
+ *
+ * It also pulls the whole conveyor earlier. The green card now lands at about
+ * 37% of the scene rather than 54%, which is most of what "the cards are coming
+ * late" was about.
+ */
+export const CONVEYOR_HEAD_START = 0.34;
 
 /** Where a card starts: off to the right, edge-on, back, and small. */
 export const CONVEYOR_FROM = {
@@ -76,10 +94,93 @@ export const CONVEYOR_FROM = {
  * where it sits among them.
  */
 export function bandOf(progress: number, index: number, count: number): number {
-  if (count <= 1) return clamp01(progress);
+  if (count <= 1) return clamp01(progress + CONVEYOR_HEAD_START);
   const span = 1 / (count - (count - 1) * BAND_OVERLAP);
   const start = index * span * (1 - BAND_OVERLAP);
-  return clamp01((progress - start) / span);
+  // THE WHOLE CONVEYOR SHIFTS, not just the first card. Giving the head start
+  // to card 0 alone was the first attempt and it pulled the two apart: card 0
+  // landed at 39% of the scene and card 1 did not begin until 41%, leaving a
+  // patch of scrolling where the stage was frozen with one card on it. Shifting
+  // every band by the same amount keeps the stagger the overlap was tuned for
+  // and buys a hold at the end, with both cards settled, before the scene lets
+  // the page go.
+  return clamp01((progress + CONVEYOR_HEAD_START * span - start) / span);
+}
+
+/* ------------------------------------------------- the conveyor, on a phone */
+
+/**
+ * Where a card's arrival ends and its departure begins, within its own band.
+ *
+ * A phone has room for one card, so they take turns: each comes in from the
+ * right, holds while it is read, and continues off to the left as the next one
+ * arrives. Two thirds of each band is the hold, because the hold is the part
+ * that is worth anything — the card is what the section is about, and the
+ * turning is only how it got there.
+ */
+const NARROW_ENTER = 0.3;
+const NARROW_EXIT = 0.74;
+
+/**
+ * How much of the outgoing card's exit the incoming card's entry overlaps.
+ *
+ * Non-negotiable rather than a taste setting. With the bands butted end to end
+ * there is a single progress value at which the leaving card has reached zero
+ * and the arriving one has not started — one frame of held, empty screen, at
+ * the exact moment the reader is scrolling to find out what comes next.
+ *
+ * The two are never confusable while they overlap, because they are in
+ * different places: the outgoing card is left of centre and turned away, the
+ * incoming one right of centre and turning in. It reads as one belt moving.
+ */
+const NARROW_OVERLAP = 0.26;
+
+/** How far into its arrival the first card already is when the scene begins. */
+const NARROW_HEAD_START = 0.12;
+
+/**
+ * The band of scene progress one card owns in the single-file layout.
+ *
+ * The same shape as `bandOf` and for the same two reasons — a head start so the
+ * stage is never empty on arrival, and an overlap so it is never empty in the
+ * middle either.
+ */
+export function narrowBandOf(progress: number, index: number, count: number): number {
+  if (count <= 1) return clamp01(progress + NARROW_HEAD_START);
+  const span = 1 / (count - (count - 1) * NARROW_OVERLAP);
+  const start = index * span * (1 - NARROW_OVERLAP);
+  return clamp01((progress + NARROW_HEAD_START * span - start) / span);
+}
+
+/**
+ * One card's placement in the single-file layout.
+ *
+ * The last card never leaves. It is the final thing the section says, and a
+ * scene that ends by clearing itself hands the reader an empty held screen at
+ * exactly the moment they are deciding whether to keep going.
+ */
+export function conveyorSeatNarrow(t: number, isLast: boolean): ConveyorSeat {
+  const x = clamp01(t);
+  const arriving = 1 - smooth(clamp01(x / NARROW_ENTER));
+  const leaving = isLast ? 0 : smooth(clamp01((x - NARROW_EXIT) / (1 - NARROW_EXIT)));
+  const off = arriving + leaving;
+
+  // Positive while arriving (still to the right), negative while leaving (on
+  // its way off to the left). One expression, so a card leaves along exactly
+  // the line it came in on.
+  const shift = arriving - leaving;
+  const blur = off < 0.1 ? 0 : Math.min(off * 5.5, 5.5);
+
+  return {
+    transform: `translateX(${(shift * 74).toFixed(2)}%) translateZ(${(-off * 260).toFixed(
+      1,
+    )}px) rotateY(${(shift * 68).toFixed(2)}deg) scale(${(1 - off * 0.14).toFixed(4)})`,
+    // Arrives faster than it leaves, which is what stops the handover from
+    // dipping: the incoming card is already solid while the outgoing one is
+    // still on its way out.
+    opacity: Math.min(1, (1 - arriving) * 2.8) * (1 - Math.min(1, leaving * 1.35)),
+    filter: blur === 0 ? "none" : `blur(${blur.toFixed(2)}px)`,
+  };
 }
 
 export interface ConveyorSeat {

@@ -45,7 +45,7 @@ export function TwoModesSection({
   return (
     <section
       id="modes"
-      className="relative border-t border-veil/5 px-5 py-[clamp(72px,11vw,140px)] sm:px-10 lg:px-20"
+      className="relative border-t border-veil/5 px-3 py-[clamp(72px,11vw,140px)] sm:px-10 lg:px-20"
     >
       <div className="mx-auto max-w-[1200px]">
         <CardConveyor
@@ -84,7 +84,7 @@ export function TwoModesSection({
                a card ends up invisible. */
             <article
               key="topics"
-              className="ohq-panel-raised flex h-full flex-col gap-6 p-6 sm:p-9"
+              className="ohq-panel-raised flex h-full flex-col gap-5 p-5 sm:gap-6 sm:p-9"
             >
             <header className="flex flex-col gap-3">
               <span className="flex items-center gap-2.5 font-mono text-[10.5px] tracking-[0.14em] uppercase text-positive-light">
@@ -146,7 +146,7 @@ export function TwoModesSection({
             /* Mode two — polling. */
             <article
               key="polls"
-              className="ohq-panel-raised flex h-full flex-col gap-6 p-6 sm:p-9"
+              className="ohq-panel-raised flex h-full flex-col gap-5 p-5 sm:gap-6 sm:p-9"
             >
             <header className="flex flex-col gap-3">
               <span className="flex items-center gap-2.5 font-mono text-[10.5px] tracking-[0.14em] uppercase text-poll-soft">

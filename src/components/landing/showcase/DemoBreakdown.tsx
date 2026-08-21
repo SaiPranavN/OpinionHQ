@@ -43,25 +43,64 @@ export function DemoBreakdown({
   filter,
   mode,
   onPick,
+  rail = false,
 }: {
   filter: Filter;
   mode: Mode;
   onPick: (dim: Dim, value: string | undefined) => void;
+  /**
+   * Lay the three dimensions out as a swipeable rail instead of stacking them.
+   *
+   * For the stepped stage on a phone, and it is the difference between the act
+   * fitting and not. Stacked, the three blocks run to about 600px, in a step
+   * viewport that has around 420px to give — which would either clip the third
+   * dimension or shrink all three past readable. Side by side at 82% of the
+   * width, the act is one block tall and the other two are a thumb-flick away,
+   * with snap points so a half-swipe still lands on a dimension.
+   */
+  rail?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-[clamp(18px,2.4vw,26px)]">
       {/* Three across only from `lg`. At tablet width the columns squeezed the
           bars down to a thumbnail and truncated "Self-employed" — three full
           rows of readable bars beat three columns of unreadable ones. */}
-      <div className="grid grid-cols-1 gap-[clamp(16px,2vw,22px)] lg:grid-cols-3">
+      <div
+        className={
+          rail
+            ? "-mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            : "grid grid-cols-1 gap-[clamp(16px,2vw,22px)] lg:grid-cols-3"
+        }
+      >
         {DIMS.map((dim) => (
-          <DimBlock key={dim} dim={dim} filter={filter} mode={mode} onPick={onPick} />
+          <div
+            key={dim}
+            // Full width, not 82%. A peeking neighbour is a nice affordance
+            // and it cost the bars their entire width: the row's fixed columns
+            // come to about 210px, so on a 270px card the bar was squeezed to
+            // two pixels — the one element in the panel that carries the shape
+            // of the finding. The snap points and the gap do the affordance job
+            // instead, and `rail` also narrows the columns below.
+            className={rail ? "w-full shrink-0 snap-center" : "contents"}
+          >
+            <DimBlock dim={dim} filter={filter} mode={mode} onPick={onPick} rail={rail} />
+          </div>
         ))}
       </div>
 
       {/* Gender is shown because the live topic page shows it, and it carries
-          no lean here on purpose — see the note in data.ts. */}
-      <div className="flex flex-col gap-2.5 border-t border-line pt-[clamp(16px,2vw,22px)]">
+          no lean here on purpose — see the note in data.ts.
+
+          It is the one block that goes in the rail layout. That layout exists
+          because a phone gives this act about 440 pixels, and gender is four
+          rows asserting nothing — the note beside it literally says it asserts
+          no split. Losing the three cross-tabs that *do* carry the finding, in
+          order to keep the one that does not, would be the wrong trade. */}
+      <div
+        className={`flex-col gap-2.5 border-t border-line pt-[clamp(16px,2vw,22px)] ${
+          rail ? "hidden" : "flex"
+        }`}
+      >
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <span className="font-mono text-[9.5px] tracking-[0.12em] uppercase text-dim">
             Gender
@@ -101,11 +140,14 @@ function DimBlock({
   filter,
   mode,
   onPick,
+  rail = false,
 }: {
   dim: Dim;
   filter: Filter;
   mode: Mode;
   onPick: (dim: Dim, value: string | undefined) => void;
+  /** Narrows the fixed columns so the bar keeps a usable share of a phone. */
+  rail?: boolean;
 }) {
   const selected = filterValue(filter, dim);
   // Read the other axes only, so a picked row still shows its neighbours
@@ -153,12 +195,16 @@ function DimBlock({
                 aria-label={`${row.label}: ${row.pct} percent of participants, ${stack
                   .map((s, i) => `${s.label} ${shares[i]} percent`)
                   .join(", ")}, ${swing === 0 ? "level with" : `${Math.abs(swing)} points ${swing > 0 ? "above" : "below"}`} the reading on ${swingOf.label}`}
-                className={`group flex w-full cursor-pointer items-center gap-2.5 rounded-[9px] px-2 py-[7px] text-left transition-[background,box-shadow] duration-300 outline-none focus-visible:ring-2 focus-visible:ring-positive/60 ${
+                className={`group flex w-full cursor-pointer items-center rounded-[9px] text-left transition-[background,box-shadow] duration-300 outline-none focus-visible:ring-2 focus-visible:ring-positive/60 ${
+                  rail ? "gap-2 px-1 py-[6px]" : "gap-2.5 px-2 py-[7px]"
+                } ${
                   active ? "bg-veil/7" : "hover:bg-veil/4"
                 }`}
               >
                 <span
-                  className={`w-[100px] lg:w-[84px] shrink-0 truncate text-[12.5px] transition-colors duration-300 ${
+                  className={`${
+                    rail ? "w-[88px] text-[12px]" : "w-[100px] text-[12.5px] lg:w-[84px]"
+                  } shrink-0 truncate transition-colors duration-300 ${
                     active ? "font-medium text-cream-bright" : "text-soft"
                   }`}
                 >
@@ -187,15 +233,19 @@ function DimBlock({
                     the gender row, so the two halves of this panel read as one
                     table rather than as two different instruments. */}
                 <span
-                  className={`w-[46px] shrink-0 text-right font-mono text-[10.5px] tabular-nums transition-colors duration-300 ${
+                  className={`${
+                    rail ? "w-[38px]" : "w-[46px]"
+                  } shrink-0 text-right font-mono text-[10.5px] tabular-nums transition-colors duration-300 ${
                     active ? "text-cream-bright" : "text-cream"
                   }`}
                 >
-                  {row.pct.toFixed(1)}%
+                  {rail ? Math.round(row.pct) : row.pct.toFixed(1)}%
                 </span>
 
                 <span
-                  className="w-[34px] shrink-0 text-right font-mono text-[10.5px] tabular-nums transition-colors duration-300"
+                  className={`${
+                    rail ? "w-[26px]" : "w-[34px]"
+                  } shrink-0 text-right font-mono text-[10.5px] tabular-nums transition-colors duration-300`}
                   style={{
                     color:
                       swing === 0

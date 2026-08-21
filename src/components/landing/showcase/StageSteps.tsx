@@ -93,7 +93,9 @@ export function StageSteps({
                 willChange: "transform, opacity",
               }}
             >
-              <FitBox className="flex-1">{step.body}</FitBox>
+              <FitBox className="flex-1" min={0.68}>
+                {step.body}
+              </FitBox>
             </div>
           );
         })}

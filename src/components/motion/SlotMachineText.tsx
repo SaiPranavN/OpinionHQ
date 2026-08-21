@@ -6,6 +6,22 @@
  * left to right, so the line resolves as a run of characters snapping into
  * place rather than as one block of text arriving.
  *
+ * ── The width bug, because it will come back if this is refactored ──────────
+ *
+ * The first version wrecked the spacing of every heading it touched — "Some
+ * questions" rendered as "Some quest i ons", with narrow letters floating in
+ * wide gaps. The cause was structural rather than a bad number: the reel cells
+ * were block children of the clipped inline-block, so **the inline-block sized
+ * itself to the widest cell in the reel** — which is a random decoy. An `i`
+ * whose reel happened to contain a `W` occupied a `W`'s width, permanently, in
+ * the finished heading.
+ *
+ * The fix is the ghost below. A hidden copy of the *real* character is the only
+ * thing in normal flow, so the slot is exactly as wide as the letter it will
+ * end on; the reel is taken out of flow on top of it and contributes no width
+ * at all. Decoys wider than the real letter overflow and are clipped, which is
+ * what a physical reel behind a window does anyway.
+ *
  * ── It is a server component, and that is the interesting part ──────────────
  *
  * There is no `"use client"` here, no state, no effect and no observer. The
@@ -47,13 +63,23 @@ function rng(seed: number) {
 /**
  * The alphabet a character spins through.
  *
- * Like for like: a capital spins through capitals, a digit through digits. A
- * reel that mixed cases and symbols would change width wildly on every cell and
- * read as noise rather than as a wheel of type. Punctuation gets no reel at all
- * — a spinning full stop is a distraction with nothing to say, and the commas
- * and stops staying put are part of what makes the letters read as landing.
+ * Like for like: a capital spins through capitals, a digit through digits.
+ * Punctuation gets no reel at all — a spinning full stop is a distraction with
+ * nothing to say, and the commas and stops staying put are part of what makes
+ * the letters read as landing.
+ *
+ * NARROW LETTERS SPIN THROUGH NARROW LETTERS. `i`, `l`, `t`, `j`, `f` and `r`
+ * get their own pool, and it is not cosmetic: the reel is clipped to the real
+ * letter's width, so an `i` whose decoys are all `M`s and `W`s spins a column of
+ * letters with their sides cut off. Matching the rough width keeps the decoys
+ * legible as letters, which is the whole illusion.
  */
+const NARROW_LOWER = "ijltfr";
+const NARROW_UPPER = "IJLTFE";
+
 function alphabetFor(ch: string): string | null {
+  if (NARROW_LOWER.includes(ch)) return NARROW_LOWER;
+  if (NARROW_UPPER.includes(ch)) return NARROW_UPPER;
   if (LOWER.includes(ch)) return LOWER;
   if (UPPER.includes(ch)) return UPPER;
   if (DIGITS.includes(ch)) return DIGITS;
@@ -65,10 +91,10 @@ const MIN_CELLS = 5;
 const MAX_CELLS = 10;
 
 /** Per-character start offset, and the ceiling it stops climbing at. */
-const STAGGER_MS = 38;
-const MAX_STAGGER_MS = 620;
+const STAGGER_MS = 34;
+const MAX_STAGGER_MS = 560;
 
-const SPIN_MS = 720;
+const SPIN_MS = 700;
 
 export interface SlotMachineTextProps {
   /** The finished line. Also what the caller should put in the accessible name. */
@@ -98,20 +124,18 @@ export function SlotMachineText({
   let charIndex = 0;
 
   return (
-    <span aria-hidden className={`ohq-slot-line ${className}`} style={{ ["--ohq-slot-cell" as string]: cell }}>
+    <span
+      aria-hidden
+      className={className}
+      style={{ ["--ohq-slot-cell" as string]: cell }}
+    >
       {words.map((word, w) => {
         const node = (
           <span className="inline-block whitespace-nowrap">
             {[...word].map((ch, c) => {
               const i = charIndex++;
               const alphabet = alphabetFor(ch);
-              if (!alphabet) {
-                return (
-                  <span key={c} className="inline-block">
-                    {ch}
-                  </span>
-                );
-              }
+              if (!alphabet) return <Fragment key={c}>{ch}</Fragment>;
 
               const rand = rng(i * 31 + ch.charCodeAt(0));
               const cells = MIN_CELLS + Math.floor(rand() * (MAX_CELLS - MIN_CELLS));
@@ -122,6 +146,13 @@ export function SlotMachineText({
 
               return (
                 <span key={c} className="ohq-slot">
+                  {/*
+                    The only thing in normal flow. It is the real character, so
+                    the slot is exactly the width that character will occupy —
+                    see the note at the top of this file for what happens when
+                    the reel is allowed to decide the width instead.
+                  */}
+                  <span className="ohq-slot-ghost">{ch}</span>
                   <span
                     className="ohq-slot-reel"
                     style={{

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CategoriesSection } from "@/components/landing/CategoriesSection";
 import { Hero } from "@/components/landing/Hero";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
-import { MovingSubjects, type DeckCard } from "@/components/landing/MovingSubjects";
+import { MovingSubjects } from "@/components/landing/MovingSubjects";
 import { ResultShowcase } from "@/components/landing/ResultShowcase";
 import { TwoModesSection } from "@/components/landing/TwoModesSection";
 import { RevealOnScroll } from "@/components/motion/RevealOnScroll";
@@ -53,40 +53,6 @@ export default async function LandingPage() {
     pollCounts.set(poll.cat, (pollCounts.get(poll.cat) ?? 0) + 1);
   }
 
-  /*
-   * The deck for "Moving topics and polls".
-   *
-   * Real published subjects, taken off the front of the same two lists the
-   * counts above come from — which are already ordered by trend score, so the
-   * deck is genuinely what is moving rather than a flattering selection.
-   *
-   * Interleaved rather than concatenated: a run of eight topics followed by a
-   * run of eight polls would teach a reader that the section has two halves and
-   * let them stop scrolling at the seam. Alternating means the green and purple
-   * instruments trade places all the way down, which is the thing the section
-   * is there to show.
-   *
-   * TWELVE, and the cap is doing real work. Every card is a screenful of scroll
-   * while the scene is pinned — see MovingSubjects — so this is the number that
-   * decides how much of a visitor's scrolling the section is allowed to take.
-   */
-  const deck: DeckCard[] = interleave<DeckCard>(
-    topics.slice(0, 6).map((topic) => ({
-      href: `/topics/${topic.id}`,
-      title: topic.name,
-      category: topic.category.label,
-      place: topic.placeLabel,
-      kind: "topic" as const,
-    })),
-    polls.slice(0, 6).map((poll) => ({
-      href: `/polls/${poll.id}`,
-      title: poll.question,
-      category: poll.category.label,
-      place: poll.placeLabel,
-      kind: "poll" as const,
-    })),
-  );
-
   return (
     <>
       <RevealOnScroll />
@@ -112,12 +78,13 @@ export default async function LandingPage() {
           used to be entirely invisible until somebody signed up. */}
       <ResultShowcase />
 
-      {/* What is actually open, dealt one card at a time. It sits here because
-          the two sections above are explanations and this is the first thing on
-          the page a visitor can act on — and because it is the natural answer
-          to "fine, but what is on it?", which is the question the showcase
-          leaves them with. Renders nothing at all below three subjects. */}
-      <MovingSubjects cards={deck} />
+      {/* The range of what gets asked here, dealt one card at a time. It sits
+          here because the two sections above are explanations and this is the
+          answer to "fine, but what is actually on it?" — the question the
+          showcase leaves a reader with. The cards are written examples across
+          exams, colleges, tech and careers; the live counts and the way in are
+          the two buttons underneath them. See MovingSubjects for why. */}
+      <MovingSubjects topicCount={totals.topics} pollCount={pollTotals.count} />
 
       <HowItWorksSection />
 
@@ -188,17 +155,4 @@ export default async function LandingPage() {
       <Footer />
     </>
   );
-}
-
-/**
- * Alternates two lists, keeping whatever is left over when they differ in
- * length. `[a1,a2,a3]` and `[b1,b2]` becomes `[a1,b1,a2,b2,a3]`.
- */
-function interleave<T>(a: T[], b: T[]): T[] {
-  const out: T[] = [];
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    if (a[i]) out.push(a[i]!);
-    if (b[i]) out.push(b[i]!);
-  }
-  return out;
 }
