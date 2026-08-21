@@ -28,7 +28,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { ScrollScene } from "@/components/motion/ScrollScene";
-import { SlotMachineText } from "@/components/motion/SlotMachineText";
 import { StageSteps, type Step } from "@/components/landing/showcase/StageSteps";
 import { SectionPurpose } from "@/components/landing/SectionPurpose";
 import { DemoAspects } from "@/components/landing/showcase/DemoAspects";
@@ -51,15 +50,6 @@ import {
   type Filter,
   type Mode,
 } from "@/components/landing/showcase/data";
-
-/**
- * The heading, as one string.
- *
- * Same reason as the one in TwoModesSection: the slot machine needs the plain
- * line for the reels and the accessible name, and a heading split across
- * elements would have to be reassembled to be spun.
- */
-const INSIDE_HEADING = "One number, and then the questions about it.";
 
 export function ResultShowcase() {
   const [mode, setMode] = useState<Mode>("topic");
@@ -118,15 +108,8 @@ export function ResultShowcase() {
       <div className="relative mx-auto max-w-[1200px]">
         <div data-reveal className="ohq-reveal mx-auto max-w-[780px] text-center">
           <span className="ohq-eyebrow">Inside a result</span>
-          {/* `leading-[1.06]` for the same reason as the modes heading: the slot
-              reels clip to one line box each, and 1.02 cut the descenders. */}
-          <h2
-            aria-label={INSIDE_HEADING}
-            className="mt-4 mb-5 font-display text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.06] font-bold tracking-[-0.025em] text-balance text-cream-bright"
-          >
-            {/* Offset from the modes heading above so the two land in sequence
-                rather than together if a tall window shows both at once. */}
-            <SlotMachineText text={INSIDE_HEADING} delayMs={120} />
+          <h2 className="mt-4 mb-5 font-display text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.02] font-bold tracking-[-0.025em] text-balance text-cream-bright">
+            One number, and then the <em>questions about it.</em>
           </h2>
           <p className="m-0 text-[16px] leading-[1.6] font-light text-pretty text-muted">
             &ldquo;70% positive&rdquo; is where most polls stop. It is where a subject

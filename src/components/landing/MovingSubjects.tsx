@@ -32,7 +32,6 @@
 import Link from "next/link";
 
 import { ScrollScene } from "@/components/motion/ScrollScene";
-import { SlotMachineText } from "@/components/motion/SlotMachineText";
 import { DECK_DEPTH, dealAt, deckSeat } from "@/lib/motion/scene";
 
 export interface DeckCard {
@@ -40,8 +39,6 @@ export interface DeckCard {
   category: string;
   kind: "topic" | "poll";
 }
-
-const HEADING = "Moving topics and polls.";
 
 /**
  * The deck.
@@ -102,11 +99,8 @@ export function MovingSubjects({
         >
           <div data-reveal className="ohq-reveal mx-auto max-w-[760px] text-center">
             <span className="ohq-eyebrow">What gets asked here</span>
-            <h2
-              aria-label={HEADING}
-              className="mt-3 mb-4 font-display text-[clamp(1.9rem,4.2vw,3.6rem)] leading-[1.06] font-bold tracking-[-0.025em] text-balance text-cream-bright"
-            >
-              <SlotMachineText text={HEADING} />
+            <h2 className="mt-3 mb-4 font-display text-[clamp(1.9rem,4.2vw,3.6rem)] leading-[1.04] font-bold tracking-[-0.025em] text-balance text-cream-bright">
+              Moving <em>topics and polls.</em>
             </h2>
             <p className="m-0 text-[clamp(13.5px,1.1vw,15.5px)] leading-[1.6] font-light text-pretty text-muted">
               Examples of the kinds of subjects that move here — exam papers, campus

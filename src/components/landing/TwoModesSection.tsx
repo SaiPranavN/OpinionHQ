@@ -2,21 +2,8 @@ import Link from "next/link";
 
 import { CardConveyor } from "@/components/landing/CardConveyor";
 import { SectionPurpose } from "@/components/landing/SectionPurpose";
-import { SlotMachineText } from "@/components/motion/SlotMachineText";
 import { Brand } from "@/components/ui/Brand";
 import { formatNumber } from "@/lib/derive";
-
-/**
- * The heading, and the one string it is built from.
- *
- * Written once because it has to be identical in three places: the reels, the
- * accessible name, and anything that reads the page without running the reels.
- * The emphasis that used to be marked up here with `<em>` is gone — `em` is
- * declared `font-style: normal` site-wide and was styling nothing, so all it
- * did was split the line into fragments the slot machine would have had to be
- * taught to reassemble.
- */
-const MODES_HEADING = "Some questions need a scale. Others need a winner.";
 
 /**
  * The two *public* modes, side by side.
@@ -52,15 +39,9 @@ export function TwoModesSection({
           header={
             <div data-reveal className="ohq-reveal mx-auto max-w-[760px] text-center">
               <span className="ohq-eyebrow">Two ways to ask in public</span>
-              {/* `leading-[1.06]`, up from 1.02. The reels clip to one line box
-                  each, and at 1.02 a display face's descenders sit fractionally
-                  outside it — so the tails of the g and the q were being cut off
-                  by the very thing that makes the characters land. */}
-              <h2
-                aria-label={MODES_HEADING}
-                className="mt-4 mb-5 font-display text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.06] font-bold tracking-[-0.025em] text-balance text-cream-bright"
-              >
-                <SlotMachineText text={MODES_HEADING} />
+              <h2 className="mt-4 mb-5 font-display text-[clamp(2.4rem,4.6vw,4.2rem)] leading-[1.02] font-bold tracking-[-0.025em] text-balance text-cream-bright">
+                Some questions need a <em>scale.</em> Others need a{" "}
+                <em>winner.</em>
               </h2>
               <p className="m-0 text-[16px] leading-[1.6] font-light text-pretty text-muted">
                 Asking &ldquo;how do you feel about the fee hike?&rdquo; and &ldquo;IIT or
