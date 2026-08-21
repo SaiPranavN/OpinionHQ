@@ -22,6 +22,17 @@
  * at all. Decoys wider than the real letter overflow and are clipped, which is
  * what a physical reel behind a window does anyway.
  *
+ * ── The geometry is in the markup, not only in the stylesheet ───────────────
+ *
+ * `relative`, `absolute inset-x-0 top-0`, `invisible` and `text-center` say the
+ * same thing as the hand-written rules in globals.css, and they are there
+ * deliberately rather than redundantly. The first deploy of the width fix
+ * shipped correct JS against a stale CSS chunk — the build cache served the
+ * previous stylesheet, so the markup had a ghost element and the stylesheet had
+ * never heard of it, and the headings went out with the spacing bug still in
+ * them. Utilities that the stylesheet already contains cannot go stale that
+ * way. The named rules stay because they are where the reasoning lives.
+ *
  * ── It is a server component, and that is the interesting part ──────────────
  *
  * There is no `"use client"` here, no state, no effect and no observer. The
@@ -145,16 +156,16 @@ export function SlotMachineText({
               );
 
               return (
-                <span key={c} className="ohq-slot">
+                <span key={c} className="ohq-slot relative">
                   {/*
                     The only thing in normal flow. It is the real character, so
                     the slot is exactly the width that character will occupy —
                     see the note at the top of this file for what happens when
                     the reel is allowed to decide the width instead.
                   */}
-                  <span className="ohq-slot-ghost">{ch}</span>
+                  <span className="ohq-slot-ghost invisible">{ch}</span>
                   <span
-                    className="ohq-slot-reel"
+                    className="ohq-slot-reel absolute inset-x-0 top-0"
                     style={{
                       // Negative: the reel travels upward, the same direction
                       // the hero's drum turns. The resting transform is this
@@ -166,11 +177,11 @@ export function SlotMachineText({
                     }}
                   >
                     {decoys.map((decoy, d) => (
-                      <span key={d} className="ohq-slot-cell">
+                      <span key={d} className="ohq-slot-cell text-center">
                         {decoy}
                       </span>
                     ))}
-                    <span className="ohq-slot-cell">{ch}</span>
+                    <span className="ohq-slot-cell text-center">{ch}</span>
                   </span>
                 </span>
               );
