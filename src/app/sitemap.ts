@@ -69,6 +69,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: absolute("/"), lastModified: now, changeFrequency: "daily", priority: 1 },
     { url: absolute("/topics"), lastModified: now, changeFrequency: "daily", priority: 0.9 },
     { url: absolute("/polls"), lastModified: now, changeFrequency: "daily", priority: 0.9 },
+    // Both are indexable and neither moves often. /pro answers "what does this
+    // cost", which is a question people put to a search engine before they put
+    // it to a site; /contribute was reachable only from the nav.
+    { url: absolute("/pro"), lastModified: now, changeFrequency: "monthly", priority: 0.5 },
+    {
+      url: absolute("/contribute"),
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.3,
+    },
     ...topicRows.map((row) => ({
       url: absolute(`/topics/${row.slug}`),
       lastModified: lastModified(row),
