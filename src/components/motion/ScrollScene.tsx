@@ -67,6 +67,19 @@ export interface SceneState {
   scrubbing: boolean;
   /** Phone width. The scene decides what to do about it. */
   narrow: boolean;
+  /**
+   * The scene is on screen or nearly so.
+   *
+   * Children use this to decide whether to ask for a compositor layer. It
+   * matters more than it sounds: this page is twenty screens tall on a phone,
+   * and with `will-change` declared statically every card, act and deck card on
+   * it held its own layer for the whole visit — twenty-one of them, close to a
+   * million square pixels of surface, most belonging to sections the reader
+   * had left long ago. That is the kind of budget a phone reclaims by throwing
+   * the tab away and reloading it, which is exactly the symptom that sent me
+   * looking. Promote what is on screen; let go of the rest.
+   */
+  active: boolean;
 }
 
 export interface ScrollSceneProps {
@@ -94,6 +107,7 @@ export function ScrollScene({
   const reduced = useReducedMotion();
   const [narrow, setNarrow] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [active, setActive] = useState(false);
 
   // Reduced motion is the only opt-out. Everything else scrubs.
   const scrubbing = !reduced;
@@ -118,12 +132,18 @@ export function ScrollScene({
   const measure = useCallback(() => {
     const track = trackRef.current;
     if (!track) return;
-    const travel = track.offsetHeight - window.innerHeight;
+    const vh = window.innerHeight;
+    const rect = track.getBoundingClientRect();
+    // Half a screen of margin either side, so a layer exists by the time it is
+    // needed rather than being created on the frame it first has to paint.
+    setActive(rect.bottom > -vh * 0.5 && rect.top < vh * 1.5);
+
+    const travel = track.offsetHeight - vh;
     if (travel <= 0) {
       setProgress(1);
       return;
     }
-    const next = clamp01(-track.getBoundingClientRect().top / travel);
+    const next = clamp01(-rect.top / travel);
     setProgress((prev) =>
       // A scroll of one pixel through a three-viewport scene moves progress by
       // a third of a thousandth. Re-rendering for that is work nobody can see.
@@ -160,7 +180,7 @@ export function ScrollScene({
   if (!scrubbing) {
     return (
       <section id={id} className={className}>
-        {children({ progress: 1, scrubbing: false, narrow })}
+        {children({ progress: 1, scrubbing: false, narrow, active: false })}
       </section>
     );
   }
@@ -172,7 +192,7 @@ export function ScrollScene({
             the children pad themselves past the nav, which keeps the arithmetic
             above free of any dependence on how tall the header happens to be. */}
         <div className="sticky top-0 h-[100svh] overflow-hidden">
-          {children({ progress, scrubbing: true, narrow })}
+          {children({ progress, scrubbing: true, narrow, active })}
         </div>
       </div>
     </section>

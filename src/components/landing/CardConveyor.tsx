@@ -70,7 +70,7 @@ export function CardConveyor({
         narrowDistance={2.2}
         className="mt-[clamp(38px,6vw,70px)]"
       >
-        {({ progress, scrubbing, narrow }) => (
+        {({ progress, scrubbing, narrow, active }) => (
           <div
             // `items-center` on a wide screen, `items-stretch` on a narrow one.
             // Centring an item taller than its container makes it overflow
@@ -128,7 +128,13 @@ export function CardConveyor({
                       seat
                         ? {
                             ...seat,
-                            willChange: "transform, opacity",
+                            // Blur is skipped outright on a phone: it forces a
+                            // second raster pass over a full-width card, and it
+                            // is the least of what the effect is made of.
+                            filter: narrow ? "none" : seat.filter,
+                            // Only while the scene is near the screen. See
+                            // SceneState.active.
+                            willChange: active ? "transform, opacity" : undefined,
                             // A card that has left must not keep intercepting
                             // taps over the one that replaced it.
                             pointerEvents: seat.opacity > 0.5 ? "auto" : "none",

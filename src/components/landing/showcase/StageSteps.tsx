@@ -41,10 +41,13 @@ export function StageSteps({
   steps,
   progress,
   scrubbing,
+  active = true,
 }: {
   steps: Step[];
   progress: number;
   scrubbing: boolean;
+  /** The scene is near the viewport. Gates the compositor layers. */
+  active?: boolean;
 }) {
   if (!scrubbing) {
     return (
@@ -62,17 +65,17 @@ export function StageSteps({
   // Which act the reader is on, for the rail and the heading. Rounded from the
   // same number that places the acts, so the label can never disagree with what
   // is on screen.
-  const active = activeStep(progress, steps.length);
+  const activeStepIndex = activeStep(progress, steps.length);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <StepRail steps={steps} active={active} progress={progress} />
+      <StepRail steps={steps} active={activeStepIndex} progress={progress} />
 
       {/* One heading slot, holding whichever act's heading is current. Keeping
           it out of the crossfade means the reader always has a stable place to
           look for "what am I being shown", rather than the title travelling with
           the panel it names. */}
-      <StepHeading step={steps[active]!} />
+      <StepHeading step={steps[activeStepIndex]!} />
 
       <div className="relative min-h-0 flex-1">
         {steps.map((step, i) => {
@@ -81,7 +84,7 @@ export function StageSteps({
           return (
             <div
               key={step.n}
-              aria-hidden={i !== active}
+              aria-hidden={i !== activeStepIndex}
               className="absolute inset-0 flex min-h-0 flex-col"
               style={{
                 opacity: at.opacity,
@@ -89,8 +92,8 @@ export function StageSteps({
                 // The act that is on its way out must not swallow a click meant
                 // for the one arriving — the cross-tabs are interactive, and two
                 // overlapping copies of them would both respond.
-                pointerEvents: i === active ? "auto" : "none",
-                willChange: "transform, opacity",
+                pointerEvents: i === activeStepIndex ? "auto" : "none",
+                willChange: active ? "transform, opacity" : undefined,
               }}
             >
               <FitBox className="flex-1" min={0.68}>

@@ -89,7 +89,7 @@ export function MovingSubjects({
       narrowDistance={Math.min(DECK.length * 0.34, 4)}
       className="relative border-t border-veil/5"
     >
-      {({ progress, scrubbing, narrow }) => (
+      {({ progress, scrubbing, narrow, active }) => (
         <div
           className={`mx-auto flex max-w-[1200px] flex-col px-5 sm:px-10 lg:px-20 ${
             scrubbing
@@ -110,7 +110,7 @@ export function MovingSubjects({
           </div>
 
           {scrubbing ? (
-            <Deck progress={progress} narrow={narrow} />
+            <Deck progress={progress} narrow={narrow} active={active} />
           ) : (
             /* Reduced motion: the same cards as an ordinary responsive grid,
                half the deck, because a list is a list and the catalog is two
@@ -150,7 +150,15 @@ export function MovingSubjects({
   );
 }
 
-function Deck({ progress, narrow }: { progress: number; narrow: boolean }) {
+function Deck({
+  progress,
+  narrow,
+  active,
+}: {
+  progress: number;
+  narrow: boolean;
+  active: boolean;
+}) {
   const at = dealAt(progress, DECK.length);
   const front = Math.min(DECK.length - 1, Math.max(0, Math.round(at)));
 
@@ -183,7 +191,7 @@ function Deck({ progress, narrow }: { progress: number; narrow: boolean }) {
                 // it is the cheapest thing here to give up.
                 filter: narrow || seat.blur === 0 ? "none" : `blur(${seat.blur.toFixed(2)}px)`,
                 zIndex: 100 - Math.round(Math.abs(k) * 10),
-                willChange: "transform, opacity",
+                willChange: active ? "transform, opacity" : undefined,
               }}
             >
               <SubjectCard card={card} />

@@ -19,6 +19,20 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { usePrototype } from "@/components/prototype/PrototypeProvider";
+import {
+  AnonIcon,
+  ExportIcon,
+  FollowIcon,
+  FreedomIcon,
+  ImageIcon,
+  PlanCards,
+  RankIcon,
+  ReadIcon,
+  SectionsIcon,
+  SuggestIcon,
+  VoteIcon,
+  type Plan,
+} from "@/components/pro/PlanCards";
 import { SuggestForm } from "@/components/pro/SuggestForm";
 import { Brand } from "@/components/ui/Brand";
 import { FOUNDING, PRO_PLAN } from "@/lib/entitlements";
@@ -44,9 +58,117 @@ export function ProView() {
   const open = offer?.offerOpen ?? false;
   const price = offer?.priceInr ?? 99;
 
+  /**
+   * The Pro card's action, in whichever of its five states applies.
+   *
+   * It lives in the card rather than in the status strip above, because that is
+   * where somebody deciding is looking. The strip keeps the *answer* — whether
+   * Pro is on — and has no button of its own any more: two identical green
+   * buttons on one screen is a page asking the same question twice.
+   */
+  const proAction = !ready ? (
+    <span className="grid h-11 place-items-center rounded-full border border-veil/12 text-[13.5px] text-dim">
+      Checking your account…
+    </span>
+  ) : !signedIn ? (
+    <button
+      type="button"
+      onClick={() => openAuth("signin")}
+      className="ohq-press h-11 cursor-pointer rounded-full bg-positive text-[14px] font-semibold text-positive-ink duration-300 ease-ohq outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light"
+    >
+      {open ? "Sign in and claim it" : "Sign in"}
+    </button>
+  ) : offer?.revoked ? (
+    <span className="grid h-11 place-items-center rounded-full border border-veil/12 px-4 text-center text-[12.5px] text-dim">
+      Not available on this account
+    </span>
+  ) : pro ? (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        await cancelPro();
+        setBusy(false);
+      }}
+      className="h-11 cursor-pointer rounded-full border border-veil/16 text-[13.5px] font-medium text-soft transition-colors duration-300 hover:border-veil/40 hover:text-cream-bright disabled:opacity-40"
+    >
+      Turn Pro off
+    </button>
+  ) : (
+    <button
+      type="button"
+      disabled={busy || !open}
+      onClick={async () => {
+        setBusy(true);
+        await subscribePro();
+        setBusy(false);
+      }}
+      className="ohq-press h-11 cursor-pointer rounded-full bg-positive text-[14px] font-semibold text-positive-ink duration-300 ease-ohq outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      {open ? "Claim founding Pro" : "Payment is not open yet"}
+    </button>
+  );
+
+  /**
+   * Icons for the feature lines, by position.
+   *
+   * Keyed by index rather than by the string, because the strings live in
+   * `entitlements.ts` where the wording is edited and a lookup table keyed on
+   * prose would break silently the first time a comma moved. Anything past the
+   * end of a list falls back to a tick, so adding a line degrades to the plain
+   * bullet this page had before rather than to a gap.
+   */
+  const PRO_ICONS = [
+    SectionsIcon,
+    ImageIcon,
+    AnonIcon,
+    SuggestIcon,
+    RankIcon,
+    FreedomIcon,
+  ];
+  const FREE_ICONS = [ReadIcon, VoteIcon, FollowIcon, ExportIcon];
+
+  const plans: Plan[] = [
+    {
+      id: "free",
+      name: "Free",
+      price: "₹0",
+      unit: "always, no account needed to read",
+      blurb:
+        "Everything the site measures, and every way of taking part in it. This is not a trial.",
+      features: PRO_PLAN.freeForever.map((text, i) => ({
+        text,
+        icon: FREE_ICONS[i] ?? ReadIcon,
+      })),
+      action: (
+        <span className="grid h-11 place-items-center rounded-full border border-veil/12 text-[13.5px] font-medium text-dim">
+          {pro ? "Included in Pro" : "Your current plan"}
+        </span>
+      ),
+    },
+    {
+      id: "pro",
+      name: PRO_PLAN.name,
+      price: open ? "₹0" : `₹${price}`,
+      unit: open
+        ? `for founding members until ${deadline} — then ₹${price} a month`
+        : "per month",
+      blurb:
+        "For the people writing the long answers: more room to make a case, and the choice of whether your name is on it.",
+      features: PRO_PLAN.includes.map((text, i) => ({
+        text,
+        icon: PRO_ICONS[i] ?? FreedomIcon,
+      })),
+      featured: true,
+      badge: open ? FOUNDING.badge : undefined,
+      action: proAction,
+    },
+  ];
+
   return (
     <div
-      className="mx-auto flex max-w-[880px] flex-col gap-[clamp(26px,3.4vw,44px)] px-4 pb-[clamp(70px,9vw,120px)] sm:px-8"
+      className="mx-auto flex max-w-[980px] flex-col gap-[clamp(26px,3.4vw,44px)] px-4 pb-[clamp(70px,9vw,120px)] sm:px-8"
       style={{ paddingTop: "calc(var(--ohq-nav-h) + clamp(18px, 3vw, 34px))" }}
     >
       <header className="flex flex-col gap-4">
@@ -99,81 +221,29 @@ export function ProView() {
             </span>
           </span>
 
-          <span className="ml-auto flex flex-wrap gap-3">
-            {pro ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  await cancelPro();
-                  setBusy(false);
-                }}
-                className="cursor-pointer rounded-full border border-veil/16 px-5 py-2.5 text-[13.5px] font-medium text-soft transition-colors duration-300 hover:border-veil/40 hover:text-cream-bright disabled:opacity-40"
-              >
-                Turn Pro off
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled={busy || offer?.revoked || !open}
-                onClick={async () => {
-                  setBusy(true);
-                  await subscribePro();
-                  setBusy(false);
-                }}
-                className="ohq-press cursor-pointer rounded-full bg-positive px-6 py-3 text-[14.5px] font-semibold text-positive-ink transition-[background,opacity] duration-300 outline-none hover:bg-[#25CC61] focus-visible:ring-2 focus-visible:ring-positive-light disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {open ? "Claim founding Pro" : "Payment is not open yet"}
-              </button>
-            )}
+          {/* No button here. The one that matters is in the Pro card below,
+              which is where somebody deciding is already looking. */}
+          <span
+            aria-hidden
+            className={`ml-auto grid h-10 w-10 place-items-center rounded-full border text-[15px] ${
+              pro
+                ? "border-positive/35 bg-positive/10 text-positive-light"
+                : "border-veil/12 text-dim"
+            }`}
+          >
+            {pro ? "✓" : "—"}
           </span>
         </section>
       ) : ready ? (
         <section className="ohq-panel flex flex-wrap items-center gap-4 p-5 sm:p-6">
-          <p className="m-0 max-w-[46ch] text-[14px] leading-[1.6] text-soft">
+          <p className="m-0 max-w-[52ch] text-[14px] leading-[1.6] text-soft">
             Sign in to turn Pro on. It is free for founding members and there is
-            no card field.
+            no card field anywhere in it.
           </p>
-          <button
-            type="button"
-            onClick={() => openAuth("signin")}
-            className="ml-auto cursor-pointer rounded-full bg-positive px-6 py-3 text-[14.5px] font-semibold text-positive-ink transition-[background] duration-300 hover:bg-[#25CC61]"
-          >
-            Sign in
-          </button>
         </section>
       ) : null}
 
-      <section className="flex flex-col gap-3">
-        <span className="ohq-eyebrow">What Pro adds</span>
-        <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
-          {PRO_PLAN.includes.map((line) => (
-            <li key={line} className="flex gap-3 text-[14.5px] leading-[1.55] text-soft">
-              <span aria-hidden className="pt-px text-private-soft">
-                +
-              </span>
-              {line}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* Same size type as the list above. A page that shrinks this is selling
-          the fear rather than the product. */}
-      <section className="flex flex-col gap-3 border-t border-line pt-6">
-        <span className="ohq-eyebrow">Free, and staying free</span>
-        <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
-          {PRO_PLAN.freeForever.map((line) => (
-            <li key={line} className="flex gap-3 text-[14.5px] leading-[1.55] text-soft">
-              <span aria-hidden className="pt-px text-positive-light">
-                ✓
-              </span>
-              {line}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <PlanCards plans={plans} />
 
       {pro ? (
         <section className="flex flex-col gap-3 border-t border-line pt-6">

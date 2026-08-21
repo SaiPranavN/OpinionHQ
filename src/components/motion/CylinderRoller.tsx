@@ -132,7 +132,31 @@ export function CylinderRoller({
   const [held, setHeld] = useState(false);
   /** The tab is in the background. Same effect, different cause. */
   const [hidden, setHidden] = useState(false);
+  /**
+   * The drum is somewhere on screen.
+   *
+   * Starts `true` so a host that never delivers an observer callback leaves the
+   * roller running rather than frozen — the failure mode of getting this wrong
+   * is a permanently still headline, which is worse than a little wasted work.
+   *
+   * It exists because the landing page is twenty screens tall on a phone and
+   * this drum sits on the first one. Without it the clock keeps turning and ten
+   * faces keep their compositor layers for the entire visit, long after the
+   * hero has gone.
+   */
+  const [onScreen, setOnScreen] = useState(true);
   const [pointerFine, setPointerFine] = useState(false);
+  /**
+   * Phone width, which here means one thing: no blur.
+   *
+   * A blurred face is a second raster pass over its own layer, and both drums
+   * on this page keep two or three neighbours blurred at all times — so the
+   * hero alone held a handful of filtered layers for the whole visit on the
+   * device least able to afford them. The depth still reads without it: the
+   * neighbours are turned away, dimmed and scaled down, and the blur was the
+   * smallest of those four cues.
+   */
+  const [narrow, setNarrow] = useState(false);
 
   /**
    * The drum's position, in faces, unbounded.
@@ -151,6 +175,7 @@ export function CylinderRoller({
   const dragBase = useRef(0);
 
   const radius = radiusFor(faceHeight, step);
+  const blur = narrow ? 0 : blurPx;
   const rolling = faceHeight > 0 && !reduced && count > 1;
 
   /**
@@ -244,9 +269,28 @@ export function CylinderRoller({
   }, []);
 
   useEffect(() => {
+    const query = window.matchMedia("(max-width: 767px)");
+    const sync = () => setNarrow(query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
     const sync = () => setHidden(document.hidden);
     document.addEventListener("visibilitychange", sync);
     return () => document.removeEventListener("visibilitychange", sync);
+  }, []);
+
+  useEffect(() => {
+    const host = ghostRef.current?.parentElement;
+    if (!host || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setOnScreen(entry?.isIntersecting ?? true),
+      { rootMargin: "200px 0px" },
+    );
+    observer.observe(host);
+    return () => observer.disconnect();
   }, []);
 
   /* ---------------------------------------------------------------- paint */
@@ -264,7 +308,7 @@ export function CylinderRoller({
     for (let i = 0; i < count; i++) {
       const face = faceRefs.current[i];
       if (!face) continue;
-      const s = faceStyleAt(i, x, count, radius, step, blurPx);
+      const s = faceStyleAt(i, x, count, radius, step, blur);
       face.style.visibility = s.visibility;
       face.style.opacity = s.opacity;
       if (s.visibility === "visible") {
@@ -272,7 +316,24 @@ export function CylinderRoller({
         face.style.filter = s.filter;
       }
     }
-  }, [count, radius, step, blurPx]);
+  }, [count, radius, step, blur]);
+
+  /**
+   * Asks for, or gives up, a compositor layer per face.
+   *
+   * Indexed rather than `for...of` over the ref's array: React's immutability
+   * rule reads iterating a ref directly as mutating it, and `paint` below
+   * already uses this form for the same reason.
+   */
+  const layers = useCallback(
+    (on: boolean) => {
+      for (let i = 0; i < count; i++) {
+        const face = faceRefs.current[i];
+        if (face) face.style.willChange = on ? "transform, opacity" : "";
+      }
+    },
+    [count],
+  );
 
   /* --------------------------------------------------------------- physics */
 
@@ -300,13 +361,17 @@ export function CylinderRoller({
         pos.current.x = target.current;
         pos.current.v = 0;
         paint();
+        // Let the layers go. `will-change` is a promise about the *next*
+        // frame, and a settled drum has no next frame — holding it keeps ten
+        // faces rasterised for as long as the page is open.
+        layers(false);
         frame.current = 0;
         last.current = 0;
         return;
       }
       frame.current = requestAnimationFrame((t) => tickRef.current(t));
     },
-    [paint, spring],
+    [paint, spring, layers],
   );
 
   useEffect(() => {
@@ -315,9 +380,13 @@ export function CylinderRoller({
 
   const run = useCallback(() => {
     if (frame.current) return;
+    // Asked for on the frame before the motion starts, released on the frame it
+    // stops. That is what the property is for; declaring it in the class list
+    // asks for it forever.
+    layers(true);
     last.current = 0;
     frame.current = requestAnimationFrame((t) => tickRef.current(t));
-  }, []);
+  }, [layers]);
 
   /**
    * Paints after every render, before the browser gets a frame.
@@ -361,7 +430,7 @@ export function CylinderRoller({
   );
 
   useEffect(() => {
-    if (held || hidden || count < 2) return;
+    if (held || hidden || !onScreen || count < 2) return;
     if (reduced) {
       // Still cycles, just without the drum. The point of a roller is that it
       // names more than one thing; freezing it on the first would hide the rest
@@ -371,7 +440,7 @@ export function CylinderRoller({
     }
     const timer = window.setTimeout(() => advance(1), holdMs);
     return () => window.clearTimeout(timer);
-  }, [index, held, hidden, holdMs, count, advance, reduced]);
+  }, [index, held, hidden, onScreen, holdMs, count, advance, reduced]);
 
   /* ----------------------------------------------------------------- drag */
 
@@ -491,7 +560,7 @@ export function CylinderRoller({
                   aria-hidden
                   // Placed by the layout effect above, not from here. Hidden
                   // until then, so the un-transformed stack is never shown.
-                  className={`absolute inset-0 [backface-visibility:hidden] [will-change:transform,opacity] ${faceClassName}`}
+                  className={`absolute inset-0 [backface-visibility:hidden] ${faceClassName}`}
                   style={{ visibility: "hidden" }}
                 >
                   {item}

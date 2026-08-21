@@ -32,6 +32,17 @@ const LINKS = [
   { href: "/#inside", label: "Why it’s different" },
 ] as const;
 
+/**
+ * Contribute is not in LINKS, and that is deliberate.
+ *
+ * Everything in that list is somewhere to *read*; this is a request. Rendering
+ * it as one more grey word between "Pro" and "How it works" would bury it, and
+ * giving it green or purple would make a donation read as another instrument —
+ * see --color-warm in globals.css. It gets its own pill, in the one warm colour
+ * on the palette, in both the wide row and the sheet.
+ */
+const CONTRIBUTE = { href: "/contribute", label: "Contribute" } as const;
+
 export function Nav() {
   const { signedIn, displayName, signOut } = usePrototype();
   const { isEditor } = useSession();
@@ -75,6 +86,14 @@ export function Nav() {
               {link.label}
             </Link>
           ))}
+
+          <Link
+            href={CONTRIBUTE.href}
+            className="ohq-press inline-flex shrink-0 items-center gap-1.5 rounded-full border border-warm/45 bg-warm/12 px-4 py-[7px] text-[13.5px] font-semibold whitespace-nowrap text-warm-soft duration-300 ease-ohq outline-none hover:border-warm/70 hover:bg-warm/20 focus-visible:ring-2 focus-visible:ring-warm/60"
+          >
+            <HeartGlyph />
+            {CONTRIBUTE.label}
+          </Link>
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
@@ -166,6 +185,15 @@ export function Nav() {
             ))}
           </ul>
 
+          <Link
+            href={CONTRIBUTE.href}
+            onClick={() => setOpen(false)}
+            className="ohq-press mt-2 flex min-h-11 items-center justify-center gap-2 rounded-full bg-warm px-4 text-[15px] font-semibold text-warm-ink duration-300 ease-ohq outline-none hover:bg-warm-soft focus-visible:ring-2 focus-visible:ring-warm/60"
+          >
+            <HeartGlyph />
+            {CONTRIBUTE.label}
+          </Link>
+
           {signedIn ? (
             <div className="mt-2 flex flex-col gap-1 border-t border-veil/8 pt-2">
               {isEditor ? (
@@ -199,6 +227,31 @@ export function Nav() {
         </div>
       ) : null}
     </nav>
+  );
+}
+
+/**
+ * A heart, in the house style: 24 box, 1.7 stroke, round caps, no fill.
+ *
+ * Outlined rather than solid. A filled heart on a payment button is a small
+ * piece of emotional pressure, and the ask is voluntary.
+ */
+function HeartGlyph() {
+  return (
+    <svg
+      aria-hidden
+      focusable="false"
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 20.2 4.3 12.6a4.7 4.7 0 0 1 0-6.7 4.7 4.7 0 0 1 6.6 0l1.1 1.1 1.1-1.1a4.7 4.7 0 0 1 6.6 0 4.7 4.7 0 0 1 0 6.7Z" />
+    </svg>
   );
 }
 

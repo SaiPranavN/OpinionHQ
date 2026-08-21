@@ -147,7 +147,7 @@ export function ResultShowcase() {
           narrowDistance={3.6}
           className="mt-[clamp(34px,5vw,58px)]"
         >
-          {({ progress, scrubbing, narrow }) => {
+          {({ progress, scrubbing, narrow, active }) => {
             /*
              * The four acts, each with a line saying what it is for.
              *
@@ -305,7 +305,12 @@ export function ResultShowcase() {
                       narrow={scrubbing && narrow}
                     />
 
-                    <StageSteps steps={steps} progress={progress} scrubbing={scrubbing} />
+                    <StageSteps
+                      steps={steps}
+                      progress={progress}
+                      scrubbing={scrubbing}
+                      active={active}
+                    />
                   </div>
 
                   <StageFooter

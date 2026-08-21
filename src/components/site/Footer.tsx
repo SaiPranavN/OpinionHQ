@@ -30,6 +30,10 @@ const EXPLORE = [
   { href: "/topics", label: "Topics" },
   { href: "/polls", label: "Polls" },
   { href: "/pro", label: "Pro" },
+  // Plain here, unlike the orange pill in the nav. A footer is where somebody
+  // goes looking for a thing they already decided to find; it does not need to
+  // be sold to them twice.
+  { href: "/contribute", label: "Contribute" },
 ];
 
 const ABOUT = [

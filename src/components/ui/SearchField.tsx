@@ -139,14 +139,26 @@ export function SearchField({
               placeholder attribute, because a placeholder cannot be animated
               and swapping it produces a hard cut. `key` restarts the
               animation on each change. */}
+          {/*
+            `inset-x-0`, not `left-0`.
+
+            With only a left edge an absolutely positioned box is shrink-to-fit:
+            it sizes to its content and grows as far right as that content
+            needs, out through the rounded end of the field and across whatever
+            is beside it. `truncate` on it did nothing, because there was no
+            width for the text to be too long for. Pinning both edges gives the
+            box the field's width, which is the thing the ellipsis needs to
+            measure against — and `overflow-hidden` catches the sub-pixel case
+            where a long hint would otherwise paint over the border radius.
+          */}
           {rotating ? (
             <span
               key={hint}
               aria-hidden
-              className="ohq-hint pointer-events-none absolute inset-y-0 left-0 flex items-center gap-1.5 truncate text-[14px] text-dim"
+              className="ohq-hint pointer-events-none absolute inset-x-0 inset-y-0 flex items-center gap-1.5 overflow-hidden text-[14px] text-dim"
             >
               <span className="shrink-0 opacity-70">{placeholder}</span>
-              <span className="truncate text-soft/70">{hints[hint]}</span>
+              <span className="min-w-0 truncate text-soft/70">{hints[hint]}</span>
             </span>
           ) : null}
         </span>

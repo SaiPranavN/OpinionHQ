@@ -66,6 +66,23 @@
   --color-private: #8fa8c4;
   --color-private-soft: #b9c6d6;
 
+  /*
+   * Contribution accent (orange), and why a sixth one exists.
+   *
+   * Every other accent on this site identifies an *instrument*: green measures a
+   * subject, purple forces a choice, steel is private guidance. Asking for money
+   * is none of those, and giving it one of their colours would make a donation
+   * read as a product — a green "Contribute" button next to a green "Explore
+   * opinions" button says the two are the same kind of thing.
+   *
+   * Orange is the only warm hue on the palette and it is used in exactly one
+   * place, which is the point: when it appears, it is asking rather than
+   * measuring.
+   */
+  --color-warm: #f0883c;
+  --color-warm-soft: #f7b07a;
+  --color-warm-ink: #2a1405;
+
   /* Hairlines */
   --color-line: rgb(255 255 255 / 0.07);
   --color-line-strong: rgb(255 255 255 / 0.12);
@@ -407,6 +424,11 @@
   --color-negative: #c02026;
   --color-negative-light: #98181d;
   --color-neutral: #6b6862;
+
+  /* Warm enough to still read as orange, dark enough to carry white type. */
+  --color-warm: #c25a05;
+  --color-warm-soft: #9c4704;
+  --color-warm-ink: #ffffff;
 
   --color-poll: #6d3fe0;
   --color-poll-soft: #5628c4;
