@@ -533,6 +533,12 @@ export interface Poll {
   question: string;
   /** Whoever suggested it, once an editor approved it. See `Topic.suggestedBy`. */
   suggestedBy?: string;
+  /**
+   * When this poll was published. ISO 8601; absent on records that predate the
+   * column being read. The subject-map layout sorts on it — see
+   * `lib/subject-map/layout.ts` — and nothing else does.
+   */
+  createdAt?: string;
   cat: CategoryId;
   /**
    * Where this applies. Part of the duplicate signature (`lib/signature.ts`):

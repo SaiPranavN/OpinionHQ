@@ -7,13 +7,18 @@ import { Brand } from "@/components/ui/Brand";
 import { CategoryFilter } from "@/components/catalog/CategoryFilter";
 import { TopicCard } from "@/components/catalog/TopicCard";
 import { SortControl } from "@/components/catalog/SortControl";
+import { SubjectMap } from "@/components/subject-map/SubjectMap";
+import { useCatalogView } from "@/components/subject-map/useCatalogView";
+import { ViewToggle } from "@/components/subject-map/ViewToggle";
 import { useSession } from "@/components/auth/SessionProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { SuggestButton } from "@/components/pro/SuggestButton";
 import { WelcomeOffer } from "@/components/pro/WelcomeOffer";
 import { PlaceFilter } from "@/components/ui/PlaceFilter";
 import { SearchField } from "@/components/ui/SearchField";
+import { topicSubject } from "@/lib/subject-map/subjects";
 import { placeLabel, type PlaceFilterId } from "@/lib/places";
+import type { Suggestion } from "@/lib/suggest";
 import { filterAndSort, topicIndex } from "@/lib/topics";
 import { categoryOf, sortLabel } from "@/lib/taxonomy";
 import type { CategoryFilterId, DecoratedTopic, SortId } from "@/lib/types";
@@ -60,6 +65,39 @@ export function CatalogView({
   );
 
   const index = useMemo(() => topicIndex(all), [all]);
+
+  // List by default; the map is the opt-in way to explore. Shared with the
+  // polls catalogue — see the hook for why it is one preference.
+  const [view, setView] = useCatalogView();
+
+  /**
+   * The map ignores the sort control for placement on purpose: its layout law
+   * is creation order — newest at the centre, oldest at the rim — and a
+   * spiral that reshuffled under every sort would stop being a place.
+   * Sorting still governs the list view and the summary line below.
+   */
+  const subjects = useMemo(() => results.map(topicSubject), [results]);
+
+  const [focusRequest, setFocusRequest] = useState<{ id: string; nonce: number } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  /** A picked search result flies the camera instead of leaving the page. */
+  const handlePick = (match: Suggestion): boolean => {
+    if (view !== "map" || !match.id.startsWith("topic-")) return false;
+    const id = match.id.slice("topic-".length);
+    if (!all.some((topic) => topic.id === id)) return false;
+    if (!results.some((topic) => topic.id === id)) {
+      // The subject exists but the active filters hide it. Reset them, and
+      // say so — a camera flying to a circle that is not there helps nobody.
+      setQuery("");
+      setCategory("All");
+      setPlace("any");
+      setNotice("Filters were reset to show that topic.");
+      window.setTimeout(() => setNotice(null), 6000);
+    }
+    setFocusRequest({ id, nonce: Date.now() });
+    return true;
+  };
 
   // "For you" names itself here rather than reading as an unexplained shortfall.
   // Without it the line said "12 of 40 topics sorted by Trending", which states
@@ -133,6 +171,7 @@ export function CatalogView({
             index={index}
             label="Search topics by name, category, place, tag or description"
             placeholder="Search topics"
+            onPick={handlePick}
           />
         </div>
         <div className="grid grid-cols-2 gap-3 sm:flex sm:shrink-0 sm:items-center">
@@ -158,27 +197,44 @@ export function CatalogView({
         <p aria-live="polite" className="m-0 text-[12.5px] text-dim">
           {summary}
         </p>
-        {(query || (category !== "All" && category !== "ForYou") || place !== "any") && (
-          <button
-            type="button"
-            onClick={() => {
-              setQuery("");
-              setCategory(interests.length > 0 ? "ForYou" : "All");
-              setPlace("any");
-            }}
-            className="cursor-pointer rounded-full border border-veil/12 px-3 py-1 text-[11.5px] text-muted transition-colors duration-300 outline-none hover:border-veil/28 hover:text-cream focus-visible:ring-2 focus-visible:ring-positive/60"
-          >
-            Clear filters
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {notice ? (
+            <p aria-live="polite" className="m-0 text-[11.5px] text-warm-soft">
+              {notice}
+            </p>
+          ) : null}
+          {(query || (category !== "All" && category !== "ForYou") || place !== "any") && (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setCategory(interests.length > 0 ? "ForYou" : "All");
+                setPlace("any");
+              }}
+              className="cursor-pointer rounded-full border border-veil/12 px-3 py-1 text-[11.5px] text-muted transition-colors duration-300 outline-none hover:border-veil/28 hover:text-cream focus-visible:ring-2 focus-visible:ring-positive/60"
+            >
+              Clear filters
+            </button>
+          )}
+          <ViewToggle view={view} accent="positive" mapLabel="Topic map" onChange={setView} />
+        </div>
       </div>
 
       {results.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {results.map((topic) => (
-            <TopicCard key={topic.id} topic={topic} />
-          ))}
-        </div>
+        view === "map" ? (
+          <SubjectMap
+            subjects={subjects}
+            accent="positive"
+            focusRequest={focusRequest}
+            label={`Topic map — ${results.length} ${noun}. Newest at the centre, older topics farther out.`}
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {results.map((topic) => (
+              <TopicCard key={topic.id} topic={topic} />
+            ))}
+          </div>
+        )
       ) : (
         /* Two different nothings, and telling them apart matters. A filter that
            matched nothing is fixed by clearing the filter; a catalog with

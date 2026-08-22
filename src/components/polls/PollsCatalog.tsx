@@ -5,6 +5,9 @@ import { useMemo, useState } from "react";
 
 import { useSession } from "@/components/auth/SessionProvider";
 import { CategoryFilter } from "@/components/catalog/CategoryFilter";
+import { SubjectMap } from "@/components/subject-map/SubjectMap";
+import { useCatalogView } from "@/components/subject-map/useCatalogView";
+import { ViewToggle } from "@/components/subject-map/ViewToggle";
 import { PollCard } from "@/components/polls/PollCard";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { SuggestButton } from "@/components/pro/SuggestButton";
@@ -12,6 +15,7 @@ import { WelcomeOffer } from "@/components/pro/WelcomeOffer";
 import { CONTROL_LABEL, CONTROL_SHELL } from "@/components/ui/control";
 import { PlaceFilter } from "@/components/ui/PlaceFilter";
 import { SearchField } from "@/components/ui/SearchField";
+import { pollSubject } from "@/lib/subject-map/subjects";
 import { formatNumber } from "@/lib/derive-poll";
 import { placeLabel, type PlaceFilterId } from "@/lib/places";
 import {
@@ -21,6 +25,7 @@ import {
   pollSortLabel,
   type PollSortId,
 } from "@/lib/polls";
+import type { Suggestion } from "@/lib/suggest";
 import { categoryOf } from "@/lib/taxonomy";
 import type { CategoryFilterId, DecoratedPoll } from "@/lib/types";
 
@@ -53,6 +58,31 @@ export function PollsCatalog({
   );
 
   const index = useMemo(() => pollIndex(polls), [polls]);
+
+  // One shared preference with the topics catalogue — see the hook.
+  const [view, setView] = useCatalogView();
+
+  // Placement is creation order — newest at the centre — never the sort
+  // control, which keeps its meaning in the list view and the summary line.
+  const subjects = useMemo(() => results.map(pollSubject), [results]);
+
+  const [focusRequest, setFocusRequest] = useState<{ id: string; nonce: number } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const handlePick = (match: Suggestion): boolean => {
+    if (view !== "map" || !match.id.startsWith("poll-")) return false;
+    const id = match.id.slice("poll-".length);
+    if (!polls.some((poll) => poll.id === id)) return false;
+    if (!results.some((poll) => poll.id === id)) {
+      setQuery("");
+      setCategory("All");
+      setPlace("any");
+      setNotice("Filters were reset to show that poll.");
+      window.setTimeout(() => setNotice(null), 6000);
+    }
+    setFocusRequest({ id, nonce: Date.now() });
+    return true;
+  };
 
   const scope = [
     category === "All"
@@ -125,6 +155,7 @@ export function PollsCatalog({
             label="Search polls by question, option, category, place or tag"
             placeholder="Search polls"
             accent="poll"
+            onPick={handlePick}
           />
         </div>
         <div className="grid grid-cols-2 gap-3 sm:flex sm:shrink-0 sm:items-center">
@@ -165,27 +196,44 @@ export function PollsCatalog({
         <p aria-live="polite" className="m-0 text-[12.5px] text-dim">
           {summary}
         </p>
-        {query || (category !== "All" && category !== "ForYou") || place !== "any" ? (
-          <button
-            type="button"
-            onClick={() => {
-              setQuery("");
-              setCategory(interests.length > 0 ? "ForYou" : "All");
-              setPlace("any");
-            }}
-            className="cursor-pointer rounded-full border border-veil/12 px-3 py-1 text-[11.5px] text-muted transition-colors duration-300 outline-none hover:border-veil/28 hover:text-cream focus-visible:ring-2 focus-visible:ring-poll/60"
-          >
-            Clear filters
-          </button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {notice ? (
+            <p aria-live="polite" className="m-0 text-[11.5px] text-warm-soft">
+              {notice}
+            </p>
+          ) : null}
+          {query || (category !== "All" && category !== "ForYou") || place !== "any" ? (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setCategory(interests.length > 0 ? "ForYou" : "All");
+                setPlace("any");
+              }}
+              className="cursor-pointer rounded-full border border-veil/12 px-3 py-1 text-[11.5px] text-muted transition-colors duration-300 outline-none hover:border-veil/28 hover:text-cream focus-visible:ring-2 focus-visible:ring-poll/60"
+            >
+              Clear filters
+            </button>
+          ) : null}
+          <ViewToggle view={view} accent="poll" mapLabel="Poll map" onChange={setView} />
+        </div>
       </div>
 
       {results.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {results.map((poll) => (
-            <PollCard key={poll.id} poll={poll} />
-          ))}
-        </div>
+        view === "map" ? (
+          <SubjectMap
+            subjects={subjects}
+            accent="poll"
+            focusRequest={focusRequest}
+            label={`Poll map — ${results.length} ${noun}. Newest at the centre, older polls farther out.`}
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {results.map((poll) => (
+              <PollCard key={poll.id} poll={poll} />
+            ))}
+          </div>
+        )
       ) : (
         <div className="flex flex-col items-center gap-4 rounded-[18px] border border-dashed border-veil/10 px-5 py-[clamp(48px,8vw,96px)] text-center">
           <p className="m-0 font-display font-bold text-[clamp(1.5rem,3vw,2.2rem)] tracking-[-0.02em] text-cream-bright">

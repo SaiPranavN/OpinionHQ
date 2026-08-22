@@ -31,6 +31,7 @@ export function SearchField({
   label,
   placeholder = "Search",
   accent = "positive",
+  onPick,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -40,6 +41,13 @@ export function SearchField({
   label: string;
   placeholder?: string;
   accent?: "positive" | "poll" | "private";
+  /**
+   * First refusal on a chosen suggestion. Return true to claim it — the
+   * subject map uses this to fly its camera to the subject instead of
+   * leaving the page. Returning false falls through to the default:
+   * navigate if the suggestion has an href, otherwise fill the box.
+   */
+  onPick?: (match: Suggestion) => boolean;
 }) {
   const router = useRouter();
   const listId = useId();
@@ -75,6 +83,11 @@ export function SearchField({
   useEffect(() => setActive(-1), [value]);
 
   const choose = (match: Suggestion) => {
+    if (onPick?.(match)) {
+      setFocused(false);
+      inputRef.current?.blur();
+      return;
+    }
     if (match.href) {
       router.push(match.href);
       return;

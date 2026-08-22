@@ -866,3 +866,109 @@ select option {
 .ohq-search-input::-webkit-search-decoration {
   appearance: none;
 }
+
+/* -------------------------------------------------------------- subject map */
+
+/**
+ * The catalogue map. Two moving layers per circle, each with one job:
+ *
+ *   .ohq-map-cell — WHERE the circle is. The layout writes translate3d here;
+ *                   the transition is what makes a filter change shuffle
+ *                   circles to their new spiral cells instead of teleporting
+ *                   them.
+ *   .ohq-map-lens — the Apple Watch lens. Scale and fade written per frame by
+ *                   the camera loop; NO transition here, because the writes
+ *                   are themselves frame-rate smooth and a transition would
+ *                   drag behind a pan.
+ *
+ * THERE IS NO HOVER LAYER, deliberately. A third layer used to nudge a
+ * circle's neighbours a few pixels apart on hover, and a hover scale grew the
+ * circle itself. Both moved the element out from under the pointer that
+ * triggered them, so the browser fired leave/enter repeatedly and the cursor
+ * and hit target strobed. Hover now changes colour and nothing else.
+ *
+ * The camera's own transform lives on the world element and is written
+ * imperatively — nothing in CSS touches it.
+ */
+.ohq-map-cell {
+  transition: transform 680ms var(--ease-ohq);
+  contain: layout style;
+}
+
+.ohq-map-lens {
+  transform: scale(var(--k-lens, 1));
+  opacity: calc(var(--k-fade, 1) * var(--k-dim, 1));
+  transition: opacity 300ms var(--ease-ohq);
+}
+
+/* Arrival: a soft scale-and-fade entrance, staggered by ring via an inline
+   delay. `both` keeps the circle hidden through its delay. Lives on a layer
+   inside the cell, NOT the cell itself — the cell's transform is its
+   position, and animating scale there would scale the translation with it. */
+@keyframes ohq-map-enter {
+  from {
+    opacity: 0;
+    scale: 0.55;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+.ohq-map-enter {
+  animation: ohq-map-enter 540ms var(--ease-ohq) both;
+}
+
+/* Departure: the ghost of a filtered-out circle, fading where it stood. */
+@keyframes ohq-map-exit {
+  from {
+    opacity: 0.55;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: 0.7;
+  }
+}
+
+.ohq-map-exit {
+  animation: ohq-map-exit 260ms var(--ease-ohq) both;
+}
+
+/* One ripple around a ring — search landings and new arrivals. The only
+   looping-adjacent motion left, and it runs once and stops. */
+@keyframes ohq-map-ripple {
+  from {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+}
+
+.ohq-map-ripple {
+  transform-origin: center;
+  animation: ohq-map-ripple 1s var(--ease-ohq) both;
+}
+
+/* Fine grain over the map background. An inline SVG turbulence tile — no
+   asset, no request, and far under the contrast ceiling. */
+.ohq-map-noise {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Movement stops; the map itself — pan, zoom, selection — keeps working. */
+  .ohq-map-cell {
+    transition: none;
+  }
+
+  .ohq-map-ripple {
+    animation: none;
+  }
+}

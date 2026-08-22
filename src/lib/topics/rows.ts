@@ -175,6 +175,9 @@ export function rowToTopic(
     ...(extras.facetTallies ? { facetTallies: extras.facetTallies } : {}),
     ...(extras.series ? { series: extras.series } : {}),
     ...shares,
+    // Publication is what "creation" means to a reader — an unpublished draft
+    // has no age anyone can see. The subject map sorts its spiral on this.
+    ...(row.published_at ? { createdAt: row.published_at } : {}),
     participants: row.participants,
     written: row.written_count,
     trend: Number(row.trend_score),

@@ -236,6 +236,9 @@ export function rowToPoll(
     summary: row.summary,
     about: extras.about ?? "",
     tags: row.tags ?? [],
+    // Publication is what "creation" means to a reader; the subject map
+    // sorts its spiral on this. See lib/subject-map/layout.ts.
+    ...(row.published_at ? { createdAt: row.published_at } : {}),
     options: extras.options,
     closes: closesLabel(row.closes_at),
     ...(extras.audience ? { audience: extras.audience } : {}),
